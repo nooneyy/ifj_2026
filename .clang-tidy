@@ -1,0 +1,21 @@
+---
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  cert-*,
+  misc-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity
+
+WarningsAsErrors: ""
+
+HeaderFilterRegex: "src/.*"
+
+# Use .clang-format formatting
+FormatStyle: file
+...
