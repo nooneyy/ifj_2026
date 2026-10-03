@@ -18,7 +18,7 @@ TARGET := ifj26
 all: $(TARGET)
 
 # IMPORTANT - add all object files to be linked with final executable here with the .o extension 
-$(TARGET): src/main.o
+$(TARGET): src/main.o src/scanner.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 ##
