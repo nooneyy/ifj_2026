@@ -33,7 +33,7 @@
  * @TOKEN_OPEN_PAR:  "("
  * @TOKEN_CLOSE_PAR: ")"
  */
-enum TOKEN_TYPE {
+typedef enum TokenType {
   TOKEN_ID,
   TOKEN_INT,
   TOKEN_DOUBLE,
@@ -50,7 +50,7 @@ enum TOKEN_TYPE {
   TOKEN_GREEQ,
   TOKEN_OPEN_PAR,
   TOKEN_CLOSE_PAR,
-};
+} TokenType;
 
 /**
  * struct Token - For Scanner to describe a lexeme and send it to parser
@@ -60,7 +60,7 @@ enum TOKEN_TYPE {
  *                  carry content. Typically Int, Double or Char*
  */
 typedef struct Token {
-  enum TOKEN_TYPE type;
+  TokenType type;
   void *token_content;
 } Token;
 
