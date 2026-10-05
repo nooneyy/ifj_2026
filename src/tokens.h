@@ -33,7 +33,7 @@
  * @TOKEN_OPEN_PAR:  "("
  * @TOKEN_CLOSE_PAR: ")"
  */
-enum TOKEN_TYPE { // NOLINT(performance-enum-size)
+enum TOKEN_TYPE {
   TOKEN_ID,
   TOKEN_INT,
   TOKEN_DOUBLE,
@@ -56,18 +56,12 @@ enum TOKEN_TYPE { // NOLINT(performance-enum-size)
  * struct Token - For Scanner to describe a lexeme and send it to parser
  * @type:           Defining Token's type
  *                  For symbols, it's the only used value
- * @id_string:      In case type is TOKEN_ID, this is used as a
- *                  buffer for the id's name
- * @int_value:      In case type is TOKEN_INT, this is used
- *                  to store the integer value
- * @double_value:   In case type is TOKEN_DOUBLE, this is used
- *                  to store the double value
+ * @token_content:  Void pointer in case the token has to
+ *                  carry content. Typically Int, Double or Char*
  */
 typedef struct Token {
   enum TOKEN_TYPE type;
-  char *id_string;
-  int *int_value;
-  double *double_value;
+  void *token_content;
 } Token;
 
 #endif

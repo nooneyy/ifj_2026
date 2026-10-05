@@ -21,7 +21,7 @@
  */
 static FILE *open_src_file(char *file_name);
 
-Token scanner(char *file_name) { // NOLINT(misc-use-internal-linkage)
+Token scanner(char *file_name) {
   FILE *src_file = open_src_file(file_name);
   (void)src_file;
   Token test_token = {TOKEN_ID, "String", NULL, NULL};
