@@ -16,10 +16,10 @@
  * Such types are used in Token struct
  * to define it's type
  *
- * @TOKEN_ID:        Identificator type - Token also uses *id_string
- * @TOKEN_INT:       Integer type - Token also uses int_value
- * @TOKEN_DOUBLE:    Double type - Token also uses double_value
- * @TOKEN_STRING:    String type - Token also uses token_content
+ * @TOKEN_ID:        Identificator type - Token also uses *token_content
+ * @TOKEN_INT:       Integer type - Token also uses *token_content
+ * @TOKEN_DOUBLE:    Double type - Token also uses *token_content
+ * @TOKEN_STRING:    String type - Token also uses *token_content
  * @TOKEN_ASSIGN:    "="
  * @TOKEN_IS_EQ:     "=="
  * @TOKEN_NOT_EQ:    "!="
