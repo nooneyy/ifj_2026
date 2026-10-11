@@ -196,6 +196,23 @@ static ReturnCodes buffer_append(int c, char **buf, unsigned int *buf_idx) {
   return RETURN_SUCCESS;
 }
 
+/**
+ * scanner_fsm() - reading source file and creating a token
+ * @token_to_fill: token to fill with type and token_content
+ * @src:           source file to read from
+ *
+ * Reads src char by char and moves through the FSM states
+ * until the whole token is read and filled.
+ * First char after the token is returned to src
+ * by ungetc() for the next token to start with it.
+ * For tokens that need token_content (ID, INT, STRING, DOUBLE),
+ * the buffer is filled and then the memory is handed over
+ * to token_content. For other tokens, the buffer is freed.
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_LEX_ANA in case of a lexical error
+ *         Returns ERR_INTERNAL in case of an internal error
+ */
 static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
   FsmState state = STATE_IDLE;
 
@@ -236,7 +253,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
         state = STATE_ID;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, src); // for the next token to read
         buf[buf_idx] = '\0';
         /*
          * TODO: send to symtable to check if it's a keyword
