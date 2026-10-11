@@ -5,10 +5,15 @@
  * @date 03.10.2026
  */
 
+#include "scanner.h"
 #include "return.h"
 #include "tokens.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+static const unsigned int DEFAULT_BUFFER_SIZE = 31;
+static unsigned int ACC_BUFFER_SIZE = DEFAULT_BUFFER_SIZE;
 
 typedef enum FsmState {
 
@@ -16,6 +21,7 @@ typedef enum FsmState {
   STATE_LINE_START,
   STATE_ID,
   STATE_AT,
+  STATE_UND,
   STATE_STR,
   STATE_STR_ESC,
   STATE_STR_ML,
@@ -82,11 +88,55 @@ static FILE *open_src_file(char *file_name) {
   return file;
 }
 
+static ReturnCodes token_content_ctor(char **buf) {
+  ACC_BUFFER_SIZE = DEFAULT_BUFFER_SIZE;
+  *buf = malloc(DEFAULT_BUFFER_SIZE + 1);
+  if (*buf == NULL) {
+    return ERR_INTERNAL;
+  }
+  return RETURN_SUCCESS;
+}
+
+static ReturnCodes token_content_realloc(char **buf) {
+  ACC_BUFFER_SIZE = (ACC_BUFFER_SIZE * 2) + 1;
+  char *ptr = realloc(*buf, sizeof(char) * (ACC_BUFFER_SIZE + 1));
+  if (ptr == NULL) {
+    free(*buf);
+    *buf = NULL;
+    return ERR_INTERNAL;
+  }
+  *buf = ptr;
+  return RETURN_SUCCESS;
+}
+
+static ReturnCodes buffer_append(int c, char **buf, unsigned int *buf_idx) {
+  int rc = RETURN_SUCCESS;
+  if (*buf_idx > ACC_BUFFER_SIZE - 1) {
+    rc = token_content_realloc(buf);
+    if (rc != RETURN_SUCCESS) {
+      return ERR_INTERNAL;
+    }
+  }
+  (*buf)[*buf_idx] = (char)c;
+  (*buf_idx)++;
+  return RETURN_SUCCESS;
+}
+
 static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
 
   (void)token_to_fill;
 
   FsmState state = STATE_IDLE;
+
+  char *buf = NULL;
+  unsigned int buf_idx = 0;
+  (void)buf_idx;
+  (void)buffer_append;
+
+  ReturnCodes rc = token_content_ctor(&buf);
+  if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
 
   while (1) {
 
@@ -95,96 +145,16 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
 
     switch (state) {
     case STATE_IDLE:
-      break;
-
-    case STATE_LINE_START:
+      if (isalpha(c) != 0) {
+        state = STATE_ID;
+      } else if (c == '_') {
+        state = STATE_UND;
+      }
       break;
 
     case STATE_ID:
-      break;
 
-    case STATE_AT:
-      break;
-
-    case STATE_STR:
-      break;
-
-    case STATE_STR_ESC:
-      break;
-
-    case STATE_STR_ML:
-      break;
-
-    case STATE_1_QUOT:
-      break;
-
-    case STATE_2_QUOT:
-      break;
-
-    case STATE_STR_ML_1_QUOT:
-      break;
-
-    case STATE_STR_ML_2_QUOT:
-      break;
-
-    case STATE_INT:
-      break;
-
-    case STATE_INT_UNDER:
-      break;
-
-    case STATE_DOUBLE:
-      break;
-
-    case STATE_DOUBLE_UNDER:
-      break;
-
-    case STATE_DOT:
-      break;
-
-    case STATE_DOT_START:
-      break;
-
-    case STATE_E:
-      break;
-
-    case STATE_E_SIGN:
-      break;
-
-    case STATE_EXP:
-      break;
-
-    case STATE_EXP_UNDER:
-      break;
-
-    case STATE_ZERO:
-      break;
-
-    case STATE_SLASH:
-      break;
-
-    case STATE_COMM_LINE:
-      break;
-
-    case STATE_COMM_BLOCK:
-      break;
-
-    case STATE_COMM_BLOCK_STAR:
-      break;
-
-    case STATE_COMM_BLOCK_SLASH:
-      break;
-
-    case STATE_ASSIGN:
-      break;
-
-    case STATE_EXCL:
-      break;
-
-    case STATE_LOW:
-      break;
-
-    case STATE_GRE:
+    default:
       break;
     }
   }
