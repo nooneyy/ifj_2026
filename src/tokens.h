@@ -11,10 +11,7 @@
 #include <stdint.h>
 
 /**
- * Creates a token type for each
- * final state in the FSM.
- * Such types are used in Token struct
- * to define it's type
+ * enum TokenType - listing of all possible Token types returned by FSM
  *
  * @TOKEN_ID:        Identificator type - Token also uses *token_content
  * @TOKEN_INT:       Integer type - Token also uses *token_content
