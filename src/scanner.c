@@ -15,8 +15,43 @@
 static const unsigned int DEFAULT_BUFFER_SIZE = 31;
 static unsigned int ACC_BUFFER_SIZE = DEFAULT_BUFFER_SIZE;
 
+/**
+ * enum FsmState - listing of all possible FSM states
+ *
+ * @STATE_IDLE:               idle state - initial state
+ * @STATE_LINE_START:         start of a line - indentation scanning state
+ * @STATE_ID:                 ID scanning state
+ * @STATE_AT:                 "@" is first in the sequence
+ * @STATE_UND:                "_" is first in the sequence
+ * @STATE_STR:                string scanning state
+ * @STATE_STR_ESC:            string escape sequence scanning state
+ * @STATE_STR_ML:             multiline string scanning state
+ * @STATE_1_QUOT:             " is first in the sequence
+ * @STATE_2_QUOT:             "" is first in the sequence
+ * @STATE_STR_ML_1_QUOT:      " in multiline scanning state
+ * @STATE_STR_ML_2_QUOT:      "" in multiline scanning state
+ * @STATE_INT:                int scanning state
+ * @STATE_INT_UNDER:          "_" appeared inside an int
+ * @STATE_DOUBLE:             double scanning state
+ * @STATE_DOUBLE_UNDER:       "_" appeared inside a double
+ * @STATE_DOT:                "." appeared after an int
+ * @STATE_DOT_START:          "." is first in the sequence
+ * @STATE_E:                  "e" or "E" appeared inside a number
+ * @STATE_E_SIGN:             "+" or "-" follows right after "e" or "E"
+ * @STATE_EXP:                exponent scanning state
+ * @STATE_EXP_UNDER:          "_" appeared inside an exponent
+ * @STATE_ZERO:               "0" is first in the sequence
+ * @STATE_SLASH:              "/" is first in the sequence
+ * @STATE_COMM_LINE:          line comment scanning state
+ * @STATE_COMM_BLOCK:         block comment scanning state
+ * @STATE_COMM_BLOCK_STAR:    "*" in block comment scanning state
+ * @STATE_COMM_BLOCK_SLASH:   "/" in block comment scanning state
+ * @STATE_ASSIGN:             "=" is first in the sequence
+ * @STATE_EXCL:               "!" is first in the sequence
+ * @STATE_LOW:                "<" is first in the sequence
+ * @STATE_GRE:                ">" is first in the sequence
+ */
 typedef enum FsmState {
-
   STATE_IDLE,
   STATE_LINE_START,
   STATE_ID,
