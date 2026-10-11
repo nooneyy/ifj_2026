@@ -123,15 +123,10 @@ static ReturnCodes buffer_append(int c, char **buf, unsigned int *buf_idx) {
 }
 
 static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
-
-  (void)token_to_fill;
-
   FsmState state = STATE_IDLE;
 
   char *buf = NULL;
   unsigned int buf_idx = 0;
-  (void)buf_idx;
-  (void)buffer_append;
 
   ReturnCodes rc = token_content_ctor(&buf);
   if (rc != RETURN_SUCCESS) {
@@ -141,18 +136,59 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
   while (1) {
 
     int c = fgetc(src);
-    (void)c;
 
     switch (state) {
     case STATE_IDLE:
       if (isalpha(c) != 0) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
         state = STATE_ID;
       } else if (c == '_') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
         state = STATE_UND;
       }
       break;
 
     case STATE_ID:
+      if (isalnum(c) != 0 || c == '_') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_ID;
+      } else {
+        (void)ungetc(c, src);
+        buf[buf_idx] = '\0';
+        /*
+         * TODO: send to symtable to check if it's a keyword
+         * if so, handle correctly
+         * else{
+         */
+        token_to_fill->type = TOKEN_ID;
+        token_to_fill->token_content = buf;
+        buf = NULL;
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_UND:
+      if (isalnum(c) != 0 || c == '_') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_ID;
+      } else {
+        free(buf);
+        buf = NULL;
+        return ERR_LEX_ANA;
+      }
+      break;
 
     default:
       break;
