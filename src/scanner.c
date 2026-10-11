@@ -12,7 +12,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*
+ * DEFAULT_BUFFER_SIZE - Initial buffer size - 1
+ *
+ * Used for initial buffer allocation.
+ * -1 because allocation adds 1 byte for '\0'
+ * so allocations are powers of 2 (32, 64, 128...)
+ */
 static const unsigned int DEFAULT_BUFFER_SIZE = 31;
+
+/*
+ * ACC_BUFFER_SIZE - Actual buffer size - 1
+ *
+ * Used to define how many bytes in the buffer
+ * can be filled.
+ * Last byte reserved for '\0'
+ * On reallocation ACC_BUFFER_SIZE = (ACC_BUFFER_SIZE * 2) + 1
+ * Reset to DEFAULT_BUFFER_SIZE in token_content_ctor()
+ */
 static unsigned int ACC_BUFFER_SIZE = DEFAULT_BUFFER_SIZE;
 
 /**
@@ -96,22 +113,6 @@ typedef enum FsmState {
  * Return: Returns pointer to the source file
  *         In case of an error, exits with errcode 99
  */
-static FILE *open_src_file(char *file_name);
-
-static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src);
-
-Token scanner(char *file_name) {
-  FILE *src_file = open_src_file(file_name);
-  (void)src_file;
-  Token test_token = {TOKEN_ID, "test_string"};
-
-  ReturnCodes fsm_status = scanner_fsm(&test_token, src_file);
-  (void)fsm_status;
-
-  (void)fclose(src_file);
-  return test_token;
-}
-
 static FILE *open_src_file(char *file_name) {
   FILE *file;
   file = fopen(file_name, "r");
@@ -123,6 +124,17 @@ static FILE *open_src_file(char *file_name) {
   return file;
 }
 
+/**
+ * token_content_ctor() - allocating buffer to store token_content in
+ * @buf: pointer to buffer to allocate
+ *
+ * Using malloc to allocate DEFAULT_BUFFER_SIZE + 1 bytes
+ * for a buf buffer. Memory is later handed to Token.token_content
+ * Resets ACC_BUFFER_SIZE to DEFAULT_BUFFER_SIZE
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_INTERNAL in case of an error
+ */
 static ReturnCodes token_content_ctor(char **buf) {
   ACC_BUFFER_SIZE = DEFAULT_BUFFER_SIZE;
   *buf = malloc(DEFAULT_BUFFER_SIZE + 1);
@@ -132,6 +144,18 @@ static ReturnCodes token_content_ctor(char **buf) {
   return RETURN_SUCCESS;
 }
 
+/**
+ * token_content_realloc() - reallocating buffer to double the bytes
+ * @buf: pointer to buffer to double
+ *
+ * Using realloc to double buf size.
+ * Updates ACC_BUFFER_SIZE accordingly.
+ * In case of an error, buf is freed and set to NULL.
+ * Memory is later handed to Token.token_content
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_INTERNAL in case of an error
+ */
 static ReturnCodes token_content_realloc(char **buf) {
   ACC_BUFFER_SIZE = (ACC_BUFFER_SIZE * 2) + 1;
   char *ptr = realloc(*buf, sizeof(char) * (ACC_BUFFER_SIZE + 1));
@@ -144,6 +168,21 @@ static ReturnCodes token_content_realloc(char **buf) {
   return RETURN_SUCCESS;
 }
 
+/**
+ * buffer_append() - appending a char into buf
+ * @c:       char to append
+ * @buf:     buffer to append to
+ * @buf_idx: index to write to, incremented after writing
+ *
+ * Appending char c into buffer.
+ * buf_idx is the index inside buffer to write c to.
+ * If buf_idx is out of boundaries of the buffer,
+ * calls token_content_realloc().
+ * '\0' is not appended, caller adds it at the end of a token
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_INTERNAL in case of an error
+ */
 static ReturnCodes buffer_append(int c, char **buf, unsigned int *buf_idx) {
   int rc = RETURN_SUCCESS;
   if (*buf_idx > ACC_BUFFER_SIZE - 1) {
@@ -231,4 +270,16 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
   }
 
   return RETURN_SUCCESS;
+}
+
+Token scanner(char *file_name) {
+  FILE *src_file = open_src_file(file_name);
+  (void)src_file;
+  Token test_token = {TOKEN_ID, "test_string"};
+
+  ReturnCodes fsm_status = scanner_fsm(&test_token, src_file);
+  (void)fsm_status;
+
+  (void)fclose(src_file);
+  return test_token;
 }
