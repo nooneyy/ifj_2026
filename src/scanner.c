@@ -58,6 +58,7 @@ static unsigned int acc_buffer_size = DEFAULT_BUFFER_SIZE;
  * @STATE_EXP:                exponent scanning state
  * @STATE_EXP_UNDER:          "_" appeared inside an exponent
  * @STATE_ZERO:               "0" is first in the sequence
+ * @STATE_ZERO_INT:           "0" followed with int number
  * @STATE_SLASH:              "/" is first in the sequence
  * @STATE_COMM_LINE:          line comment scanning state
  * @STATE_COMM_BLOCK:         block comment scanning state
@@ -92,6 +93,7 @@ typedef enum FsmState {
   STATE_EXP,
   STATE_EXP_UNDER,
   STATE_ZERO,
+  STATE_ZERO_INT,
   STATE_SLASH,
   STATE_COMM_LINE,
   STATE_COMM_BLOCK,
@@ -196,6 +198,91 @@ static ReturnCodes buffer_append(int c, char **buf, unsigned int *buf_idx) {
   return RETURN_SUCCESS;
 }
 
+static ReturnCodes double_ctor(double **d, char **buf) {
+  *d = malloc(sizeof(double));
+  if (*d == NULL) {
+    free(*buf);
+    *buf = NULL;
+    return ERR_INTERNAL;
+  }
+  return RETURN_SUCCESS;
+}
+
+static ReturnCodes string_to_double(char **buf, double *d) {
+  *d = strtod(*buf, NULL);
+  return RETURN_SUCCESS;
+}
+
+static ReturnCodes double_to_token(char **buf, unsigned int *buf_idx,
+                                   Token *token) {
+  ReturnCodes rc = RETURN_SUCCESS;
+  rc = buffer_append('\0', buf, buf_idx);
+  if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
+
+  double *d = NULL;
+  rc = double_ctor(&d, buf);
+  if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
+
+  rc = string_to_double(buf, d);
+  if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
+
+  token->type = TOKEN_DOUBLE;
+  token->token_content = d;
+  d = NULL;
+  free(*buf);
+  *buf = NULL;
+
+  return RETURN_SUCCESS;
+}
+
+static ReturnCodes int_ctor(long long **i, char **buf) {
+  *i = malloc(sizeof(long long));
+  if (*i == NULL) {
+    free(*buf);
+    *buf = NULL;
+    return ERR_INTERNAL;
+  }
+  return RETURN_SUCCESS;
+}
+
+static ReturnCodes string_to_int(char **buf, long long *i) {
+  *i = strtoll(*buf, NULL, 10);
+  return RETURN_SUCCESS;
+}
+
+static ReturnCodes int_to_token(char **buf, unsigned int *buf_idx,
+                                Token *token) {
+  ReturnCodes rc = RETURN_SUCCESS;
+  rc = buffer_append('\0', buf, buf_idx);
+  if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
+
+  long long *i = NULL;
+  rc = int_ctor(&i, buf);
+  if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
+
+  rc = string_to_int(buf, i);
+  if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
+
+  token->type = TOKEN_INT;
+  token->token_content = i;
+  free(*buf);
+  *buf = NULL;
+
+  return RETURN_SUCCESS;
+}
+
 /**
  * scanner_fsm() - reading source file and creating a token
  * @token_to_fill: token to fill with type and token_content
@@ -228,7 +315,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
 
     switch (state) {
     case STATE_IDLE:
-      if (isalpha(c) != 0) {
+      if (isalpha(c)) {
         rc = token_content_ctor(&buf);
         if (rc != RETURN_SUCCESS) {
           return rc;
@@ -239,7 +326,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
         state = STATE_ID;
       } else if (c == '_') {
-        ReturnCodes rc = token_content_ctor(&buf);
+        rc = token_content_ctor(&buf);
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
@@ -248,6 +335,38 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
           return rc;
         }
         state = STATE_UND;
+      } else if (isdigit(c) && c != '0') {
+        rc = token_content_ctor(&buf);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_INT;
+      } else if (c == '.') {
+        rc = token_content_ctor(&buf);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_DOT_START;
+      } else if (c == '0') {
+        rc = token_content_ctor(&buf);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_ZERO;
       } else if (c == ';') {
         token_to_fill->type = TOKEN_SEMICOLON;
         return RETURN_SUCCESS;
@@ -278,14 +397,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       } else if (c == '-') {
         token_to_fill->type = TOKEN_MINUS;
         return RETURN_SUCCESS;
-      } else if (c == '.') {
-        token_to_fill->type = TOKEN_DOT;
-        return RETURN_SUCCESS;
       }
       break;
 
     case STATE_ID:
-      if (isalnum(c) != 0 || c == '_') {
+      if (isalnum(c) || c == '_') {
         rc = buffer_append(c, &buf, &buf_idx);
         if (rc != RETURN_SUCCESS) {
           return rc;
@@ -307,12 +423,260 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       break;
 
     case STATE_UND:
-      if (isalnum(c) != 0 || c == '_') {
+      if (isalnum(c) || c == '_') {
         rc = buffer_append(c, &buf, &buf_idx);
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
         state = STATE_ID;
+      } else {
+        free(buf);
+        buf = NULL;
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_INT:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_INT;
+      } else if (c == '_') {
+        state = STATE_INT_UNDER;
+      } else if (c == '.') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_DOT;
+      } else if (c == 'e' || c == 'E') {
+        rc = buffer_append('e', &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_E;
+      } else {
+        (void)ungetc(c, src);
+        rc = int_to_token(&buf, &buf_idx, token_to_fill);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_INT_UNDER:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_INT;
+      } else {
+        free(buf);
+        buf = NULL;
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_DOT:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_DOUBLE;
+      } else {
+        free(buf);
+        buf = NULL;
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_DOUBLE:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_DOUBLE;
+      } else if (c == '_') {
+        state = STATE_DOUBLE_UNDER;
+      } else if (c == 'e' || c == 'E') {
+        rc = buffer_append('e', &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_E;
+      } else if (c == 'd' || c == 'D') {
+        rc = double_to_token(&buf, &buf_idx, token_to_fill);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        return RETURN_SUCCESS;
+      } else {
+        (void)ungetc(c, src);
+        rc = double_to_token(&buf, &buf_idx, token_to_fill);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_DOUBLE_UNDER:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_DOUBLE;
+      } else {
+        free(buf);
+        buf = NULL;
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_E:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_EXP;
+      } else if (c == '+' || c == '-') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_E_SIGN;
+      } else {
+        free(buf);
+        buf = NULL;
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_E_SIGN:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_EXP;
+      } else {
+        free(buf);
+        buf = NULL;
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_EXP:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_EXP;
+      } else if (c == '_') {
+        state = STATE_EXP_UNDER;
+      } else if (c == 'd' || c == 'D') {
+        rc = double_to_token(&buf, &buf_idx, token_to_fill);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        return RETURN_SUCCESS;
+      } else {
+        (void)ungetc(c, src);
+        rc = double_to_token(&buf, &buf_idx, token_to_fill);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_EXP_UNDER:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_EXP;
+      } else {
+        free(buf);
+        buf = NULL;
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_DOT_START:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_DOUBLE;
+      } else {
+        (void)ungetc(c, src);
+        free(buf);
+        buf = NULL;
+        token_to_fill->type = TOKEN_DOT;
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_ZERO:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_ZERO_INT;
+      } else if (c == 'e' || c == 'E') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_E;
+      } else if (c == '.') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_DOT;
+      } else {
+        (void)ungetc(c, src);
+        rc = int_to_token(&buf, &buf_idx, token_to_fill);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_ZERO_INT:
+      if (isdigit(c)) {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_ZERO_INT;
+      } else if (c == '.') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_DOT;
+      } else if (c == 'e' || c == 'E') {
+        rc = buffer_append(c, &buf, &buf_idx);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        state = STATE_E;
       } else {
         free(buf);
         buf = NULL;
