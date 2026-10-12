@@ -1,0 +1,228 @@
+/**
+ * @file symtable.c
+ * @brief Implementation of a symtable using a hashtable with open addressing
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 6.10.2026
+ */
+
+#include "symtable.h"
+#include "symbol.h"
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
+// TODO: Auto-registering of builtins and other custom ops
+
+#define INITIAL_HTABLE_CAPACITY 16
+
+Symtable *symtable_init(void) {
+  Symtable *s_table = malloc(sizeof(Symtable));
+
+  if (s_table == NULL) {
+    // todo error
+    return NULL;
+  }
+
+  s_table->items = malloc(sizeof(STItem) * INITIAL_HTABLE_CAPACITY);
+
+  if (s_table->items == NULL) {
+    // todo error
+    free(s_table);
+    return NULL;
+  }
+
+  s_table->capacity = INITIAL_HTABLE_CAPACITY;
+  s_table->size = 0;
+
+  // Initialize all available slots to their empty, null variants
+  for (unsigned idx = 0; idx < INITIAL_HTABLE_CAPACITY; idx++) {
+    s_table->items[idx] = (STItem){.state = EMPTY, .symbol = NULL};
+  }
+
+  return s_table;
+}
+
+void symtable_free(Symtable *symtable) {
+  for (unsigned idx = 0; idx < symtable->capacity; idx++) {
+    STItem *item = &symtable->items[idx];
+    if (item->state == FILLED) {
+      free_symbol(item->symbol);
+    }
+  }
+
+  free(symtable->items);
+  free(symtable);
+}
+
+/**
+ * @brief An implementation of DJB hash that converts keys -> hash-map indexes
+ * @param key A string which uniquely identifies the hash-map value
+ * @return A hash that can be turned into an index into the hash-map's items
+ * array
+ */
+static unsigned hash(char *key) {
+  unsigned hash = 5381;
+
+  while (*key != '\0') {
+    hash = (hash * 33) + *key;
+    key++;
+  }
+
+  return hash;
+}
+
+/**
+ * @brief Enlarges the symtable by doubling its capacity
+ * @param symtable The pointer to the symtable struct
+ */
+static void symtable_enlarge(Symtable *symtable) {
+  unsigned new_capacity = symtable->capacity * 2;
+
+  // new_capacity can overflow but this should realistically never happen
+  STItem *tmp_array = malloc(sizeof(STItem) * new_capacity);
+
+  if (tmp_array == NULL) {
+    // todo error
+    return;
+  }
+
+  // Initialize all the new slots to their empty, NULL variants for now
+  for (unsigned idx = 0; idx < new_capacity; idx++) {
+    tmp_array[idx] = (STItem){.state = EMPTY, .symbol = NULL};
+  }
+
+  // Rehash the old values and put them into free slots in the new table
+  for (unsigned idx = 0; idx < symtable->capacity; idx++) {
+    STItem *old_item = &symtable->items[idx];
+    if (old_item->state == FILLED) {
+      unsigned item_hash = hash(old_item->symbol->name);
+
+      for (unsigned offset = 0; offset < new_capacity; offset++) {
+        STItem *new_item = &tmp_array[(item_hash + offset) % new_capacity];
+
+        if (new_item && new_item->state == EMPTY) {
+          *new_item = *old_item;
+          break;
+        }
+      }
+    }
+  }
+
+  free(symtable->items);
+  symtable->items = tmp_array;
+  symtable->capacity = new_capacity;
+}
+
+/**
+ * @brief A function which attemps to get the internal STItem from its key.
+ * @param symtable A pointer to the symtable struct
+ * @param key A string which identifies the value to be found
+ * @return A pointer to an STItem if the search was successful, otherwise NULL
+ */
+static STItem *symtable_get_internal(Symtable *symtable, char *key) {
+  unsigned initial_hash = hash(key);
+
+  // Use linear steps to iterate through n=capacity of items to find our item
+  for (unsigned offset = 0; offset < symtable->capacity; offset++) {
+    STItem *item =
+        &symtable->items[(initial_hash + offset) % symtable->capacity];
+
+    if (item->state == FILLED && strcmp(item->symbol->name, key) == 0) {
+      // Match found
+      return item;
+    }
+
+    if (item->state == EMPTY) {
+      return NULL;
+    }
+  }
+
+  return NULL;
+}
+
+Symbol *symtable_get(Symtable *symtable, char *key) {
+  STItem *item = symtable_get_internal(symtable, key);
+
+  if (!item) {
+    return NULL;
+  }
+
+  return item->symbol;
+}
+
+void symtable_delete(Symtable *symtable, char *key) {
+  STItem *item = symtable_get_internal(symtable, key);
+
+  if (!item) {
+    return;
+  }
+
+  free_symbol(item->symbol);
+  item->symbol = NULL;
+  item->state = DELETED;
+
+  symtable->size--;
+}
+
+void symtable_insert(Symtable *symtable, Symbol *symbol) {
+  STItem *possible_match = symtable_get_internal(symtable, symbol->name);
+
+  if (possible_match) {
+    // Another item already has the same key
+    if (possible_match->symbol != symbol) {
+      // The symbol pointers are different => replace the old Symbol with the
+      // new Symbol
+      free_symbol(possible_match->symbol);
+      possible_match->symbol = symbol;
+    }
+    // Do nothing if the pointers are the same
+    return;
+  }
+
+  if (symtable->size == symtable->capacity) {
+    // todo if fails
+    symtable_enlarge(symtable);
+  }
+
+  unsigned hash_ret = hash(symbol->name);
+
+  STItem *first_deleted = NULL;
+
+  // Linearly step through n=capacity items to find an EMPTY slot to insert into
+  for (unsigned offset = 0; offset < symtable->capacity; offset++) {
+    unsigned idx = (hash_ret + offset) % symtable->capacity;
+
+    STItem *item = &symtable->items[idx];
+
+    // Clang warns about a garbage value (it's clueless)
+    switch (item->state) {
+    case FILLED:
+      // Skip filled slots
+      break;
+    case DELETED:
+      if (!first_deleted) {
+        first_deleted = item;
+      }
+      break;
+    case EMPTY:
+      if (first_deleted) {
+        // We found an EMPTY item, but first replace a DELETED one if we found
+        // it
+        // No need to free the previous symbol as it has already been freed
+        first_deleted->symbol = symbol;
+        first_deleted->state = FILLED;
+      } else {
+        item->symbol = symbol;
+        item->state = FILLED;
+      }
+      symtable->size++;
+      return;
+    }
+  }
+  // If we didn't find any EMPTY items, but found a deleted one, replace it
+  if (first_deleted) {
+    first_deleted->symbol = symbol;
+    first_deleted->state = FILLED;
+    symtable->size++;
+  }
+}
