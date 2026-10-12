@@ -18,7 +18,7 @@ TARGET := ifj26
 all: $(TARGET)
 
 # IMPORTANT - add all object files to be linked with final executable here with the .o extension 
-$(TARGET): src/main.o
+$(TARGET): src/main.o src/symbol.o src/symtable.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 ##
@@ -26,6 +26,10 @@ $(TARGET): src/main.o
 # src/main.o: src/symtable.h
 # src/symtable.o: src/symtable.h
 ##
+
+src/main.o: src/return.h
+src/symbol.o: src/symbol.h
+src/symtable.o: src/symtable.h src/symbol.h
 
 # Auto-compile .c source files into .o object files
 src/%.o: src/%.c
