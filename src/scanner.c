@@ -22,15 +22,15 @@
 static const unsigned int DEFAULT_BUFFER_SIZE = 31;
 
 /*
- * ACC_BUFFER_SIZE - Actual buffer size - 1
+ * acc_buffer_size - Actual buffer size - 1
  *
  * Used to define how many bytes in the buffer
  * can be filled.
  * Last byte reserved for '\0'
- * On reallocation ACC_BUFFER_SIZE = (ACC_BUFFER_SIZE * 2) + 1
+ * On reallocation acc_buffer_size = (acc_buffer_size * 2) + 1
  * Reset to DEFAULT_BUFFER_SIZE in token_content_ctor()
  */
-static unsigned int ACC_BUFFER_SIZE = DEFAULT_BUFFER_SIZE;
+static unsigned int acc_buffer_size = DEFAULT_BUFFER_SIZE;
 
 /**
  * enum FsmState - listing of all possible FSM states
@@ -130,13 +130,13 @@ static FILE *open_src_file(char *file_name) {
  *
  * Using malloc to allocate DEFAULT_BUFFER_SIZE + 1 bytes
  * for a buf buffer. Memory is later handed to Token.token_content
- * Resets ACC_BUFFER_SIZE to DEFAULT_BUFFER_SIZE
+ * Resets acc_buffer_size to DEFAULT_BUFFER_SIZE
  *
  * Return: Returns RETURN_SUCCESS in case of a success
  *         Returns ERR_INTERNAL in case of an error
  */
 static ReturnCodes token_content_ctor(char **buf) {
-  ACC_BUFFER_SIZE = DEFAULT_BUFFER_SIZE;
+  acc_buffer_size = DEFAULT_BUFFER_SIZE;
   *buf = malloc(DEFAULT_BUFFER_SIZE + 1);
   if (*buf == NULL) {
     return ERR_INTERNAL;
@@ -149,7 +149,7 @@ static ReturnCodes token_content_ctor(char **buf) {
  * @buf: pointer to buffer to double
  *
  * Using realloc to double buf size.
- * Updates ACC_BUFFER_SIZE accordingly.
+ * Updates acc_buffer_size accordingly.
  * In case of an error, buf is freed and set to NULL.
  * Memory is later handed to Token.token_content
  *
@@ -157,8 +157,8 @@ static ReturnCodes token_content_ctor(char **buf) {
  *         Returns ERR_INTERNAL in case of an error
  */
 static ReturnCodes token_content_realloc(char **buf) {
-  ACC_BUFFER_SIZE = (ACC_BUFFER_SIZE * 2) + 1;
-  char *ptr = realloc(*buf, sizeof(char) * (ACC_BUFFER_SIZE + 1));
+  acc_buffer_size = (acc_buffer_size * 2) + 1;
+  char *ptr = realloc(*buf, sizeof(char) * (acc_buffer_size + 1));
   if (ptr == NULL) {
     free(*buf);
     *buf = NULL;
@@ -185,7 +185,7 @@ static ReturnCodes token_content_realloc(char **buf) {
  */
 static ReturnCodes buffer_append(int c, char **buf, unsigned int *buf_idx) {
   int rc = RETURN_SUCCESS;
-  if (*buf_idx > ACC_BUFFER_SIZE - 1) {
+  if (*buf_idx > acc_buffer_size - 1) {
     rc = token_content_realloc(buf);
     if (rc != RETURN_SUCCESS) {
       return ERR_INTERNAL;
@@ -214,15 +214,13 @@ static ReturnCodes buffer_append(int c, char **buf, unsigned int *buf_idx) {
  *         Returns ERR_INTERNAL in case of an internal error
  */
 static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
+  token_to_fill->token_content = NULL; // tokens without content keep NULL
+
   FsmState state = STATE_IDLE;
 
   char *buf = NULL;
   unsigned int buf_idx = 0;
-
-  ReturnCodes rc = token_content_ctor(&buf);
-  if (rc != RETURN_SUCCESS) {
-    return rc;
-  }
+  ReturnCodes rc = RETURN_SUCCESS;
 
   while (1) {
 
@@ -231,17 +229,58 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
     switch (state) {
     case STATE_IDLE:
       if (isalpha(c) != 0) {
+        rc = token_content_ctor(&buf);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
         rc = buffer_append(c, &buf, &buf_idx);
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
         state = STATE_ID;
       } else if (c == '_') {
+        ReturnCodes rc = token_content_ctor(&buf);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
         rc = buffer_append(c, &buf, &buf_idx);
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
         state = STATE_UND;
+      } else if (c == ';') {
+        token_to_fill->type = TOKEN_SEMICOLON;
+        return RETURN_SUCCESS;
+      } else if (c == '(') {
+        token_to_fill->type = TOKEN_OPEN_PAR;
+        return RETURN_SUCCESS;
+      } else if (c == ')') {
+        token_to_fill->type = TOKEN_CLOSE_PAR;
+        return RETURN_SUCCESS;
+      } else if (c == ',') {
+        token_to_fill->type = TOKEN_COMMA;
+        return RETURN_SUCCESS;
+      } else if (c == ':') {
+        token_to_fill->type = TOKEN_COLON;
+        return RETURN_SUCCESS;
+      } else if (c == EOF) {
+        token_to_fill->type = TOKEN_EOF;
+        return RETURN_SUCCESS;
+      } else if (c == '\n') {
+        token_to_fill->type = TOKEN_EOL;
+        return RETURN_SUCCESS;
+      } else if (c == '*') {
+        token_to_fill->type = TOKEN_MUL;
+        return RETURN_SUCCESS;
+      } else if (c == '+') {
+        token_to_fill->type = TOKEN_PLUS;
+        return RETURN_SUCCESS;
+      } else if (c == '-') {
+        token_to_fill->type = TOKEN_MINUS;
+        return RETURN_SUCCESS;
+      } else if (c == '.') {
+        token_to_fill->type = TOKEN_DOT;
+        return RETURN_SUCCESS;
       }
       break;
 
