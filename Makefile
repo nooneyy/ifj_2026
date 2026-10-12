@@ -28,7 +28,7 @@ $(TARGET): src/main.o
 ##
 
 # Auto-compile .c source files into .o object files
-src/$.o: src/$.c
+src/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Cleans the final executable and all object files
