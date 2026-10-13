@@ -198,21 +198,53 @@ static ReturnCodes buffer_append(int c, char **buf, unsigned int *buf_idx) {
   return RETURN_SUCCESS;
 }
 
-static ReturnCodes double_ctor(double **d, char **buf) {
+/**
+ * double_ctor() - allocates space for a 64bit float
+ * @d: pointer to allocate the memory to
+ *
+ * Allocates memory using malloc for a 64bit float (double).
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_INTERNAL in case of an error with allocation
+ */
+static ReturnCodes double_ctor(double **d) {
   *d = malloc(sizeof(double));
   if (*d == NULL) {
-    free(*buf);
-    *buf = NULL;
     return ERR_INTERNAL;
   }
   return RETURN_SUCCESS;
 }
 
+/**
+ * string_to_double() - Converts a string in buffer to 64bit float
+ * @buf: buffer containing the double in string format
+ * @d: allocated space for the 64bit float
+ *
+ * Converting float value inside in a string format in buf to
+ * a 64bit float (double) using strtod function.
+ *
+ * Return: Returns RETURN_SUCCESS
+ */
 static ReturnCodes string_to_double(char **buf, double *d) {
   *d = strtod(*buf, NULL);
   return RETURN_SUCCESS;
 }
 
+/**
+ * double_to_token() - Converting a double from buffer to completed token
+ * @buf: buffer containing the double
+ * @buf_idx: index to the first item after double in buf
+ * @token: token to fill with type and token_content
+ *
+ * Appends the buffer with '\0', then lets double_ctor allocate
+ * memory for a 64bit float, then lets string_to_double convert value from
+ * buf to the allocated 64bit float.
+ * Finally writes that value into token_content, sets type of token
+ * and frees buffer.
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_INTERNAL in case one of the function fails
+ */
 static ReturnCodes double_to_token(char **buf, unsigned int *buf_idx,
                                    Token *token) {
   ReturnCodes rc = RETURN_SUCCESS;
@@ -222,13 +254,18 @@ static ReturnCodes double_to_token(char **buf, unsigned int *buf_idx,
   }
 
   double *d = NULL;
-  rc = double_ctor(&d, buf);
+  rc = double_ctor(&d);
   if (rc != RETURN_SUCCESS) {
+    free(*buf);
+    *buf = NULL;
     return rc;
   }
 
   rc = string_to_double(buf, d);
   if (rc != RETURN_SUCCESS) {
+    free(d);
+    free(*buf);
+    *buf = NULL;
     return rc;
   }
 
@@ -241,21 +278,53 @@ static ReturnCodes double_to_token(char **buf, unsigned int *buf_idx,
   return RETURN_SUCCESS;
 }
 
-static ReturnCodes int_ctor(long long **i, char **buf) {
+/**
+ * int_ctor() - allocates space for a 64bit integer
+ * @i: pointer to allocate the memory to
+ *
+ * Allocates memory using malloc for a 64bit integer (long long).
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_INTERNAL in case of an error with allocation
+ */
+static ReturnCodes int_ctor(long long **i) {
   *i = malloc(sizeof(long long));
   if (*i == NULL) {
-    free(*buf);
-    *buf = NULL;
     return ERR_INTERNAL;
   }
   return RETURN_SUCCESS;
 }
 
+/**
+ * string_to_int() - Converts a string in buffer to 64bit int
+ * @buf: buffer containing the int in string format
+ * @i: allocated space for the 64bit int
+ *
+ * Converting int value inside in a string format in buf to
+ * a 64bit int (long long) using strtoll function.
+ *
+ * Return: Returns RETURN_SUCCESS
+ */
 static ReturnCodes string_to_int(char **buf, long long *i) {
   *i = strtoll(*buf, NULL, 10);
   return RETURN_SUCCESS;
 }
 
+/**
+ * int_to_token() - Converting an int from buffer to completed token
+ * @buf: buffer containing the int
+ * @buf_idx: index to the first item after int in buf
+ * @token: token to fill with type and token_content
+ *
+ * Appends the buffer with '\0', then lets int_ctor allocate
+ * memory for a 64bit int, then lets string_to_int convert value from
+ * buf to the allocated 64bit int.
+ * Finally writes that value into token_content, sets type of token
+ * and frees buffer.
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_INTERNAL in case one of the function fails
+ */
 static ReturnCodes int_to_token(char **buf, unsigned int *buf_idx,
                                 Token *token) {
   ReturnCodes rc = RETURN_SUCCESS;
@@ -264,14 +333,19 @@ static ReturnCodes int_to_token(char **buf, unsigned int *buf_idx,
     return rc;
   }
 
-  long long *i = NULL;
-  rc = int_ctor(&i, buf);
+  long long *i = NULL; // 64bit int because of the IFJ26code int definition
+  rc = int_ctor(&i);
   if (rc != RETURN_SUCCESS) {
+    free(*buf);
+    *buf = NULL;
     return rc;
   }
 
   rc = string_to_int(buf, i);
   if (rc != RETURN_SUCCESS) {
+    free(i);
+    free(*buf);
+    *buf = NULL;
     return rc;
   }
 
