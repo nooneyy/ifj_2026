@@ -318,6 +318,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
           return rc;
         }
         state = STATE_ZERO;
+      } else if (c == '!') {
+        state = STATE_EXCL;
+      } else if (c == '=') {
+        state = STATE_ASSIGN;
+      } else if (c == '>') {
+        state = STATE_GRE;
+      } else if (c == '<') {
+        state = STATE_LOW;
       } else if (c == ';') {
         token_to_fill->type = TOKEN_SEMICOLON;
         return RETURN_SUCCESS;
@@ -644,6 +652,45 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       }
+      break;
+
+    case STATE_EXCL:
+      if (c == '=') {
+        token_to_fill->type = TOKEN_NOT_EQ;
+      } else {
+        return ERR_LEX_ANA;
+      }
+      return RETURN_SUCCESS;
+      break;
+
+    case STATE_ASSIGN:
+      if (c == '=') {
+        token_to_fill->type = TOKEN_IS_EQ;
+      } else {
+        (void)ungetc(c, src);
+        token_to_fill->type = TOKEN_ASSIGN;
+      }
+      return RETURN_SUCCESS;
+      break;
+
+    case STATE_GRE:
+      if (c == '=') {
+        token_to_fill->type = TOKEN_GREEQ;
+      } else {
+        (void)ungetc(c, src);
+        token_to_fill->type = TOKEN_GRE;
+      }
+      return RETURN_SUCCESS;
+      break;
+
+    case STATE_LOW:
+      if (c == '=') {
+        token_to_fill->type = TOKEN_LOWEQ;
+      } else {
+        (void)ungetc(c, src);
+        token_to_fill->type = TOKEN_LOW;
+      }
+      return RETURN_SUCCESS;
       break;
 
     default:
