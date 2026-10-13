@@ -376,6 +376,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         state = STATE_GRE;
       } else if (c == '<') {
         state = STATE_LOW;
+      } else if (c == '@') {
+        state = STATE_AT;
       } else if (c == ';') {
         token_to_fill->type = TOKEN_SEMICOLON;
         return RETURN_SUCCESS;
@@ -740,6 +742,27 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         token_to_fill->type = TOKEN_LOW;
       }
       return RETURN_SUCCESS;
+      break;
+
+    case STATE_AT:
+      if (c == 'm') {
+        if (fgetc(src) == 'a') {
+          if (fgetc(src) == 'i') {
+            if (fgetc(src) == 'n') {
+              int after = fgetc(src);
+
+              // Whitespace, start of commment or EOF are the only allowed
+              // chars after @main
+              if (isspace(after) || after == '/' || after == EOF) {
+                (void)ungetc(after, src);
+                token_to_fill->type = TOKEN_AT_MAIN;
+                return RETURN_SUCCESS;
+              }
+            }
+          }
+        }
+      }
+      return ERR_LEX_ANA;
       break;
 
     default:
