@@ -13,46 +13,54 @@
 /**
  * enum TokenType - listing of all possible Token types returned by FSM
  *
- * @TOKEN_ID:        Identificator type - Token also uses *token_content
- * @TOKEN_INT:       Integer type - Token also uses *token_content
- * @TOKEN_DOUBLE:    Double type - Token also uses *token_content
- * @TOKEN_STRING:    String type - Token also uses *token_content
- * @TOKEN_ASSIGN:    "="
- * @TOKEN_IS_EQ:     "=="
- * @TOKEN_NOT_EQ:    "!="
- * @TOKEN_MINUS:     "-"
- * @TOKEN_PLUS:      "+"
- * @TOKEN_MUL:       "*"
- * @TOKEN_DIV:       "/"
- * @TOKEN_LOW:       "<"
- * @TOKEN_LOWEQ:     "<="
- * @TOKEN_GRE:       ">"
- * @TOKEN_GREEQ:     ">="
- * @TOKEN_OPEN_PAR:  "("
- * @TOKEN_CLOSE_PAR: ")"
- * @TOKEN_COMMA:     ","
- * @TOKEN_COLON:     ":"
- * @TOKEN_SEMICOLON: ";"
- * @TOKEN_DOT:       "."
- * @TOKEN_AT_MAIN:   "@main"
- * @TOKEN_EOL:       End of a logical line
- * @TOKEN_INDENT:    Indentation increased
- * @TOKEN_DEDENT:    Indentation decreased
- * @TOKEN_EOF:       End of file
- * @TOKEN_KW_DEF:    "def"
- * @TOKEN_KW_DO:     "do"
- * @TOKEN_KW_DOUBLE: "Double"
- * @TOKEN_KW_ELSE:   "else"
- * @TOKEN_KW_IF:     "if"
- * @TOKEN_KW_IMPORT: "import"
- * @TOKEN_KW_INT:    "Int"
- * @TOKEN_KW_RETURN: "return"
- * @TOKEN_KW_STRING: "String"
- * @TOKEN_KW_THEN:   "then"
- * @TOKEN_KW_UNIT:   "Unit"
- * @TOKEN_KW_VAL:    "val"
- * @TOKEN_KW_VAR:    "var"
- * @TOKEN_KW_WHILE:  "while"
+ * @TOKEN_ID:           Identificator type - Token also uses *token_content
+ * @TOKEN_INT:          Integer type - Token also uses *token_content
+ * @TOKEN_DOUBLE:       Double type - Token also uses *token_content
+ * @TOKEN_STRING:       String type - Token also uses *token_content
+ * @TOKEN_ASSIGN:       "="
+ * @TOKEN_IS_EQ:        "=="
+ * @TOKEN_NOT_EQ:       "!="
+ * @TOKEN_MINUS:        "-"
+ * @TOKEN_PLUS:         "+"
+ * @TOKEN_MUL:          "*"
+ * @TOKEN_DIV:          "/"
+ * @TOKEN_LOW:          "<"
+ * @TOKEN_LOWEQ:        "<="
+ * @TOKEN_GRE:          ">"
+ * @TOKEN_GREEQ:        ">="
+ * @TOKEN_OPEN_PAR:     "("
+ * @TOKEN_CLOSE_PAR:    ")"
+ * @TOKEN_COMMA:        ","
+ * @TOKEN_COLON:        ":"
+ * @TOKEN_SEMICOLON:    ";"
+ * @TOKEN_DOT:          "."
+ * @TOKEN_AT_MAIN:      "@main"
+ * @TOKEN_EOL:          End of a logical line
+ * @TOKEN_INDENT:       Indentation increased
+ * @TOKEN_DEDENT:       Indentation decreased
+ * @TOKEN_EOF:          End of file
+ * @TOKEN_KW_DEF:       "def"
+ * @TOKEN_KW_DO:        "do"
+ * @TOKEN_KW_DOUBLE:    "Double"
+ * @TOKEN_KW_ELSE:      "else"
+ * @TOKEN_KW_IF:        "if"
+ * @TOKEN_KW_IMPORT:    "import"
+ * @TOKEN_KW_INT:       "Int"
+ * @TOKEN_KW_RETURN:    "return"
+ * @TOKEN_KW_STRING:    "String"
+ * @TOKEN_KW_THEN:      "then"
+ * @TOKEN_KW_UNIT:      "Unit"
+ * @TOKEN_KW_VAL:       "val"
+ * @TOKEN_KW_VAR:       "var"
+ * @TOKEN_KW_WHILE:     "while"
+ * @TOKEN_KW_BOOLEAN:   "Boolean"
+ * @TOKEN_KW_CASE:      "case"
+ * @TOKEN_KW_CLASS:     "class"
+ * @TOKEN_KW_EXTENSION: "extension"
+ * @TOKEN_KW_FOR:       "for"
+ * @TOKEN_KW_LIST:      "List"
+ * @TOKEN_KW_MATCH:     "match"
+ * @TOKEN_KW_TYPE:      "type"
  */
 typedef enum TokenType {
   TOKEN_ID,
@@ -95,6 +103,14 @@ typedef enum TokenType {
   TOKEN_KW_VAL,
   TOKEN_KW_VAR,
   TOKEN_KW_WHILE,
+  TOKEN_KW_BOOLEAN,
+  TOKEN_KW_CASE,
+  TOKEN_KW_CLASS,
+  TOKEN_KW_EXTENSION,
+  TOKEN_KW_FOR,
+  TOKEN_KW_LIST,
+  TOKEN_KW_MATCH,
+  TOKEN_KW_TYPE
 } TokenType;
 
 /**

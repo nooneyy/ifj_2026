@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /**
  * enum FsmState - listing of all possible FSM states
@@ -85,6 +86,55 @@ typedef enum FsmState {
   STATE_LOW,
   STATE_GRE,
 } FsmState;
+
+/**
+ * struct KeyWord - For comparing strings from source with keywords
+ * @text: keyword as a string for comparison
+ * @type: respective token type for the keyword
+ */
+typedef struct KeyWord {
+  const char *text;
+  TokenType type;
+} KeyWord;
+
+/*
+ * KEYWORDS - Initialization of all keywords and it's respective type
+ *
+ * Used by id_or_keyword to find out whether a string is
+ * a keyword or not.
+ */
+static const KeyWord KEYWORDS[] = {
+    {"def", TOKEN_KW_DEF},         {"do", TOKEN_KW_DO},
+    {"Double", TOKEN_KW_DOUBLE},   {"else", TOKEN_KW_ELSE},
+    {"if", TOKEN_KW_IF},           {"import", TOKEN_KW_IMPORT},
+    {"Int", TOKEN_KW_INT},         {"return", TOKEN_KW_RETURN},
+    {"String", TOKEN_KW_STRING},   {"then", TOKEN_KW_THEN},
+    {"Unit", TOKEN_KW_UNIT},       {"val", TOKEN_KW_VAL},
+    {"var", TOKEN_KW_VAR},         {"while", TOKEN_KW_WHILE},
+    {"Boolean", TOKEN_KW_BOOLEAN}, {"case", TOKEN_KW_CASE},
+    {"class", TOKEN_KW_CLASS},     {"extension", TOKEN_KW_EXTENSION},
+    {"for", TOKEN_KW_FOR},         {"List", TOKEN_KW_LIST},
+    {"match", TOKEN_KW_MATCH},     {"type", TOKEN_KW_TYPE}};
+
+/**
+ * id_or_keyword() - checks whether a string is unique or a keyword
+ * @string: string to check
+ *
+ * Takes the string and compares it with each keyword
+ * from KEYWORDS[].
+
+ * Return: Returns TokenType - ID if it's not a keyword
+ *                           - KW_* if it is a keyword
+ */
+static TokenType id_or_keyword(const char *string) {
+  size_t len = sizeof(KEYWORDS) / sizeof(KEYWORDS[0]);
+  for (size_t i = 0; i < len; i++) {
+    if (strcmp(string, KEYWORDS[i].text) == 0) {
+      return KEYWORDS[i].type;
+    }
+  }
+  return TOKEN_ID;
+}
 
 /**
  * double_ctor() - allocates space for a 64bit float
@@ -369,13 +419,12 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         state = STATE_ID;
       } else {
         (void)ungetc(c, src); // for the next token to read
-        /*
-         * TODO: send to symtable to check if it's a keyword
-         * if so, handle correctly
-         * else{
-         */
-        token_to_fill->type = TOKEN_ID;
-        token_to_fill->token_content = dynstr_take(&str); // token owns it now
+        token_to_fill->type = id_or_keyword(str.data);
+        if (token_to_fill->type != TOKEN_ID) {
+          dynstr_free(&str);
+        } else {
+          token_to_fill->token_content = dynstr_take(&str); // token owns it now
+        }
         return RETURN_SUCCESS;
       }
       break;
