@@ -106,27 +106,6 @@ typedef enum FsmState {
 } FsmState;
 
 /**
- * open_src_file() - Opening source file to compile
- * @file_name: Name of the source file to compile,
- *             typically from argv
- *
- * Uses fopen() to open source_file for READING.
- *
- * Return: Returns pointer to the source file
- *         In case of an error, exits with errcode 99
- */
-static FILE *open_src_file(char *file_name) {
-  FILE *file;
-  file = fopen(file_name, "r");
-  if (file == NULL) {
-    (void)fprintf(stderr, "Couldn't open source file.\n");
-    exit(99);
-  }
-
-  return file;
-}
-
-/**
  * token_content_ctor() - allocating buffer to store token_content in
  * @buf: pointer to buffer to allocate
  *
@@ -766,14 +745,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
   return RETURN_SUCCESS;
 }
 
-Token scanner(char *file_name) {
-  FILE *src_file = open_src_file(file_name);
-  (void)src_file;
+Token scanner(FILE *src_file) {
   Token test_token = {TOKEN_ID, "test_string"};
 
   ReturnCodes fsm_status = scanner_fsm(&test_token, src_file);
   (void)fsm_status;
 
-  (void)fclose(src_file);
   return test_token;
 }

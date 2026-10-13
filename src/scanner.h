@@ -9,13 +9,14 @@
 #define SCANNER_H
 
 #include "tokens.h"
+#include <stdio.h>
 
 /**
  * scanner() - main scanner function
- * @file_name:  Name of the source file to compile handed from program's main
+ * @src_file: Source file to read from
  *
  * Return: Token for further use in parser
  */
-Token scanner(char *file_name);
+Token scanner(FILE *src_file);
 
 #endif
