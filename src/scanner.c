@@ -45,7 +45,6 @@
  * @STATE_COMM_LINE:          line comment scanning state
  * @STATE_COMM_BLOCK:         block comment scanning state
  * @STATE_COMM_BLOCK_STAR:    "*" in block comment scanning state
- * @STATE_COMM_BLOCK_SLASH:   "/" in block comment scanning state
  * @STATE_ASSIGN:             "=" is first in the sequence
  * @STATE_EXCL:               "!" is first in the sequence
  * @STATE_LOW:                "<" is first in the sequence
@@ -80,7 +79,6 @@ typedef enum FsmState {
   STATE_COMM_LINE,
   STATE_COMM_BLOCK,
   STATE_COMM_BLOCK_STAR,
-  STATE_COMM_BLOCK_SLASH,
   STATE_ASSIGN,
   STATE_EXCL,
   STATE_LOW,
@@ -304,6 +302,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
 
   DynStr str = {NULL, 0, 0}; // empty, so dynstr_free() is always safe
   ReturnCodes rc = RETURN_SUCCESS;
+  int comm_newline_flag = 0;
+  int comm_depth = 0;
+  int must_follow_eol = 0;
 
   while (1) {
 
@@ -311,7 +312,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
 
     switch (state) {
     case STATE_IDLE:
-      if (isalpha(c)) {
+      if (must_follow_eol) {
+        if (c != EOF && c != '/' && !isspace(c)) {
+          return ERR_LEX_ANA;
+        }
+      } else if (isalpha(c)) {
         rc = dynstr_init(&str);
         if (rc != RETURN_SUCCESS) {
           return rc;
@@ -378,6 +383,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         state = STATE_LOW;
       } else if (c == '@') {
         state = STATE_AT;
+      } else if (c == '/') {
+        state = STATE_SLASH;
       } else if (c == ';') {
         token_to_fill->type = TOKEN_SEMICOLON;
         return RETURN_SUCCESS;
@@ -763,6 +770,65 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
       }
       return ERR_LEX_ANA;
+      break;
+
+    case STATE_SLASH:
+      if (c == '/') {
+        state = STATE_COMM_LINE;
+      } else if (c == '*') {
+        comm_depth++;
+        state = STATE_COMM_BLOCK;
+      } else if (must_follow_eol == 0) {
+        (void)ungetc(c, src);
+        token_to_fill->type = TOKEN_DIV;
+        return RETURN_SUCCESS;
+      } else {
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_COMM_LINE:
+      if (c == '\n' || c == EOF) {
+        (void)ungetc(c, src);
+        state = STATE_IDLE;
+      }
+      break;
+
+    case STATE_COMM_BLOCK:
+      if (c == '\n' && comm_newline_flag != 1) {
+        comm_newline_flag = 1;
+      } else if (c == '*') {
+        state = STATE_COMM_BLOCK_STAR;
+      } else if (c == '/') {
+        int s = fgetc(src);
+        if (s == '*') {
+          comm_depth++;
+        } else {
+          (void)ungetc(s, src);
+        }
+      } else if (c == EOF) {
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_COMM_BLOCK_STAR:
+      if (c == '*') {
+        state = STATE_COMM_BLOCK_STAR;
+      } else if (c == '/') {
+        comm_depth--;
+        if (comm_depth <= 0) {
+          if (comm_newline_flag == 1) {
+            must_follow_eol = 1;
+          }
+          comm_newline_flag = 0;
+          state = STATE_IDLE;
+        } else {
+          state = STATE_COMM_BLOCK;
+        }
+      } else {
+        (void)ungetc(c, src); // in case a '\n' follows
+        state = STATE_COMM_BLOCK;
+      }
       break;
 
     default:
