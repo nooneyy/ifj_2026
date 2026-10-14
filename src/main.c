@@ -10,6 +10,7 @@
 #include "scanner.h"
 #include "tokens.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 /**
  * open_src_file() - Opening source file to compile
@@ -45,8 +46,25 @@ int main(int argc, char **argv) {
     return rc;
   }
 
-  Token test_token = scanner(src);
-  (void)test_token;
+  Token token;
+  do {
+    rc = scanner(src, &token);
+    if (rc != RETURN_SUCCESS) {
+      (void)fprintf(stderr, "Scanner failed\n");
+    }
+
+    if (token.type == TOKEN_ID) {
+      (void)printf("ID  %s\n", (char *)token.token_content);
+    } else if (token.type == TOKEN_INT) {
+      (void)printf("INT %lld\n", *(long long *)token.token_content);
+    } else if (token.type == TOKEN_DOUBLE) {
+      (void)printf("DBL %g\n", *(double *)token.token_content);
+    } else {
+      (void)printf("type  %d\n", token.type);
+    }
+
+    free(token.token_content);
+  } while (token.type != TOKEN_EOF);
 
   (void)fclose(src);
   return rc;

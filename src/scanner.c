@@ -843,11 +843,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
   return RETURN_SUCCESS;
 }
 
-Token scanner(FILE *src_file) {
-  Token test_token = {TOKEN_ID, "test_string"};
-
-  ReturnCodes fsm_status = scanner_fsm(&test_token, src_file);
-  (void)fsm_status;
-
-  return test_token;
+ReturnCodes scanner(FILE *src_file, Token *token) {
+  return scanner_fsm(token, src_file);
 }

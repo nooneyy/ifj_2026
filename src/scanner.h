@@ -8,6 +8,7 @@
 #ifndef SCANNER_H
 #define SCANNER_H
 
+#include "return.h"
 #include "tokens.h"
 #include <stdio.h>
 
@@ -17,6 +18,6 @@
  *
  * Return: Token for further use in parser
  */
-Token scanner(FILE *src_file);
+ReturnCodes scanner(FILE *src_file, Token *token);
 
 #endif
