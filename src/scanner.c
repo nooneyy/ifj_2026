@@ -386,6 +386,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         state = STATE_AT;
       } else if (c == '/') {
         state = STATE_SLASH;
+      } else if (c == '"') {
+        state = STATE_1_QUOT;
+        rc = dynstr_init(&str);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
       } else if (c == ';') {
         token_to_fill->type = TOKEN_SEMICOLON;
         return RETURN_SUCCESS;
@@ -833,6 +840,124 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       } else {
         (void)ungetc(c, src); // in case a '\n' follows
         state = STATE_COMM_BLOCK;
+      }
+      break;
+
+    case STATE_1_QUOT:
+      if (c == '"') {
+        state = STATE_2_QUOT;
+      } else if (c == '\n' || c == EOF) {
+        dynstr_free(&str);
+        return ERR_LEX_ANA;
+      } else {
+        rc = dynstr_append(&str, c);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+        state = STATE_STR;
+      }
+      break;
+
+    case STATE_2_QUOT:
+      if (c == '"') {
+        state = STATE_STR_ML;
+      } else {
+        (void)ungetc(c, src);
+        token_to_fill->type = TOKEN_STRING;
+        token_to_fill->token_content = dynstr_take(&str);
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_STR:
+      if (c == '"') {
+        token_to_fill->type = TOKEN_STRING;
+        token_to_fill->token_content = dynstr_take(&str);
+        return RETURN_SUCCESS;
+      } else if (c == '\n' || c == EOF) {
+        dynstr_free(&str);
+        return ERR_LEX_ANA;
+      } else {
+        rc = dynstr_append(&str, c);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+      }
+      break;
+
+    case STATE_STR_ML:
+      if (c == '"') {
+        state = STATE_STR_ML_1_QUOT;
+      } else if (c == EOF) {
+        dynstr_free(&str);
+        return ERR_LEX_ANA;
+      } else {
+        rc = dynstr_append(&str, c);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+      }
+      break;
+
+    case STATE_STR_ML_1_QUOT:
+      if (c == '"') {
+        state = STATE_STR_ML_2_QUOT;
+      } else if (c == EOF) {
+        dynstr_free(&str);
+        return ERR_LEX_ANA;
+      } else {
+        rc = dynstr_append(&str, '"');
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+        rc = dynstr_append(&str, c);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+        state = STATE_STR_ML;
+      }
+      break;
+
+    case STATE_STR_ML_2_QUOT:
+      if (c == '"') {
+        while (1) {
+          int quot = fgetc(src);
+          if (quot == '"') {
+            rc = dynstr_append(&str, quot);
+            if (rc != RETURN_SUCCESS) {
+              dynstr_free(&str);
+              return rc;
+            }
+          } else {
+            (void)ungetc(quot, src);
+            break;
+          }
+        }
+        token_to_fill->type = TOKEN_STRING;
+        token_to_fill->token_content = dynstr_take(&str);
+        return RETURN_SUCCESS;
+      } else if (c == EOF) {
+        dynstr_free(&str);
+        return ERR_LEX_ANA;
+      } else {
+        for (int i = 0; i < 2; i++) {
+          rc = dynstr_append(&str, '"');
+          if (rc != RETURN_SUCCESS) {
+            dynstr_free(&str);
+            return rc;
+          }
+        }
+        rc = dynstr_append(&str, c);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+        state = STATE_STR_ML;
       }
       break;
 
