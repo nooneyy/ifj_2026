@@ -23,7 +23,6 @@
  * @STATE_AT:                 "@" is first in the sequence
  * @STATE_UND:                "_" is first in the sequence
  * @STATE_STR:                string scanning state
- * @STATE_STR_ESC:            string escape sequence scanning state
  * @STATE_STR_ML:             multiline string scanning state
  * @STATE_1_QUOT:             " is first in the sequence
  * @STATE_2_QUOT:             "" is first in the sequence
@@ -57,7 +56,6 @@ typedef enum FsmState {
   STATE_AT,
   STATE_UND,
   STATE_STR,
-  STATE_STR_ESC,
   STATE_STR_ML,
   STATE_1_QUOT,
   STATE_2_QUOT,
@@ -273,6 +271,59 @@ static ReturnCodes int_to_token(DynStr *str, Token *token) {
   token->type = TOKEN_INT;
   token->token_content = i;
   dynstr_free(str);
+
+  return RETURN_SUCCESS;
+}
+
+/**
+ * escape_seq_switch() - escape sequence processing
+ * @c:   character that follows '\'
+ * @s:   DynStr to store the string to
+ *
+ * A switch determining whether the character after '\' is part of
+ * an escape sequence or not.
+ * If so, uses the escape sequence.
+ * If not, returns error
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_LEX_ANA in case of an invalid escape sequence
+ *         Returns ERR_INTERNAL in case of an internal error
+ */
+static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
+  ReturnCodes rc = RETURN_SUCCESS;
+  switch (c) {
+  case '\\':
+  case '"':
+    rc = dynstr_append(s, c);
+    if (rc != RETURN_SUCCESS) {
+      return rc;
+    }
+    break;
+
+  case 'n':
+    rc = dynstr_append(s, '\n');
+    if (rc != RETURN_SUCCESS) {
+      return rc;
+    }
+    break;
+
+  case 'r':
+    rc = dynstr_append(s, '\r');
+    if (rc != RETURN_SUCCESS) {
+      return rc;
+    }
+    break;
+
+  case 't':
+    rc = dynstr_append(s, '\t');
+    if (rc != RETURN_SUCCESS) {
+      return rc;
+    }
+    break;
+
+  default:
+    return ERR_LEX_ANA;
+  }
 
   return RETURN_SUCCESS;
 }
@@ -849,6 +900,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       } else if (c == '\n' || c == EOF) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
+      } else if (c == '\\') {
+        int escape = fgetc(src);
+        rc = escape_seq_switch(escape, &str);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+        state = STATE_STR;
       } else {
         rc = dynstr_append(&str, c);
         if (rc != RETURN_SUCCESS) {
@@ -878,6 +937,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       } else if (c == '\n' || c == EOF) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
+      } else if (c == '\\') {
+        int escape = fgetc(src);
+        rc = escape_seq_switch(escape, &str);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
       } else {
         rc = dynstr_append(&str, c);
         if (rc != RETURN_SUCCESS) {
