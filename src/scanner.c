@@ -316,7 +316,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         if (c != EOF && c != '/' && !isspace(c)) {
           return ERR_LEX_ANA;
         }
-      } else if (isalpha(c)) {
+      }
+      if (isalpha(c)) {
         rc = dynstr_init(&str);
         if (rc != RETURN_SUCCESS) {
           return rc;
