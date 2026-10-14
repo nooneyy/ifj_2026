@@ -415,6 +415,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       } else if (c == '-') {
         token_to_fill->type = TOKEN_MINUS;
         return RETURN_SUCCESS;
+      } else if (isspace(c)) {
+        break;
+      } else {
+        return ERR_LEX_ANA;
       }
       break;
 
