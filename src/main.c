@@ -51,14 +51,15 @@ int main(int argc, char **argv) {
     rc = scanner(src, &token);
     if (rc != RETURN_SUCCESS) {
       (void)fprintf(stderr, "Scanner failed\n");
+      break;
     }
 
     if (token.type == TOKEN_ID) {
-      (void)printf("ID  %s\n", (char *)token.token_content);
+      (void)printf("ID     %s\n", (char *)token.token_content);
     } else if (token.type == TOKEN_INT) {
-      (void)printf("INT %lld\n", *(long long *)token.token_content);
+      (void)printf("INT   %lld\n", *(long long *)token.token_content);
     } else if (token.type == TOKEN_DOUBLE) {
-      (void)printf("DBL %g\n", *(double *)token.token_content);
+      (void)printf("DBL   %g\n", *(double *)token.token_content);
     } else {
       (void)printf("type  %d\n", token.type);
     }
