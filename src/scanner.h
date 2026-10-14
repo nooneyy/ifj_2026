@@ -16,7 +16,9 @@
  * scanner() - main scanner function
  * @src_file: Source file to read from
  *
- * Return: Token for further use in parser
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_LEX_ANA in case of a lexical analysis error
+ *         Returns ERR_INTERNAL in case of an internal error
  */
 ReturnCodes scanner(FILE *src_file, Token *token);
 
