@@ -46,9 +46,11 @@ int main(int argc, char **argv) {
     return rc;
   }
 
+  Scanner sc = scanner_init(src);
+
   Token token;
   do {
-    rc = scanner(src, &token);
+    rc = scanner(&sc, &token);
     if (rc != RETURN_SUCCESS) {
       (void)fprintf(stderr, "Scanner failed\n");
       break;

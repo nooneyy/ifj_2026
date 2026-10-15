@@ -39,13 +39,27 @@ typedef struct Scanner {
 } Scanner;
 
 /**
+ * scanner_init() - Initializing scanner information
+ * @src_file: Source file the scanner reads from
+ *
+ * Initializing Scanner struct's information and state.
+ * Scanner.src gets set to src_file from argument.
+ * Scanner.at_line_start is set to 1.
+ * Everything else is set to 0s.
+ *
+ * Return: Returns an initialized Scanner
+ */
+Scanner scanner_init(FILE *src_file);
+
+/**
  * scanner() - main scanner function
- * @src_file: Source file to read from
+ * @sc:    Scanner struct of information about the scanner's state
+ * @token: Token to fill by the scanner
  *
  * Return: Returns RETURN_SUCCESS in case of a success
  *         Returns ERR_LEX_ANA in case of a lexical analysis error
  *         Returns ERR_INTERNAL in case of an internal error
  */
-ReturnCodes scanner(FILE *src_file, Token *token);
+ReturnCodes scanner(Scanner *sc, Token *token);
 
 #endif

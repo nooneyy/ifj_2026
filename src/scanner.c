@@ -112,6 +112,11 @@ static const KeyWord KEYWORDS[] = {
     {"for", TOKEN_KW_FOR},         {"List", TOKEN_KW_LIST},
     {"match", TOKEN_KW_MATCH},     {"type", TOKEN_KW_TYPE}};
 
+Scanner scanner_init(FILE *src_file) {
+  Scanner to_fill = {.src = src_file, .at_line_start = 1};
+  return to_fill;
+}
+
 /**
  * id_or_keyword() - checks whether a string is unique or a keyword
  * @string: string to check
@@ -331,11 +336,11 @@ static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
 /**
  * scanner_fsm() - reading source file and creating a token
  * @token_to_fill: token to fill with type and token_content
- * @src:           source file to read from
+ * @sc:            scanner struct filled with scanner's current state
  *
- * Reads src char by char and moves through the FSM states
+ * Reads sc->src char by char and moves through the FSM states
  * until the whole token is read and filled.
- * First char after the token is returned to src
+ * First char after the token is returned to sc->src
  * by ungetc() for the next token to start with it.
  * For tokens that need token_content (ID, INT, STRING, DOUBLE),
  * str (DynStr) is filled first. ID and STRING hand str's memory
@@ -346,7 +351,7 @@ static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
  *         Returns ERR_LEX_ANA in case of a lexical error
  *         Returns ERR_INTERNAL in case of an internal error
  */
-static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
+static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   token_to_fill->token_content = NULL; // tokens without content keep NULL
 
   FsmState state = STATE_IDLE;
@@ -359,7 +364,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
 
   while (1) {
 
-    int c = fgetc(src);
+    int c = fgetc(sc->src);
 
     switch (state) {
     case STATE_IDLE:
@@ -490,7 +495,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
         state = STATE_ID;
       } else {
-        (void)ungetc(c, src); // for the next token to read
+        (void)ungetc(c, sc->src); // for the next token to read
         token_to_fill->type = id_or_keyword(str.data);
         if (token_to_fill->type != TOKEN_ID) {
           dynstr_free(&str);
@@ -540,7 +545,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
         state = STATE_E;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         rc = int_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
           return rc;
@@ -601,7 +606,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
         return RETURN_SUCCESS;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         rc = double_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
           return rc;
@@ -676,7 +681,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
         return RETURN_SUCCESS;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         rc = double_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
           return rc;
@@ -708,7 +713,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
         state = STATE_DOUBLE;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         dynstr_free(&str);
         token_to_fill->type = TOKEN_DOT;
         return RETURN_SUCCESS;
@@ -738,7 +743,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         }
         state = STATE_DOT;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         rc = int_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
           return rc;
@@ -788,7 +793,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       if (c == '=') {
         token_to_fill->type = TOKEN_IS_EQ;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_ASSIGN;
       }
       return RETURN_SUCCESS;
@@ -798,7 +803,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       if (c == '=') {
         token_to_fill->type = TOKEN_GREEQ;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_GRE;
       }
       return RETURN_SUCCESS;
@@ -808,7 +813,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       if (c == '=') {
         token_to_fill->type = TOKEN_LOWEQ;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_LOW;
       }
       return RETURN_SUCCESS;
@@ -816,15 +821,15 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
 
     case STATE_AT:
       if (c == 'm') {
-        if (fgetc(src) == 'a') {
-          if (fgetc(src) == 'i') {
-            if (fgetc(src) == 'n') {
-              int after = fgetc(src);
+        if (fgetc(sc->src) == 'a') {
+          if (fgetc(sc->src) == 'i') {
+            if (fgetc(sc->src) == 'n') {
+              int after = fgetc(sc->src);
 
               // Whitespace, start of commment or EOF are the only allowed
               // chars after @main
               if (isspace(after) || after == '/' || after == EOF) {
-                (void)ungetc(after, src);
+                (void)ungetc(after, sc->src);
                 token_to_fill->type = TOKEN_AT_MAIN;
                 return RETURN_SUCCESS;
               }
@@ -842,7 +847,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         comm_depth++;
         state = STATE_COMM_BLOCK;
       } else if (must_follow_eol == 0) {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DIV;
         return RETURN_SUCCESS;
       } else {
@@ -852,7 +857,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
 
     case STATE_COMM_LINE:
       if (c == '\n' || c == EOF) {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         state = STATE_IDLE;
       }
       break;
@@ -863,11 +868,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       } else if (c == '*') {
         state = STATE_COMM_BLOCK_STAR;
       } else if (c == '/') {
-        int s = fgetc(src);
+        int s = fgetc(sc->src);
         if (s == '*') {
           comm_depth++;
         } else {
-          (void)ungetc(s, src);
+          (void)ungetc(s, sc->src);
         }
       } else if (c == EOF) {
         return ERR_LEX_ANA;
@@ -889,7 +894,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
           state = STATE_COMM_BLOCK;
         }
       } else {
-        (void)ungetc(c, src); // in case a '\n' follows
+        (void)ungetc(c, sc->src); // in case a '\n' follows
         state = STATE_COMM_BLOCK;
       }
       break;
@@ -901,7 +906,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else if (c == '\\') {
-        int escape = fgetc(src);
+        int escape = fgetc(sc->src);
         rc = escape_seq_switch(escape, &str);
         if (rc != RETURN_SUCCESS) {
           dynstr_free(&str);
@@ -922,7 +927,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
       if (c == '"') {
         state = STATE_STR_ML;
       } else {
-        (void)ungetc(c, src);
+        (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_STRING;
         token_to_fill->token_content = dynstr_take(&str);
         return RETURN_SUCCESS;
@@ -938,7 +943,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else if (c == '\\') {
-        int escape = fgetc(src);
+        int escape = fgetc(sc->src);
         rc = escape_seq_switch(escape, &str);
         if (rc != RETURN_SUCCESS) {
           dynstr_free(&str);
@@ -992,7 +997,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
     case STATE_STR_ML_2_QUOT:
       if (c == '"') {
         while (1) {
-          int quot = fgetc(src);
+          int quot = fgetc(sc->src);
           if (quot == '"') {
             rc = dynstr_append(&str, quot);
             if (rc != RETURN_SUCCESS) {
@@ -1000,7 +1005,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
               return rc;
             }
           } else {
-            (void)ungetc(quot, src);
+            (void)ungetc(quot, sc->src);
             break;
           }
         }
@@ -1035,6 +1040,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, FILE *src) {
   return RETURN_SUCCESS;
 }
 
-ReturnCodes scanner(FILE *src_file, Token *token) {
-  return scanner_fsm(token, src_file);
+ReturnCodes scanner(Scanner *sc, Token *token) {
+  return scanner_fsm(token, sc);
 }
