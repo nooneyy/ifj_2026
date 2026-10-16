@@ -363,6 +363,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   int must_follow_eol = 0;
   int indent_cnt = 0;
   int tab_appeared = 0;
+  int indent_pending = 0;
   while (1) {
 
     int c = fgetc(sc->src);
@@ -373,6 +374,12 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (c != EOF && c != '/' && !isspace(c)) {
           return ERR_LEX_ANA;
         }
+      }
+      if (indent_pending && c != '/' && !isspace(c)) {
+        (void)ungetc(c, sc->src);
+        indent_pending = 0;
+        state = STATE_LINE_START;
+        break;
       }
       if (sc->at_line_start == 1) {
         (void)ungetc(c, sc->src);
@@ -385,9 +392,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_DEDENT;
         sc->dedents_pending--;
         return RETURN_SUCCESS;
-      }
-      if (tab_appeared == 1) {
-        return ERR_LEX_ANA;
       }
       if (isalpha(c)) {
         rc = dynstr_init(&str);
@@ -455,6 +459,16 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
       } else if (c == '\n') {
         if (sc->parenth_depth == 0) {
+          if (indent_pending) {
+            // means that the line only contained a comment
+
+            indent_pending = 0;
+            indent_cnt = 0;
+            tab_appeared = 0;
+            must_follow_eol = 0;
+            state = STATE_LINE_START;
+            break;
+          }
           token_to_fill->type = TOKEN_EOL;
           sc->at_line_start = 1;
           return RETURN_SUCCESS;
@@ -876,6 +890,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         comm_depth++;
         state = STATE_COMM_BLOCK;
       } else if (must_follow_eol == 0) {
+        indent_pending = 0;
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DIV;
         return RETURN_SUCCESS;
@@ -1070,6 +1085,12 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         c = fgetc(sc->src);
       }
+      if (c == '/') {
+        (void)ungetc(c, sc->src);
+        indent_pending = 1;
+        state = STATE_IDLE;
+        break;
+      }
       if (c == '\n') {
         tab_appeared = 0;
         indent_cnt = 0;
@@ -1117,9 +1138,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       sc->dedents_pending--;
       token_to_fill->type = TOKEN_DEDENT;
       return RETURN_SUCCESS;
-
-    default:
-      break;
     }
   }
 
