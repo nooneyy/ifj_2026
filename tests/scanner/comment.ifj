@@ -1,0 +1,51 @@
+/**
+ * @file all.ifj
+ * @brief Combined testing input
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 16.10.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model in xHigh effort mode
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * Into comment.ifj write a source code in IFJ26 language specified
+ * in the specification for a compiler that focuses heavily on comments usage.
+ * Use the comments in every possible context the specification allows.
+ * Focus mainly on edge cases but include some normal usage too.
+ * Minimum is 20 lines, maximum is 30 lines.
+ */
+
+
+/* comment before the prolog /* nested /* twice */ */ still inside */
+// line comment before the prolog with "quotes" and /* an opener
+    /* indented, block comment only line */
+import ifj26.* // comment right after the prolog
+def twice(n: Int): Int = // comment after the header ends the line
+  n /**/*/**/ 2 // empty comments around * act as whitespace: n * 2
+def pick(a: Int, // comment inside parentheses, before a line break
+    // a comment-only line inside the parentheses
+    b: Int): Int =
+  /* block comment
+     spanning lines */
+  if a > b then // comment after then
+    return a /* one-line block */
+  else /* nested /* at the end */ */
+    return b
+@main /* comment between @main and def */
+def main(): Unit =
+  val/**/x/**/=/**/5 // block comments as the only separators
+  val y /* before the type */ : Int = - /* inside unary minus */ 3
+  val s = "/* not a comment */ // nor this"; val z = twice(x) /* ; inside */
+  val m = pick(x, /* between arguments */ y); var i = 0 /**/
+  /*/ the slash after the opener does not close it **/
+      // deeper indented comment-only line does not cause INDENT
+// comment at column 0 does not cause DEDENT
+  while i < m do /* comment after do */
+    i = i + 1 /* a multi-line comment
+      acts as the end of this line */ // and may be followed by a comment
+  print(s) // comment with "unbalanced quote and */ closer
+  print(z) // last line ends with a comment, no newline at end of file
