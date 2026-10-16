@@ -880,12 +880,12 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (fgetc(sc->src) == 'a') {
           if (fgetc(sc->src) == 'i') {
             if (fgetc(sc->src) == 'n') {
-              int after = fgetc(sc->src);
+              c = fgetc(sc->src);
 
               // Whitespace, start of commment or EOF are the only allowed
               // chars after @main
-              if (isspace(after) || after == '/' || after == EOF) {
-                (void)ungetc(after, sc->src);
+              if (isspace(c) || c == '/' || c == EOF) {
+                (void)ungetc(c, sc->src);
                 token_to_fill->type = TOKEN_AT_MAIN;
                 return RETURN_SUCCESS;
               }
@@ -925,11 +925,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (c == '*') {
         state = STATE_COMM_BLOCK_STAR;
       } else if (c == '/') {
-        int s = fgetc(sc->src);
-        if (s == '*') {
+        c = fgetc(sc->src);
+        if (c == '*') {
           comm_depth++;
         } else {
-          (void)ungetc(s, sc->src);
+          (void)ungetc(c, sc->src);
         }
       } else if (c == EOF) {
         return ERR_LEX_ANA;
@@ -963,8 +963,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else if (c == '\\') {
-        int escape = fgetc(sc->src);
-        rc = escape_seq_switch(escape, &str);
+        c = fgetc(sc->src);
+        rc = escape_seq_switch(c, &str);
         if (rc != RETURN_SUCCESS) {
           dynstr_free(&str);
           return rc;
@@ -1000,8 +1000,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else if (c == '\\') {
-        int escape = fgetc(sc->src);
-        rc = escape_seq_switch(escape, &str);
+        c = fgetc(sc->src);
+        rc = escape_seq_switch(c, &str);
         if (rc != RETURN_SUCCESS) {
           dynstr_free(&str);
           return rc;
@@ -1054,15 +1054,15 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_STR_ML_2_QUOT:
       if (c == '"') {
         while (1) {
-          int quot = fgetc(sc->src);
-          if (quot == '"') {
-            rc = dynstr_append(&str, quot);
+          c = fgetc(sc->src);
+          if (c == '"') {
+            rc = dynstr_append(&str, c);
             if (rc != RETURN_SUCCESS) {
               dynstr_free(&str);
               return rc;
             }
           } else {
-            (void)ungetc(quot, sc->src);
+            (void)ungetc(c, sc->src);
             break;
           }
         }
