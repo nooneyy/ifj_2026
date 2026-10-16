@@ -925,7 +925,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         return ERR_LEX_ANA;
       }
       return RETURN_SUCCESS;
-      break;
 
     case STATE_ASSIGN:
       if (c == '=') {
@@ -935,7 +934,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_ASSIGN;
       }
       return RETURN_SUCCESS;
-      break;
 
     case STATE_GRE:
       if (c == '=') {
@@ -945,7 +943,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_GRE;
       }
       return RETURN_SUCCESS;
-      break;
 
     case STATE_LOW:
       if (c == '=') {
@@ -955,7 +952,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_LOW;
       }
       return RETURN_SUCCESS;
-      break;
 
     case STATE_AT:
       if (c == 'm') {
@@ -976,7 +972,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
       }
       return ERR_LEX_ANA;
-      break;
 
     case STATE_SLASH:
       if (c == '/') {
@@ -1233,6 +1228,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   return RETURN_SUCCESS;
 }
 
-ReturnCodes scanner(Scanner *sc, Token *token) {
+ReturnCodes scanner_get_token(Scanner *sc, Token *token) {
   return scanner_fsm(token, sc);
 }

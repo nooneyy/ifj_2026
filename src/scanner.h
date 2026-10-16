@@ -53,7 +53,7 @@ typedef struct Scanner {
 Scanner scanner_init(FILE *src_file);
 
 /**
- * scanner() - main scanner function
+ * scanner_get_token() - main scanner function, reads the next token
  * @sc:    Scanner struct of information about the scanner's state
  * @token: Token to fill by the scanner
  *
@@ -61,6 +61,6 @@ Scanner scanner_init(FILE *src_file);
  *         Returns ERR_LEX_ANA in case of a lexical analysis error
  *         Returns ERR_INTERNAL in case of an internal error
  */
-ReturnCodes scanner(Scanner *sc, Token *token);
+ReturnCodes scanner_get_token(Scanner *sc, Token *token);
 
 #endif

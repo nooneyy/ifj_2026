@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
 
   Token token;
   do {
-    rc = scanner(&sc, &token);
+    rc = scanner_get_token(&sc, &token);
     if (rc != RETURN_SUCCESS) {
       (void)fprintf(stderr, "Scanner failed\n");
       break;
