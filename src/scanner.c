@@ -48,6 +48,7 @@
  * @STATE_EXCL:               "!" is first in the sequence
  * @STATE_LOW:                "<" is first in the sequence
  * @STATE_GRE:                ">" is first in the sequence
+ * @STATE_PAREN_NEWLINE:      newline inside of parenthesis
  */
 typedef enum FsmState {
   STATE_IDLE,
@@ -81,6 +82,7 @@ typedef enum FsmState {
   STATE_EXCL,
   STATE_LOW,
   STATE_GRE,
+  STATE_PAREN_NEWLINE
 } FsmState;
 
 /**
@@ -473,6 +475,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           sc->at_line_start = 1;
           return RETURN_SUCCESS;
         }
+        state = STATE_PAREN_NEWLINE;
+        indent_cnt = 0;
+        tab_appeared = 0;
         break;
       } else if (c == '(') {
         sc->parenth_depth++;
@@ -1138,6 +1143,36 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       sc->dedents_pending--;
       token_to_fill->type = TOKEN_DEDENT;
       return RETURN_SUCCESS;
+
+    case STATE_PAREN_NEWLINE:
+      while (c == ' ' || c == '\t') {
+        if (c == '\t') {
+          tab_appeared = 1;
+        } else {
+          indent_cnt++;
+        }
+        c = fgetc(sc->src);
+      }
+      if (c == '\n') {
+        tab_appeared = 0;
+        indent_cnt = 0;
+        break;
+      }
+      (void)ungetc(c, sc->src);
+      state = STATE_IDLE;
+      if (c == EOF || c == '/') {
+        break; // EOF or a comment, nothing to check
+      }
+      if (tab_appeared == 1) {
+        return ERR_LEX_ANA; // tab at the start of a non-empty line
+      }
+      if (c == ')') {
+        break; // only ) can be on a lower indent level
+      }
+      if (indent_cnt <= sc->indent_levels[sc->indent_depth]) {
+        return ERR_LEX_ANA;
+      }
+      break;
     }
   }
 
