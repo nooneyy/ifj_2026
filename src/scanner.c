@@ -361,7 +361,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   int comm_newline_flag = 0;
   int comm_depth = 0;
   int must_follow_eol = 0;
-
+  int indent_cnt = 0;
+  int tab_appeared = 0;
   while (1) {
 
     int c = fgetc(sc->src);
@@ -372,6 +373,21 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (c != EOF && c != '/' && !isspace(c)) {
           return ERR_LEX_ANA;
         }
+      }
+      if (sc->at_line_start == 1) {
+        (void)ungetc(c, sc->src);
+        sc->at_line_start = 0;
+        state = STATE_LINE_START;
+        break;
+      }
+      if (sc->dedents_pending != 0) {
+        (void)ungetc(c, sc->src);
+        token_to_fill->type = TOKEN_DEDENT;
+        sc->dedents_pending--;
+        return RETURN_SUCCESS;
+      }
+      if (tab_appeared == 1) {
+        return ERR_LEX_ANA;
       }
       if (isalpha(c)) {
         rc = dynstr_init(&str);
@@ -430,6 +446,30 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return rc;
         }
         state = STATE_ZERO;
+      } else if (c == '"') {
+        state = STATE_1_QUOT;
+        rc = dynstr_init(&str);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+      } else if (c == '\n') {
+        if (sc->parenth_depth == 0) {
+          token_to_fill->type = TOKEN_EOL;
+          sc->at_line_start = 1;
+          return RETURN_SUCCESS;
+        }
+        break;
+      } else if (c == '(') {
+        sc->parenth_depth++;
+        token_to_fill->type = TOKEN_OPEN_PAR;
+        return RETURN_SUCCESS;
+      } else if (c == ')') {
+        if (sc->parenth_depth > 0) {
+          sc->parenth_depth--;
+        }
+        token_to_fill->type = TOKEN_CLOSE_PAR;
+        return RETURN_SUCCESS;
       } else if (c == '!') {
         state = STATE_EXCL;
       } else if (c == '=') {
@@ -442,21 +482,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_AT;
       } else if (c == '/') {
         state = STATE_SLASH;
-      } else if (c == '"') {
-        state = STATE_1_QUOT;
-        rc = dynstr_init(&str);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
       } else if (c == ';') {
         token_to_fill->type = TOKEN_SEMICOLON;
-        return RETURN_SUCCESS;
-      } else if (c == '(') {
-        token_to_fill->type = TOKEN_OPEN_PAR;
-        return RETURN_SUCCESS;
-      } else if (c == ')') {
-        token_to_fill->type = TOKEN_CLOSE_PAR;
         return RETURN_SUCCESS;
       } else if (c == ',') {
         token_to_fill->type = TOKEN_COMMA;
@@ -465,10 +492,12 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_COLON;
         return RETURN_SUCCESS;
       } else if (c == EOF) {
-        token_to_fill->type = TOKEN_EOF;
-        return RETURN_SUCCESS;
-      } else if (c == '\n') {
-        token_to_fill->type = TOKEN_EOL;
+        if (sc->indent_depth > 0) {
+          sc->indent_depth--;
+          token_to_fill->type = TOKEN_DEDENT;
+        } else {
+          token_to_fill->type = TOKEN_EOF;
+        }
         return RETURN_SUCCESS;
       } else if (c == '*') {
         token_to_fill->type = TOKEN_MUL;
@@ -1031,6 +1060,63 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_STR_ML;
       }
       break;
+
+    case STATE_LINE_START:
+      while (c == ' ' || c == '\t') {
+        if (c == '\t') {
+          tab_appeared = 1;
+        } else {
+          indent_cnt++;
+        }
+        c = fgetc(sc->src);
+      }
+      if (c == '\n') {
+        tab_appeared = 0;
+        indent_cnt = 0;
+        break;
+      }
+      if (c == EOF) {
+        (void)ungetc(c, sc->src);
+        state = STATE_IDLE;
+        break;
+      }
+      if (tab_appeared == 1) {
+        return ERR_LEX_ANA;
+      }
+      // For everything else the indentation matters
+      (void)ungetc(c, sc->src);
+      state = STATE_IDLE;
+
+      int top = sc->indent_levels[sc->indent_depth];
+
+      if (indent_cnt > top) {
+        if (sc->indent_depth + 1 == MAX_INDENT_LEVELS) {
+          return ERR_INTERNAL;
+        }
+        sc->indent_depth++;
+        sc->indent_levels[sc->indent_depth] = indent_cnt;
+        token_to_fill->type = TOKEN_INDENT;
+        return RETURN_SUCCESS;
+      }
+
+      if (indent_cnt == top) {
+        break;
+      }
+
+      // only indent_cnt < top left now
+
+      while (sc->indent_depth > 0 &&
+             sc->indent_levels[sc->indent_depth] != indent_cnt) {
+        sc->indent_depth--;
+        sc->dedents_pending++;
+      }
+      if (sc->indent_levels[sc->indent_depth] != indent_cnt) {
+        // indent_cnt is between 2 open levels and is not open by itself
+        return ERR_LEX_ANA;
+      }
+      sc->dedents_pending--;
+      token_to_fill->type = TOKEN_DEDENT;
+      return RETURN_SUCCESS;
 
     default:
       break;

@@ -20,20 +20,20 @@
 
 /**
  * struct Scanner - Scanner's own state, surviving between calls
- * @src:             Source file scanner reads from
- * @indent_levels:   Buffer of levels used for indentation
- *                   for example: [0, 2, 5, 9] - [0] is always 0
- * @indent_depth:    Current indentation depth
- * @indents_pending: Number of dedents still to be returned
- * @parenth_depth:   Current parenthesis depth
- * @at_line_start:   A flag to determine, whether the scanner is
- *                   on a new line and should mind the indentation
+ * @src:              Source file scanner reads from
+ * @indent_levels:    Buffer of levels used for indentation
+ *                    for example: [0, 2, 5, 9] - [0] is always 0
+ * @indent_depth:     Index of the deepest indent in indent_levels
+ * @dedents_pending:  Number of dedents still to be returned
+ * @parenth_depth:    Current parenthesis depth
+ * @at_line_start:    A flag to determine, whether the scanner is
+ *                    on a new line and should mind the indentation
  */
 typedef struct Scanner {
   FILE *src;
   int indent_levels[MAX_INDENT_LEVELS];
   int indent_depth;
-  int indents_pending;
+  int dedents_pending;
   int parenth_depth;
   int at_line_start;
 } Scanner;
