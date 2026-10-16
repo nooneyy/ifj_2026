@@ -337,6 +337,87 @@ static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
 }
 
 /**
+ * count_indent() - counting indentation at the start of a line
+ * @src:          source file to read from
+ * @c:            first character of the line
+ * @indent_cnt:   number of spaces, incremented for every space
+ * @tab_appeared: set to true if a tab appeared in the indentation
+ *
+ * Reads spaces and tabs from src, starting with c.
+ * Only spaces count into indent_cnt, a tab only sets tab_appeared,
+ * because a tab is not allowed in the indentation of a non-empty line.
+ * The first character after the indentation is NOT returned to src,
+ * caller decides what to do with it.
+ *
+ * Return: Returns the first character after the indentation
+ */
+static int count_indent(FILE *src, int c, int *indent_cnt, bool *tab_appeared) {
+  while (c == ' ' || c == '\t') {
+    if (c == '\t') {
+      *tab_appeared = true;
+    } else {
+      (*indent_cnt)++;
+    }
+    c = fgetc(src);
+  }
+  return c;
+}
+
+/**
+ * indent_compare() - comparing new line's indentation with open levels
+ * @sc:          scanner struct with the open indentation levels
+ * @indent_cnt:  number of spaces at the start of the new line
+ * @token:       token to fill with INDENT or DEDENT
+ * @token_ready: set to true if token was filled, false if not
+ *
+ * Compares indent_cnt with the innermost open level.
+ * If indent_cnt is deeper, opens a new level and fills INDENT.
+ * If it is the same, no token is filled and the line continues.
+ * If it is shallower, closes levels until indent_cnt is reached
+ * and fills one DEDENT, the rest is stored in sc->dedents_pending.
+ *
+ * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_LEX_ANA if indent_cnt is not an open level
+ *         Returns ERR_INTERNAL if there are too many indentation levels
+ */
+static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
+                                  bool *token_ready) {
+  int top = sc->indent_levels[sc->indent_depth];
+  *token_ready = false;
+
+  if (indent_cnt > top) {
+    if (sc->indent_depth + 1 == MAX_INDENT_LEVELS) {
+      return ERR_INTERNAL;
+    }
+    sc->indent_depth++;
+    sc->indent_levels[sc->indent_depth] = indent_cnt;
+    token->type = TOKEN_INDENT;
+    *token_ready = true;
+    return RETURN_SUCCESS;
+  }
+
+  if (indent_cnt == top) {
+    return RETURN_SUCCESS;
+  }
+
+  // only indent_cnt < top left now
+
+  while (sc->indent_depth > 0 &&
+         sc->indent_levels[sc->indent_depth] != indent_cnt) {
+    sc->indent_depth--;
+    sc->dedents_pending++;
+  }
+  if (sc->indent_levels[sc->indent_depth] != indent_cnt) {
+    // indent_cnt is between 2 open levels and is not open by itself
+    return ERR_LEX_ANA;
+  }
+  sc->dedents_pending--;
+  token->type = TOKEN_DEDENT;
+  *token_ready = true;
+  return RETURN_SUCCESS;
+}
+
+/**
  * scanner_fsm() - reading source file and creating a token
  * @token_to_fill: token to fill with type and token_content
  * @sc:            scanner struct filled with scanner's current state
@@ -367,6 +448,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   bool must_follow_eol = false;
   bool tab_appeared = false;
   bool indent_pending = false;
+  bool token_ready = false;
   while (1) {
 
     int c = fgetc(sc->src);
@@ -1090,14 +1172,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       break;
 
     case STATE_LINE_START:
-      while (c == ' ' || c == '\t') {
-        if (c == '\t') {
-          tab_appeared = true;
-        } else {
-          indent_cnt++;
-        }
-        c = fgetc(sc->src);
-      }
+      c = count_indent(sc->src, c, &indent_cnt, &tab_appeared);
       if (c == '/') {
         (void)ungetc(c, sc->src);
         indent_pending = true;
@@ -1121,46 +1196,17 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       (void)ungetc(c, sc->src);
       state = STATE_IDLE;
 
-      int top = sc->indent_levels[sc->indent_depth];
-
-      if (indent_cnt > top) {
-        if (sc->indent_depth + 1 == MAX_INDENT_LEVELS) {
-          return ERR_INTERNAL;
-        }
-        sc->indent_depth++;
-        sc->indent_levels[sc->indent_depth] = indent_cnt;
-        token_to_fill->type = TOKEN_INDENT;
-        return RETURN_SUCCESS;
+      rc = indent_compare(sc, indent_cnt, token_to_fill, &token_ready);
+      if (rc != RETURN_SUCCESS) {
+        return rc;
       }
-
-      if (indent_cnt == top) {
-        break;
+      if (token_ready) {
+        return RETURN_SUCCESS; // INDENT or DEDENT
       }
-
-      // only indent_cnt < top left now
-
-      while (sc->indent_depth > 0 &&
-             sc->indent_levels[sc->indent_depth] != indent_cnt) {
-        sc->indent_depth--;
-        sc->dedents_pending++;
-      }
-      if (sc->indent_levels[sc->indent_depth] != indent_cnt) {
-        // indent_cnt is between 2 open levels and is not open by itself
-        return ERR_LEX_ANA;
-      }
-      sc->dedents_pending--;
-      token_to_fill->type = TOKEN_DEDENT;
-      return RETURN_SUCCESS;
+      break; // same level, the line continues in IDLE
 
     case STATE_PAREN_NEWLINE:
-      while (c == ' ' || c == '\t') {
-        if (c == '\t') {
-          tab_appeared = true;
-        } else {
-          indent_cnt++;
-        }
-        c = fgetc(sc->src);
-      }
+      c = count_indent(sc->src, c, &indent_cnt, &tab_appeared);
       if (c == '\n') {
         tab_appeared = false;
         indent_cnt = 0;
