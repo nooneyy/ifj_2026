@@ -10,6 +10,7 @@
 #include "return.h"
 #include "tokens.h"
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -115,7 +116,7 @@ static const KeyWord KEYWORDS[] = {
     {"match", TOKEN_KW_MATCH},     {"type", TOKEN_KW_TYPE}};
 
 Scanner scanner_init(FILE *src_file) {
-  Scanner to_fill = {.src = src_file, .at_line_start = 1};
+  Scanner to_fill = {.src = src_file, .at_line_start = true};
   return to_fill;
 }
 
@@ -360,36 +361,43 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
   DynStr str = {NULL, 0, 0}; // empty, so dynstr_free() is always safe
   ReturnCodes rc = RETURN_SUCCESS;
-  int comm_newline_flag = 0;
-  int comm_depth = 0;
-  int must_follow_eol = 0;
   int indent_cnt = 0;
-  int tab_appeared = 0;
-  int indent_pending = 0;
+  int comm_depth = 0;
+  bool comm_newline_flag = false;
+  bool must_follow_eol = false;
+  bool tab_appeared = false;
+  bool indent_pending = false;
   while (1) {
 
     int c = fgetc(sc->src);
 
     switch (state) {
     case STATE_IDLE:
+
       if (must_follow_eol) {
+        // for multiline block comments containing \n
         if (c != EOF && c != '/' && !isspace(c)) {
           return ERR_LEX_ANA;
         }
       }
       if (indent_pending && c != '/' && !isspace(c)) {
+        // means there is an indent pending that appeared before block comment
         (void)ungetc(c, sc->src);
-        indent_pending = 0;
+        indent_pending = false;
         state = STATE_LINE_START;
         break;
       }
-      if (sc->at_line_start == 1) {
+      if (sc->at_line_start) {
         (void)ungetc(c, sc->src);
-        sc->at_line_start = 0;
+        sc->at_line_start = false;
         state = STATE_LINE_START;
         break;
       }
       if (sc->dedents_pending != 0) {
+        /*
+         * means there are dedentation tokens to be sent
+         * because the last dedentation was multiple-level
+         */
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DEDENT;
         sc->dedents_pending--;
@@ -464,20 +472,20 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           if (indent_pending) {
             // means that the line only contained a comment
 
-            indent_pending = 0;
+            indent_pending = false;
             indent_cnt = 0;
-            tab_appeared = 0;
-            must_follow_eol = 0;
+            tab_appeared = false;
+            must_follow_eol = false;
             state = STATE_LINE_START;
             break;
           }
           token_to_fill->type = TOKEN_EOL;
-          sc->at_line_start = 1;
+          sc->at_line_start = true;
           return RETURN_SUCCESS;
         }
         state = STATE_PAREN_NEWLINE;
         indent_cnt = 0;
-        tab_appeared = 0;
+        tab_appeared = false;
         break;
       } else if (c == '(') {
         sc->parenth_depth++;
@@ -894,8 +902,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (c == '*') {
         comm_depth++;
         state = STATE_COMM_BLOCK;
-      } else if (must_follow_eol == 0) {
-        indent_pending = 0;
+      } else if (!must_follow_eol) {
+        indent_pending = false;
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DIV;
         return RETURN_SUCCESS;
@@ -912,8 +920,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       break;
 
     case STATE_COMM_BLOCK:
-      if (c == '\n' && comm_newline_flag != 1) {
-        comm_newline_flag = 1;
+      if (c == '\n' && !comm_newline_flag) {
+        comm_newline_flag = true;
       } else if (c == '*') {
         state = STATE_COMM_BLOCK_STAR;
       } else if (c == '/') {
@@ -934,10 +942,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (c == '/') {
         comm_depth--;
         if (comm_depth <= 0) {
-          if (comm_newline_flag == 1) {
-            must_follow_eol = 1;
+          if (comm_newline_flag) {
+            must_follow_eol = true;
           }
-          comm_newline_flag = 0;
+          comm_newline_flag = false;
           state = STATE_IDLE;
         } else {
           state = STATE_COMM_BLOCK;
@@ -1084,7 +1092,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_LINE_START:
       while (c == ' ' || c == '\t') {
         if (c == '\t') {
-          tab_appeared = 1;
+          tab_appeared = true;
         } else {
           indent_cnt++;
         }
@@ -1092,12 +1100,12 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       }
       if (c == '/') {
         (void)ungetc(c, sc->src);
-        indent_pending = 1;
+        indent_pending = true;
         state = STATE_IDLE;
         break;
       }
       if (c == '\n') {
-        tab_appeared = 0;
+        tab_appeared = false;
         indent_cnt = 0;
         break;
       }
@@ -1106,7 +1114,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_IDLE;
         break;
       }
-      if (tab_appeared == 1) {
+      if (tab_appeared) {
         return ERR_LEX_ANA;
       }
       // For everything else the indentation matters
@@ -1147,14 +1155,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_PAREN_NEWLINE:
       while (c == ' ' || c == '\t') {
         if (c == '\t') {
-          tab_appeared = 1;
+          tab_appeared = true;
         } else {
           indent_cnt++;
         }
         c = fgetc(sc->src);
       }
       if (c == '\n') {
-        tab_appeared = 0;
+        tab_appeared = false;
         indent_cnt = 0;
         break;
       }
@@ -1163,7 +1171,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == EOF || c == '/') {
         break; // EOF or a comment, nothing to check
       }
-      if (tab_appeared == 1) {
+      if (tab_appeared) {
         return ERR_LEX_ANA; // tab at the start of a non-empty line
       }
       if (c == ')') {

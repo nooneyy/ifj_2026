@@ -10,6 +10,7 @@
 
 #include "return.h"
 #include "tokens.h"
+#include <stdbool.h>
 #include <stdio.h>
 
 /**
@@ -35,7 +36,7 @@ typedef struct Scanner {
   int indent_depth;
   int dedents_pending;
   int parenth_depth;
-  int at_line_start;
+  bool at_line_start;
 } Scanner;
 
 /**
