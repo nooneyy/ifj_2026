@@ -10,7 +10,6 @@
 #include "scanner.h"
 #include "tokens.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 /**
  * open_src_file() - Opening source file to compile
@@ -66,7 +65,7 @@ int main(int argc, char **argv) {
       (void)printf("type  %d\n", token.type);
     }
 
-    free(token.token_content);
+    token_free(&token);
   } while (token.type != TOKEN_EOF);
 
   (void)fclose(src);

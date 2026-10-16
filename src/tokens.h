@@ -8,15 +8,13 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include <stdint.h>
-
 /**
  * enum TokenType - listing of all possible Token types returned by FSM
  *
- * @TOKEN_ID:           Identificator type - Token also uses *token_content
- * @TOKEN_INT:          Integer type - Token also uses *token_content
- * @TOKEN_DOUBLE:       Double type - Token also uses *token_content
- * @TOKEN_STRING:       String type - Token also uses *token_content
+ * @TOKEN_ID:           Identifier - token_content is char*, null-terminated
+ * @TOKEN_INT:          Int literal - token_content is long long*
+ * @TOKEN_DOUBLE:       Double literal - token_content is double*
+ * @TOKEN_STRING:       String - token_content is char*, null-terminated
  * @TOKEN_ASSIGN:       "="
  * @TOKEN_IS_EQ:        "=="
  * @TOKEN_NOT_EQ:       "!="
@@ -117,12 +115,27 @@ typedef enum TokenType {
  * struct Token - For Scanner to describe a lexeme and send it to parser
  * @type:           Defining Token's type
  *                  For symbols, it's the only used value
- * @token_content:  Void pointer in case the token has to
- *                  carry content. Typically Int, Double or Char*
+ * @token_content:  Content of the token, NULL if it has none
+ *                  ID, STRING: char*, null-terminated string
+ *                  INT: long long*, DOUBLE: double*
+ *                  STRING has its escape sequences already decoded
+ *                  Owned by the token, freed by token_free()
  */
 typedef struct Token {
   TokenType type;
   void *token_content;
 } Token;
+
+/**
+ * token_free() - freeing token's content
+ * @token: token whose content to free
+ *
+ * Frees token_content and sets it to NULL,
+ * so calling it more than once is safe.
+ * Safe to call for tokens without content as well.
+ * Has to be called by the owner of the token
+ * once its content is no longer needed.
+ */
+void token_free(Token *token);
 
 #endif
