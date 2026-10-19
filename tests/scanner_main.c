@@ -162,6 +162,9 @@ static void print_token(const Token *token) {
     break; // tokens without token_content
   }
 
+  if (token->lf_before) {
+    printf(" (after LF)");
+  }
   (void)putchar('\n');
 }
 
@@ -178,7 +181,7 @@ int main(int argc, char **argv) {
   }
 
   Scanner sc = scanner_init(src);
-  Token token = {TOKEN_EOF, NULL};
+  Token token = {.type = TOKEN_EOF, .lf_before = false, .token_content = NULL};
   ReturnCodes rc = RETURN_SUCCESS;
 
   do {

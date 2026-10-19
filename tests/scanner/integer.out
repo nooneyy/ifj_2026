@@ -24,7 +24,7 @@ EOL
 KW_DEF
 ID sum3
 OPEN_PAR
-ID x
+ID x (after LF)
 COLON
 KW_INT
 COMMA
@@ -32,11 +32,11 @@ ID y
 COLON
 KW_INT
 COMMA
-ID z
+ID z (after LF)
 COLON
 KW_INT
 COMMA
-CLOSE_PAR
+CLOSE_PAR (after LF)
 COLON
 KW_INT
 ASSIGN
@@ -186,9 +186,9 @@ ID sum3
 OPEN_PAR
 INT 1000
 COMMA
-ID min
+ID min (after LF)
 COMMA
-ID max
+ID max (after LF)
 CLOSE_PAR
 EOL
 KW_VAL

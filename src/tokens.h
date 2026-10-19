@@ -8,6 +8,8 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include <stdbool.h>
+
 /**
  * enum TokenType - listing of all possible Token types returned by FSM
  *
@@ -115,6 +117,10 @@ typedef enum TokenType {
  * struct Token - For Scanner to describe a lexeme and send it to parser
  * @type:           Defining Token's type
  *                  For symbols, it's the only used value
+ *
+ * @lf_before:      true if a newline was skipped before this token (used for
+ *                  trailing commas)
+ *
  * @token_content:  Content of the token, NULL if it has none
  *                  ID, STRING: char*, null-terminated string
  *                  INT: long long*, DOUBLE: double*
@@ -123,6 +129,7 @@ typedef enum TokenType {
  */
 typedef struct Token {
   TokenType type;
+  bool lf_before;
   void *token_content;
 } Token;
 

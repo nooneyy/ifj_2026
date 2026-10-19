@@ -448,6 +448,8 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
  */
 static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   token_to_fill->token_content = NULL; // tokens without content keep NULL
+  token_to_fill->lf_before =
+      false; // By default, no LF was read for a new token
 
   FsmState state = STATE_IDLE;
 
@@ -576,6 +578,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           sc->at_line_start = true;
           return RETURN_SUCCESS;
         }
+        token_to_fill->lf_before = true;
         state = STATE_PAREN_NEWLINE;
         indent_cnt = 0;
         tab_appeared = false;
@@ -1064,9 +1067,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (c == '/') {
         comm_depth--;
         if (comm_depth <= 0) {
-          if (comm_newline_flag && sc->parenth_depth == 0) {
-            // if in parentheses, LF is treated as whitespace
-            must_follow_eol = true;
+          if (comm_newline_flag) {
+            if (sc->parenth_depth == 0) {
+              // outside parentheses, comment acts as line end
+              must_follow_eol = true;
+            } else {
+              // inside parentheses, it's only a whitespace
+              token_to_fill->lf_before = true;
+            }
           }
           comm_newline_flag = false;
           state = STATE_IDLE;

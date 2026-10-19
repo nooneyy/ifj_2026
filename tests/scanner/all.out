@@ -239,9 +239,9 @@ ID area
 OPEN_PAR
 ID ratio
 COMMA
-ID tiny
+ID tiny (after LF)
 COMMA
-CLOSE_PAR
+CLOSE_PAR (after LF)
 EOL
 KW_VAL
 ID g
