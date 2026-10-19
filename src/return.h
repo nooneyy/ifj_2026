@@ -8,7 +8,7 @@
 #ifndef RETURN_H
 #define RETURN_H
 
-typedef enum ReturnCodes { // NOLINT(performance-enum-size)
+typedef enum ReturnCodes {
 
   /**
    * RETURN_SUCCESS - no errors
