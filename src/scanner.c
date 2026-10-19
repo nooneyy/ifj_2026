@@ -1199,24 +1199,25 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_STRING;
         token_to_fill->token_content = dynstr_take(&str);
         return RETURN_SUCCESS;
-      } else if (c == EOF) {
+      }
+      if (c == EOF) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
-      } else {
-        for (int i = 0; i < 2; i++) {
-          rc = dynstr_append(&str, '"');
-          if (rc != RETURN_SUCCESS) {
-            dynstr_free(&str);
-            return rc;
-          }
-        }
-        rc = dynstr_append(&str, c);
+      }
+      for (int i = 0; i < 2; i++) {
+        rc = dynstr_append(&str, '"');
         if (rc != RETURN_SUCCESS) {
           dynstr_free(&str);
           return rc;
         }
-        state = STATE_STR_ML;
       }
+      rc = dynstr_append(&str, c);
+      if (rc != RETURN_SUCCESS) {
+        dynstr_free(&str);
+        return rc;
+      }
+      state = STATE_STR_ML;
+
       break;
 
     case STATE_LINE_START:
