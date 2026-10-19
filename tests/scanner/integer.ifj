@@ -1,0 +1,50 @@
+/**
+ * @file integer.ifj
+ * @brief ineteger testing input
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 16.10.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model in xHigh effort mode
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Into integer.ifj write a source code in IFJ26 language specified in
+ * the specification for a compiler that focuses heavily on 32bit integer usage.
+ * Use the integeres in different situation like arguments, parameters,
+ * mathematical expressions, variable initializations and all other context
+ * the specification allows. Focus mainly on edge cases but include some normal
+ * usage too. Minimum is 20 lines, maximum is 30 lines."
+ */
+// Int test: 0x1F 0123 1__0 inside a comment must be ignored
+import ifj26.*
+def add(a: Int, b: Int): Int = a + b
+def sum3(
+  x: Int, y: Int,
+  z: Int,
+  ): Int = x + y + z
+def factorial(n: Int): Int =
+  if n <= 1 then
+    return 1
+  else
+    val m = n - 1; val rest = factorial(m)
+    return n * rest
+@main def main(): Unit =
+  val zero = 0; val ten = 1_0; val _9 = 9
+  val max = 2_147_483_647; val min = -2147483647 - 1
+  var i: Int = -0; val mixed: Double = 42
+  val expr = -(3 - 10) * (2 + -1) + 1 + 2 * 3 - 4 / 2 - -7 / 2
+  val total = sum3(1_000,
+    min,
+    max)
+  val fact = factorial(ten); val code = ord("12345", 0)
+  val part = subStr("abcdef", zero, 3); val n = readInt()
+  while i < ten do
+    i = add(i, 1)
+  if n >= i then
+    print(n)
+  else
+    print(min)

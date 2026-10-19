@@ -1,0 +1,52 @@
+/**
+ * @file string.ifj
+ * @brief string testing input
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 16.10.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model in xHigh effort mode
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Into string.ifj write a source code in IFJ26 language specified in the
+ * specification for a compiler that focuses heavily on strings usage.
+ * Use the strings in every possible context the specification allows.
+ * Focus mainly on edge cases but include some normal usage too.
+ * Minimum is 20 lines, maximum is 30 lines"
+ */
+
+
+// String test: "quotes", \n and /* in a comment */ are ignored
+import ifj26.*
+def greet(name: String): String = "Hello, " + name + "!"
+def wrap(s: String): String =
+  val q = "\""
+  return q + s + q
+@main def main(): Unit =
+  val empty = ""; val esc = "\t\r\n\\\""; val bs = "\\n is not a newline"
+  val tricky = "// not a comment /* nor this */ def @main 1.5e3"
+  val tab = "real	tab"; var acc: String = ""
+  val raw = """first line
+  "quoted" and ""double"" \n stays two chars
+"""
+  val emptyRaw = """"""; val endsQuote = """ends with a quote""""
+  val g = greet(empty); val w = wrap(tricky); val n = toStr(42)
+  val len = strLength(esc); val part = subStr("abcdef", 0, 1)
+  val code = ord("A", 0); val letter = chr(code); val line = readLine()
+  var count = 0
+  while count < 3 do
+    acc = acc + letter + "-"
+    count = count + 1
+  if "apple" < "banana" then
+    print(acc)
+  else
+    print(empty)
+  if line != "" then
+    print(line)
+  else
+    print("""multi-line
+  string argument""")

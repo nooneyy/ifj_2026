@@ -18,7 +18,15 @@ TARGET := ifj26
 all: $(TARGET)
 
 # IMPORTANT - add all object files to be linked with final executable here with the .o extension 
-$(TARGET): src/main.o src/symbol.o src/symtable.o
+$(TARGET): src/main.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+# Scanner's testing main - every module except src/main.o, it has its own main
+SCANNER_TEST := tests/scanner_main
+
+scanner_test: $(SCANNER_TEST)
+
+$(SCANNER_TEST): tests/scanner_main.o src/scanner.o src/dynstr.o src/tokens.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 ##
@@ -27,17 +35,21 @@ $(TARGET): src/main.o src/symbol.o src/symtable.o
 # src/symtable.o: src/symtable.h
 ##
 
-src/main.o: src/return.h
+src/main.o: src/return.h src/scanner.h src/tokens.h
+src/scanner.o: src/scanner.h src/return.h src/tokens.h src/dynstr.h
+src/dynstr.o: src/dynstr.h src/return.h
+src/tokens.o: src/tokens.h
 src/symbol.o: src/symbol.h
 src/symtable.o: src/symtable.h src/symbol.h
+tests/scanner_main.o: src/return.h src/scanner.h src/tokens.h
 
 # Auto-compile .c source files into .o object files
 src/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Cleans the final executable and all object files
+# Cleans the final executable, testing executables and all object files
 clean:
-	rm -f $(TARGET) src/*.o
+	rm -f $(TARGET) $(SCANNER_TEST) src/*.o tests/*.o
 
 # Format all source code files in the repo
 # Wildcard is there for not throwing errors on non-existent header files
@@ -53,6 +65,6 @@ compile_commands.json:
 	bear -- $(MAKE) clean all
 
 # Commands that are not build targets
-.PHONY: all clean format tidy 
+.PHONY: all clean format tidy scanner_test
 
 # TODO: tidy and format commands, zip commands, test commands,....

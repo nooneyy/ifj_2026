@@ -1,0 +1,52 @@
+/**
+ * @file double.ifj
+ * @brief double testing input
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 16.10.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model in xHigh effort mode
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Into double.ifj write a source code in IFJ26 language specified in the specification for a compiler
+ * that focuses heavily on 64bit floating point number defined by IEEE 754 standard usage. Use the
+ * doubles in different situation like arguments, parameters, mathematical expressions, variable
+ * initializations and all other context the specification allows. Focus mainly on edge cases but
+ * include some normal usage too. Minimum is 20 lines, maximum is 30 lines."
+ */
+
+
+// Double test: 1.e5 5. .e3 0x1p3 in a comment must be ignored
+import ifj26.*
+def avg(a: Double, b: Double): Double = (a + b) / 2
+def power(base: Double, exp: Int): Double =
+  if exp <= 0 then
+    return 1.0
+  else
+    val e = exp - 1; val rest = power(base, e)
+    return base * rest
+@main def main(): Unit =
+  val zero = 0.0; val negZero = -0.0; val half = .5; val e1 = 1e1
+  val max = 1.797_693_134_862_315_7e308; val min = 4.9e-324
+  val small = 2.225_073_858_507_201_4E-308; val d = 1.5d
+  val sci = 6.022_140_76e+23; val tiny = 1E-1_0; val exact = 0e0
+  val suffixed = 2.0D + 1e5d - .25e2; val widened: Double = 42
+  val mixed = 1 + 2.5 * 2 - 7 / 2.0; val neg = -2.75
+  val huge = max * 10.0
+  val m = avg(1, d); val p = power(half, 3)
+  val t = toInt(neg); val s = toStr(negZero); val r = readDouble()
+  var acc: Double = 0
+  while acc < 1 do
+    acc = acc + 0.25
+  if 0.1 + 0.2 == 0.3 then
+    print(s)
+  else
+    print(acc)
+  if r >= min then
+    print(r)
+  else
+    print(huge)

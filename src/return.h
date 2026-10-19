@@ -8,7 +8,7 @@
 #ifndef RETURN_H
 #define RETURN_H
 
-typedef enum ReturnCodes { // NOLINT(performance-enum-size)
+typedef enum ReturnCodes {
 
   /**
    * RETURN_SUCCESS - no errors
@@ -130,7 +130,7 @@ typedef enum ReturnCodes { // NOLINT(performance-enum-size)
    * Example:
    *  memory allocation error
    */
-  ERR_INTERNAL = 99
+  ERR_INTERNAL = 99,
 } ReturnCodes;
 
 #endif
