@@ -85,7 +85,7 @@ typedef enum FsmState {
   STATE_EXCL,
   STATE_LOW,
   STATE_GRE,
-  STATE_PAREN_NEWLINE
+  STATE_PAREN_NEWLINE,
 } FsmState;
 
 /**
@@ -115,7 +115,8 @@ static const KeyWord KEYWORDS[] = {
     {"Boolean", TOKEN_KW_BOOLEAN}, {"case", TOKEN_KW_CASE},
     {"class", TOKEN_KW_CLASS},     {"extension", TOKEN_KW_EXTENSION},
     {"for", TOKEN_KW_FOR},         {"List", TOKEN_KW_LIST},
-    {"match", TOKEN_KW_MATCH},     {"type", TOKEN_KW_TYPE}};
+    {"match", TOKEN_KW_MATCH},     {"type", TOKEN_KW_TYPE},
+};
 
 Scanner scanner_init(FILE *src_file) {
   Scanner to_fill = {.src = src_file, .at_line_start = true};

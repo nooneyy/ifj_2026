@@ -130,7 +130,7 @@ typedef enum ReturnCodes { // NOLINT(performance-enum-size)
    * Example:
    *  memory allocation error
    */
-  ERR_INTERNAL = 99
+  ERR_INTERNAL = 99,
 } ReturnCodes;
 
 #endif

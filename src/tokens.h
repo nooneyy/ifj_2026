@@ -110,7 +110,7 @@ typedef enum TokenType {
   TOKEN_KW_FOR,
   TOKEN_KW_LIST,
   TOKEN_KW_MATCH,
-  TOKEN_KW_TYPE
+  TOKEN_KW_TYPE,
 } TokenType;
 
 /**
