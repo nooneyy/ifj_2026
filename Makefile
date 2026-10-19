@@ -18,7 +18,7 @@ TARGET := ifj26
 all: $(TARGET)
 
 # IMPORTANT - add all object files to be linked with final executable here with the .o extension 
-$(TARGET): src/main.o src/scanner.o src/dynstr.o src/tokens.o
+$(TARGET): src/main.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 # Scanner's testing main - every module except src/main.o, it has its own main
@@ -35,8 +35,12 @@ $(SCANNER_TEST): tests/scanner_main.o src/scanner.o src/dynstr.o src/tokens.o
 # src/symtable.o: src/symtable.h
 ##
 
+src/main.o: src/return.h
+src/symbol.o: src/symbol.h
+src/symtable.o: src/symtable.h src/symbol.h
+
 # Auto-compile .c source files into .o object files
-src/$.o: src/$.c
+src/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Cleans the final executable, testing executables and all object files
