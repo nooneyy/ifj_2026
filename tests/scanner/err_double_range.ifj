@@ -1,0 +1,21 @@
+/**
+ * @file err_double_range.ifj
+ * @brief Out of range double literal testing input
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 19.10.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model in xHigh effort mode
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you please make test files for the 4 issues I fixed to verify that
+ * they pass?"
+ */
+// 1e400 overflows IEEE 754 binary64 (it would be inf) -> lexical error 1
+import ifj26.*
+@main def main(): Unit =
+  val x = 1e400
