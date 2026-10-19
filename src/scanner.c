@@ -2,6 +2,7 @@
  * @file scanner.c
  * @brief main scanner file
  * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
  * @date 03.10.2026
  */
 
@@ -683,6 +684,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         state = STATE_E;
       } else {
+        if (isalpha(c)) {
+          // A unrecognized char after number -> lexical error
+          dynstr_free(&str);
+          return ERR_LEX_ANA;
+        }
         (void)ungetc(c, sc->src);
         rc = int_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
@@ -738,12 +744,24 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         state = STATE_E;
       } else if (c == 'd' || c == 'D') {
+        c = fgetc(sc->src);
+        if (isalnum(c) || c == '_') {
+          // Unrecognized char after double def. -> lexical error
+          dynstr_free(&str);
+          return ERR_LEX_ANA;
+        }
+        (void)ungetc(c, sc->src);
         rc = double_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
         return RETURN_SUCCESS;
       } else {
+        if (isalpha(c)) {
+          // A unrecognized char after number -> lexical error
+          dynstr_free(&str);
+          return ERR_LEX_ANA;
+        }
         (void)ungetc(c, sc->src);
         rc = double_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
@@ -813,12 +831,24 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (c == '_') {
         state = STATE_EXP_UNDER;
       } else if (c == 'd' || c == 'D') {
+        c = fgetc(sc->src);
+        if (isalnum(c) || c == '_') {
+          // Unrecognized char after suffix -> lexical error
+          dynstr_free(&str);
+          return ERR_LEX_ANA;
+        }
+        (void)ungetc(c, sc->src);
         rc = double_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
         return RETURN_SUCCESS;
       } else {
+        if (isalpha(c)) {
+          // Unrecognized char after suffix -> lexical error
+          dynstr_free(&str);
+          return ERR_LEX_ANA;
+        }
         (void)ungetc(c, sc->src);
         rc = double_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
@@ -881,6 +911,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         state = STATE_DOT;
       } else {
+        if (isalpha(c) || c == '_') {
+          // A unrecognized char after number -> lexical error
+          dynstr_free(&str);
+          return ERR_LEX_ANA;
+        }
         (void)ungetc(c, sc->src);
         rc = int_to_token(&str, token_to_fill);
         if (rc != RETURN_SUCCESS) {
