@@ -5,8 +5,8 @@
  * @date 03.10.2026
  */
 
-#ifndef TOKEN_H
-#define TOKEN_H
+#ifndef TOKENS_H
+#define TOKENS_H
 
 #include <stdbool.h>
 
