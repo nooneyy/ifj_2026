@@ -1019,7 +1019,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (c == '/') {
         comm_depth--;
         if (comm_depth <= 0) {
-          if (comm_newline_flag) {
+          if (comm_newline_flag && sc->parenth_depth == 0) {
+            // if in parentheses, LF is treated as whitespace
             must_follow_eol = true;
           }
           comm_newline_flag = false;

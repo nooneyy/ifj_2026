@@ -35,6 +35,23 @@ def pick(a: Int, // comment inside parentheses, before a line break
     return a /* one-line block */
   else /* nested /* at the end */ */
     return b
+
+/* This tests a comment spanning multiple lines in parentheses */
+def multiLineCommentInParens(x: String, /* hello
+world */ b: Int
+  ) =
+    print("hello world!")
+
+def multiLineCommentInParensArgOnSeparateLine(x: String, /* hello
+world */
+  b: Int
+  ) =
+      print("hello world 2!")
+
+def random() =
+  twice(twice(/* multi-line comment in multiple levels of
+  parentheses */))
+
 @main /* comment between @main and def */
 def main(): Unit =
   val/**/x/**/=/**/5 // block comments as the only separators
