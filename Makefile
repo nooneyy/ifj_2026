@@ -35,7 +35,7 @@ $(SCANNER_TEST): tests/scanner_main.o src/scanner.o src/dynstr.o src/tokens.o
 # src/symtable.o: src/symtable.h
 ##
 
-src/main.o: src/return.h src/scanner.h src/token.h
+src/main.o: src/return.h src/scanner.h src/tokens.h
 src/scanner.o: src/scanner.h src/return.h src/tokens.h src/dynstr.h
 src/dynstr.o: src/dynstr.h src/return.h
 src/tokens.o: src/tokens.h
