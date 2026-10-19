@@ -1003,21 +1003,16 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       return RETURN_SUCCESS;
 
     case STATE_AT:
-      if (c == 'm') {
-        if (fgetc(sc->src) == 'a') {
-          if (fgetc(sc->src) == 'i') {
-            if (fgetc(sc->src) == 'n') {
-              c = fgetc(sc->src);
+      if ((c == 'm') && (fgetc(sc->src) == 'a') && (fgetc(sc->src) == 'i') &&
+          (fgetc(sc->src) == 'n')) {
+        c = fgetc(sc->src);
 
-              // Whitespace, start of commment or EOF are the only allowed
-              // chars after @main
-              if (isspace(c) || c == '/' || c == EOF) {
-                (void)ungetc(c, sc->src);
-                token_to_fill->type = TOKEN_AT_MAIN;
-                return RETURN_SUCCESS;
-              }
-            }
-          }
+        // Whitespace, start of commment or EOF are the only allowed
+        // chars after @main
+        if (isspace(c) || c == '/' || c == EOF) {
+          (void)ungetc(c, sc->src);
+          token_to_fill->type = TOKEN_AT_MAIN;
+          return RETURN_SUCCESS;
         }
       }
       return ERR_LEX_ANA;
@@ -1029,7 +1024,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         comm_depth++;
         state = STATE_COMM_BLOCK;
       } else if (!must_follow_eol) {
-        indent_pending = false;
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DIV;
         return RETURN_SUCCESS;
@@ -1128,10 +1122,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_STRING;
         token_to_fill->token_content = dynstr_take(&str);
         return RETURN_SUCCESS;
-      } else if (c == '\n' || c == EOF) {
+      }
+
+      if (c == '\n' || c == EOF) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
-      } else if (c == '\\') {
+      }
+
+      if (c == '\\') {
         c = fgetc(sc->src);
         rc = escape_seq_switch(c, &str);
         if (rc != RETURN_SUCCESS) {
