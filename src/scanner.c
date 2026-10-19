@@ -11,6 +11,7 @@
 #include "return.h"
 #include "tokens.h"
 #include <ctype.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -166,10 +167,18 @@ static ReturnCodes double_ctor(double **d) {
  * Converting float value inside in a string format in num_str to
  * a 64bit float (double) using strtod function.
  *
- * Return: Returns RETURN_SUCCESS
+ * Return: Returns RETURN_SUCCESS on success, otherwise ERR_LEX_ANA on
+ * overflowing double value
  */
 static ReturnCodes string_to_double(const char *num_str, double *d) {
   *d = strtod(num_str, NULL);
+
+  // Check for overflow that could violate spec (Double d = INF)
+  // todo: make test for this later
+  if (isinf(*d)) {
+    return ERR_LEX_ANA;
+  }
+
   return RETURN_SUCCESS;
 }
 
@@ -186,6 +195,7 @@ static ReturnCodes string_to_double(const char *num_str, double *d) {
  * str is freed in every case, even in case of an error.
  *
  * Return: Returns RETURN_SUCCESS in case of a success
+ *         Returns ERR_LEX_ANA on double overflow
  *         Returns ERR_INTERNAL in case one of the function fails
  */
 static ReturnCodes double_to_token(DynStr *str, Token *token) {
