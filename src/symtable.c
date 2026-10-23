@@ -19,6 +19,10 @@
 Symtable *symtable_init(void) {
   Symtable *s_table = malloc(sizeof(Symtable));
 
+  if (s_table == NULL) {
+    return NULL;
+  }
+
   s_table->items = malloc(sizeof(STItem) * INITIAL_STABLE_CAPACITY);
 
   if (s_table->items == NULL) {
