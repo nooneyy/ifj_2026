@@ -35,7 +35,7 @@ Symtable *symtable_init(void) {
   s_table->size = 0;
 
   // Initialize all available slots to their empty, null variants
-  for (unsigned idx = 0; idx < INITIAL_HTABLE_CAPACITY; idx++) {
+  for (size_t idx = 0; idx < INITIAL_HTABLE_CAPACITY; idx++) {
     s_table->items[idx] = (STItem){.state = EMPTY, .symbol = NULL};
   }
 
@@ -43,7 +43,7 @@ Symtable *symtable_init(void) {
 }
 
 void symtable_free(Symtable *symtable) {
-  for (unsigned idx = 0; idx < symtable->capacity; idx++) {
+  for (size_t idx = 0; idx < symtable->capacity; idx++) {
     STItem *item = &symtable->items[idx];
     if (item->state == FILLED) {
       free_symbol(item->symbol);
@@ -60,8 +60,8 @@ void symtable_free(Symtable *symtable) {
  * @return A hash that can be turned into an index into the hash-map's items
  * array
  */
-static unsigned hash(char *key) {
-  unsigned hash = 5381;
+static size_t hash(char *key) {
+  size_t hash = 5381;
 
   while (*key != '\0') {
     hash = (hash * 33) + *key;
@@ -76,7 +76,7 @@ static unsigned hash(char *key) {
  * @param symtable The pointer to the symtable struct
  */
 static void symtable_enlarge(Symtable *symtable) {
-  unsigned new_capacity = symtable->capacity * 2;
+  size_t new_capacity = symtable->capacity * 2;
 
   // new_capacity can overflow but this should realistically never happen
   STItem *tmp_array = malloc(sizeof(STItem) * new_capacity);
@@ -87,17 +87,17 @@ static void symtable_enlarge(Symtable *symtable) {
   }
 
   // Initialize all the new slots to their empty, NULL variants for now
-  for (unsigned idx = 0; idx < new_capacity; idx++) {
+  for (size_t idx = 0; idx < new_capacity; idx++) {
     tmp_array[idx] = (STItem){.state = EMPTY, .symbol = NULL};
   }
 
   // Rehash the old values and put them into free slots in the new table
-  for (unsigned idx = 0; idx < symtable->capacity; idx++) {
+  for (size_t idx = 0; idx < symtable->capacity; idx++) {
     STItem *old_item = &symtable->items[idx];
     if (old_item->state == FILLED) {
-      unsigned item_hash = hash(old_item->symbol->name);
+      size_t item_hash = hash(old_item->symbol->name);
 
-      for (unsigned offset = 0; offset < new_capacity; offset++) {
+      for (size_t offset = 0; offset < new_capacity; offset++) {
         STItem *new_item = &tmp_array[(item_hash + offset) % new_capacity];
 
         if (new_item && new_item->state == EMPTY) {
@@ -120,10 +120,10 @@ static void symtable_enlarge(Symtable *symtable) {
  * @return A pointer to an STItem if the search was successful, otherwise NULL
  */
 static STItem *symtable_get_internal(Symtable *symtable, char *key) {
-  unsigned initial_hash = hash(key);
+  size_t initial_hash = hash(key);
 
   // Use linear steps to iterate through n=capacity of items to find our item
-  for (unsigned offset = 0; offset < symtable->capacity; offset++) {
+  for (size_t offset = 0; offset < symtable->capacity; offset++) {
     STItem *item =
         &symtable->items[(initial_hash + offset) % symtable->capacity];
 
@@ -184,13 +184,13 @@ void symtable_insert(Symtable *symtable, Symbol *symbol) {
     symtable_enlarge(symtable);
   }
 
-  unsigned hash_ret = hash(symbol->name);
+  size_t hash_ret = hash(symbol->name);
 
   STItem *first_deleted = NULL;
 
   // Linearly step through n=capacity items to find an EMPTY slot to insert into
-  for (unsigned offset = 0; offset < symtable->capacity; offset++) {
-    unsigned idx = (hash_ret + offset) % symtable->capacity;
+  for (size_t offset = 0; offset < symtable->capacity; offset++) {
+    size_t idx = (hash_ret + offset) % symtable->capacity;
 
     STItem *item = &symtable->items[idx];
 

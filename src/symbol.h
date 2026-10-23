@@ -7,6 +7,7 @@
  */
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifndef SYMBOL_H
 #define SYMBOL_H
@@ -61,7 +62,7 @@ typedef struct {
                             // false
   bool is_main;             // True if function is annotated with @main
   bool is_builtin;          // True if function is builtin
-  unsigned param_count;
+  size_t param_count;
   FunctionParam *params;
 } FunctionSymbol;
 

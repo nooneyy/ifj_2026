@@ -10,6 +10,7 @@
 
 #include "symbol.h"
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifndef SYMTABLE_H
 #define SYMTABLE_H
@@ -36,10 +37,10 @@ typedef struct {
  *   @brief Struct of the entire symtable
  */
 typedef struct {
-  unsigned capacity; // The maximum amount of items the symtable can hold
-                     // (before resizing)
-  unsigned size;     // The current amount of filled slots
-  STItem *items;     // Array of symtable slots
+  size_t capacity; // The maximum amount of items the symtable can hold
+                   // (before resizing)
+  size_t size;     // The current amount of filled slots
+  STItem *items;   // Array of symtable slots
 } Symtable;
 
 /**

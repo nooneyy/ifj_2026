@@ -122,7 +122,7 @@ void add_function_param(Symbol *function_sym, char *param_name,
 void free_symbol(Symbol *symbol) {
   if (symbol->type == FUNCTION) {
     // Function symbol => we have to clear its param array
-    for (unsigned idx = 0; idx < symbol->data.function.param_count; idx++) {
+    for (size_t idx = 0; idx < symbol->data.function.param_count; idx++) {
       free(symbol->data.function.params[idx].name);
     }
 
