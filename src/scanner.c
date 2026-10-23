@@ -18,6 +18,19 @@
 #include <string.h>
 
 /**
+  @brief Macro for appending a character to a DynStr and returning with an error
+  code if it fails.
+ */
+#define APPEND_OR_ERROR(str, c)                                                \
+  do {                                                                         \
+    rc = dynstr_append(&(str), c);                                             \
+    if (rc != RETURN_SUCCESS) {                                                \
+      dynstr_free(&(str));                                                     \
+      return rc;                                                               \
+    }                                                                          \
+  } while (0)
+
+/**
  * enum FsmState - listing of all possible FSM states
  *
  * @STATE_IDLE:               idle state - initial state
@@ -390,33 +403,21 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_ID;
       } else if (c == '_') {
         rc = dynstr_init(&str);
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_UND;
       } else if (isdigit(c) && c != '0') {
         rc = dynstr_init(&str);
         if (rc != RETURN_SUCCESS) {
           return rc;
         }
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_INT;
       } else if (c == '.') {
         rc = dynstr_init(&str);
@@ -424,11 +425,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return rc;
         }
 
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_DOT_START;
       } else if (c == '0') {
         rc = dynstr_init(&str);
@@ -436,11 +433,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return rc;
         }
 
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_ZERO;
       } else if (c == '"') {
         state = STATE_1_QUOT;
@@ -527,11 +520,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_ID:
       if (isalnum(c) || c == '_') {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_ID;
       } else {
         (void)ungetc(c, sc->src); // for the next token to read
@@ -548,11 +537,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_UND:
       if (isalnum(c) || c == '_') {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_ID;
       } else {
         dynstr_free(&str);
@@ -562,27 +547,15 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_INT:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_INT;
       } else if (c == '_') {
         state = STATE_INT_UNDER;
       } else if (c == '.') {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_DOT;
       } else if (c == 'e' || c == 'E') {
-        rc = dynstr_append(&str, 'e');
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, 'e');
         state = STATE_E;
       } else {
         if (isalpha(c)) {
@@ -597,11 +570,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_INT_UNDER:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_INT;
       } else {
         dynstr_free(&str);
@@ -611,11 +580,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_DOT:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_DOUBLE;
       } else {
         dynstr_free(&str);
@@ -625,20 +590,12 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_DOUBLE:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_DOUBLE;
       } else if (c == '_') {
         state = STATE_DOUBLE_UNDER;
       } else if (c == 'e' || c == 'E') {
-        rc = dynstr_append(&str, 'e');
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, 'e');
         state = STATE_E;
       } else if (c == 'd' || c == 'D') {
         c = fgetc(sc->src);
@@ -662,11 +619,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_DOUBLE_UNDER:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_DOUBLE;
       } else {
         dynstr_free(&str);
@@ -676,18 +629,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_E:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_EXP;
       } else if (c == '+' || c == '-') {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_E_SIGN;
       } else {
         dynstr_free(&str);
@@ -697,11 +642,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_E_SIGN:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_EXP;
       } else {
         dynstr_free(&str);
@@ -711,11 +652,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_EXP:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_EXP;
       } else if (c == '_') {
         state = STATE_EXP_UNDER;
@@ -741,11 +678,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_EXP_UNDER:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_EXP;
       } else {
         dynstr_free(&str);
@@ -755,11 +688,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_DOT_START:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_DOUBLE;
       } else {
         (void)ungetc(c, sc->src);
@@ -771,25 +700,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_ZERO:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_ZERO_INT;
       } else if (c == 'e' || c == 'E') {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_E;
       } else if (c == '.') {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_DOT;
       } else {
         if (isalpha(c) || c == '_') {
@@ -804,25 +721,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_ZERO_INT:
       if (isdigit(c)) {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_ZERO_INT;
       } else if (c == '.') {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_DOT;
       } else if (c == 'e' || c == 'E') {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, 'e');
         state = STATE_E;
       } else {
         dynstr_free(&str);
@@ -960,11 +865,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         state = STATE_STR;
       } else {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
         state = STATE_STR;
       }
       break;
@@ -1000,11 +901,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return rc;
         }
       } else {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
       }
       break;
 
@@ -1015,11 +912,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else {
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, c);
       }
       break;
 
@@ -1030,16 +923,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else {
-        rc = dynstr_append(&str, '"');
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
-        rc = dynstr_append(&str, c);
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, '"');
+        APPEND_OR_ERROR(str, c);
         state = STATE_STR_ML;
       }
       break;
@@ -1049,11 +934,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         while (1) {
           c = fgetc(sc->src);
           if (c == '"') {
-            rc = dynstr_append(&str, c);
-            if (rc != RETURN_SUCCESS) {
-              dynstr_free(&str);
-              return rc;
-            }
+            APPEND_OR_ERROR(str, c);
           } else {
             (void)ungetc(c, sc->src);
             break;
@@ -1068,17 +949,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         return ERR_LEX_ANA;
       }
       for (int i = 0; i < 2; i++) {
-        rc = dynstr_append(&str, '"');
-        if (rc != RETURN_SUCCESS) {
-          dynstr_free(&str);
-          return rc;
-        }
+        APPEND_OR_ERROR(str, '"');
       }
-      rc = dynstr_append(&str, c);
-      if (rc != RETURN_SUCCESS) {
-        dynstr_free(&str);
-        return rc;
-      }
+      APPEND_OR_ERROR(str, c);
       state = STATE_STR_ML;
 
       break;
