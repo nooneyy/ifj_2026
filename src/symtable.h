@@ -20,9 +20,9 @@
  * @brief Enum describing the possible states of hashtable/symtable slots
  */
 typedef enum {
-  EMPTY,   // The slot is empty and we can insert into it
-  FILLED,  // The slot is filled with data
-  DELETED, // The slot's data was removed and it can be inserted into again
+  EMPTY = 0,   // The slot is empty and we can insert into it
+  FILLED = 1,  // The slot is filled with data
+  DELETED = 2, // The slot's data was removed and it can be inserted into again
 } STItemState;
 
 /**
