@@ -73,6 +73,8 @@ static size_t hash(char *key) {
 /**
  * @brief Enlarges the symtable by doubling its capacity
  * @param symtable The pointer to the symtable struct
+ * @return RETURN_SUCCESS if the enlargement was successful, otherwise
+ * ERR_INTERNAL on malloc error
  */
 static ReturnCodes symtable_enlarge(Symtable *symtable) {
   size_t new_capacity = symtable->capacity * 2;
