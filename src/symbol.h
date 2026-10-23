@@ -6,6 +6,7 @@
  * @date 12.10.2026
  */
 
+#include "return.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -118,9 +119,11 @@ Symbol *init_function_symbol(char *name, DataType return_type,
  * @param function_sym A pointer to the function symbol
  * @param param_name A string containing the param's identifier
  * @param param_data_type The data type of the parameter
+ * @return RETURN_SUCCESS if the parameter was added successfully, otherwise
+ * ERR_INTERNAL if the input symbol is not type=FUNCTION or if malloc fails
  */
-void add_function_param(Symbol *function_sym, char *param_name,
-                        DataType param_data_type);
+ReturnCodes add_function_param(Symbol *function_sym, char *param_name,
+                               DataType param_data_type);
 
 /**
  * @brief A symbol destructor
