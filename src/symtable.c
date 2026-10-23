@@ -13,7 +13,7 @@
 
 // TODO: Auto-registering of builtins and other custom ops
 
-#define INITIAL_HTABLE_CAPACITY 16
+#define INITIAL_STABLE_CAPACITY 16 // The initial capacity of the symtable
 
 Symtable *symtable_init(void) {
   Symtable *s_table = malloc(sizeof(Symtable));
@@ -23,7 +23,7 @@ Symtable *symtable_init(void) {
     return NULL;
   }
 
-  s_table->items = malloc(sizeof(STItem) * INITIAL_HTABLE_CAPACITY);
+  s_table->items = malloc(sizeof(STItem) * INITIAL_STABLE_CAPACITY);
 
   if (s_table->items == NULL) {
     // todo error
@@ -31,11 +31,11 @@ Symtable *symtable_init(void) {
     return NULL;
   }
 
-  s_table->capacity = INITIAL_HTABLE_CAPACITY;
+  s_table->capacity = INITIAL_STABLE_CAPACITY;
   s_table->size = 0;
 
   // Initialize all available slots to their empty, null variants
-  for (size_t idx = 0; idx < INITIAL_HTABLE_CAPACITY; idx++) {
+  for (size_t idx = 0; idx < INITIAL_STABLE_CAPACITY; idx++) {
     s_table->items[idx] = (STItem){.state = EMPTY, .symbol = NULL};
   }
 
