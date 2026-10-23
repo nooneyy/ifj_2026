@@ -23,7 +23,8 @@ Symtable *symtable_init(void) {
     return NULL;
   }
 
-  s_table->items = malloc(sizeof(STItem) * INITIAL_S_TABLE_CAPACITY);
+  // calloc instead of malloc to fix clang-tidy warning
+  s_table->items = calloc(INITIAL_S_TABLE_CAPACITY, sizeof(STItem));
 
   if (s_table->items == NULL) {
     free(s_table);
@@ -32,11 +33,6 @@ Symtable *symtable_init(void) {
 
   s_table->capacity = INITIAL_S_TABLE_CAPACITY;
   s_table->size = 0;
-
-  // Initialize all available slots to their empty, null variants
-  for (size_t idx = 0; idx < INITIAL_S_TABLE_CAPACITY; idx++) {
-    s_table->items[idx] = (STItem){.state = EMPTY, .symbol = NULL};
-  }
 
   return s_table;
 }
@@ -77,18 +73,16 @@ static size_t hash(char *key) {
  * ERR_INTERNAL on malloc error
  */
 static ReturnCodes symtable_enlarge(Symtable *symtable) {
+  assert(symtable->capacity > 0); // This removes clang-tidy warnings
+
   size_t new_capacity = symtable->capacity * 2;
 
   // new_capacity can overflow but this should realistically never happen
-  STItem *tmp_array = malloc(sizeof(STItem) * new_capacity);
+  // calloc instead of malloc to fix clang-tidy warning
+  STItem *tmp_array = calloc(new_capacity, sizeof(STItem));
 
   if (tmp_array == NULL) {
     return ERR_INTERNAL;
-  }
-
-  // Initialize all the new slots to their empty, NULL variants for now
-  for (size_t idx = 0; idx < new_capacity; idx++) {
-    tmp_array[idx] = (STItem){.state = EMPTY, .symbol = NULL};
   }
 
   // Rehash the old values and put them into free slots in the new table
@@ -100,7 +94,7 @@ static ReturnCodes symtable_enlarge(Symtable *symtable) {
       for (size_t offset = 0; offset < new_capacity; offset++) {
         STItem *new_item = &tmp_array[(item_hash + offset) % new_capacity];
 
-        if (new_item && new_item->state == EMPTY) {
+        if (new_item->state == EMPTY) {
           *new_item = *old_item;
           break;
         }
@@ -200,7 +194,6 @@ ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol) {
 
     STItem *item = &symtable->items[idx];
 
-    // Clang warns about a garbage value (it's clueless)
     switch (item->state) {
     case FILLED:
       // Skip filled slots
