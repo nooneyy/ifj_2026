@@ -6,6 +6,7 @@
  */
 
 #include "symtable.h"
+#include "return.h"
 #include "symbol.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -18,15 +19,9 @@
 Symtable *symtable_init(void) {
   Symtable *s_table = malloc(sizeof(Symtable));
 
-  if (s_table == NULL) {
-    // todo error
-    return NULL;
-  }
-
   s_table->items = malloc(sizeof(STItem) * INITIAL_STABLE_CAPACITY);
 
   if (s_table->items == NULL) {
-    // todo error
     free(s_table);
     return NULL;
   }
@@ -75,15 +70,14 @@ static size_t hash(char *key) {
  * @brief Enlarges the symtable by doubling its capacity
  * @param symtable The pointer to the symtable struct
  */
-static void symtable_enlarge(Symtable *symtable) {
+static ReturnCodes symtable_enlarge(Symtable *symtable) {
   size_t new_capacity = symtable->capacity * 2;
 
   // new_capacity can overflow but this should realistically never happen
   STItem *tmp_array = malloc(sizeof(STItem) * new_capacity);
 
   if (tmp_array == NULL) {
-    // todo error
-    return;
+    return ERR_INTERNAL;
   }
 
   // Initialize all the new slots to their empty, NULL variants for now
@@ -111,6 +105,8 @@ static void symtable_enlarge(Symtable *symtable) {
   free(symtable->items);
   symtable->items = tmp_array;
   symtable->capacity = new_capacity;
+
+  return RETURN_SUCCESS;
 }
 
 /**
@@ -164,7 +160,7 @@ void symtable_delete(Symtable *symtable, char *key) {
   symtable->size--;
 }
 
-void symtable_insert(Symtable *symtable, Symbol *symbol) {
+ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol) {
   STItem *possible_match = symtable_get_internal(symtable, symbol->name);
 
   if (possible_match) {
@@ -176,12 +172,16 @@ void symtable_insert(Symtable *symtable, Symbol *symbol) {
       possible_match->symbol = symbol;
     }
     // Do nothing if the pointers are the same
-    return;
+    return RETURN_SUCCESS;
   }
 
   if (symtable->size * 4 >= symtable->capacity * 3) {
     // Enlarges the symtable if it is 75% full
-    symtable_enlarge(symtable);
+    ReturnCodes enlarge_result = symtable_enlarge(symtable);
+
+    if (enlarge_result != RETURN_SUCCESS) {
+      return enlarge_result;
+    }
   }
 
   size_t hash_ret = hash(symbol->name);
@@ -216,7 +216,7 @@ void symtable_insert(Symtable *symtable, Symbol *symbol) {
         item->state = FILLED;
       }
       symtable->size++;
-      return;
+      return RETURN_SUCCESS;
     }
   }
   // If we didn't find any EMPTY items, but found a deleted one, replace it
@@ -224,5 +224,10 @@ void symtable_insert(Symtable *symtable, Symbol *symbol) {
     first_deleted->symbol = symbol;
     first_deleted->state = FILLED;
     symtable->size++;
+    return RETURN_SUCCESS;
   }
+
+  // There was no slot to insert into, which should be impossible because we
+  // enlarge the symtable when it is 75% full
+  return ERR_INTERNAL;
 }

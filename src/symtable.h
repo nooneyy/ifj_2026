@@ -8,6 +8,7 @@
 
 // SELECTED VARIANT: TRP-izp (hash-table implementation with open addressing)
 
+#include "return.h"
 #include "symbol.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -54,8 +55,9 @@ Symtable *symtable_init(void);
     @brief Function that inserts (or possibly replaces) a Symbol
     @param symtable A pointer to the Symtable struct
     @param symbol A pointer to an already instantiated Symbol
+    @return RETURN_SUCCESS if the insertion was successful, otherwise ERR_INTERNAL if the symtable could not be enlarged
  */
-void symtable_insert(Symtable *symtable, Symbol *symbol);
+ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol);
 
 /**
     @brief Function that deletes a value specified by its
