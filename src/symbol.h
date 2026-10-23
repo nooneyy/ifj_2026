@@ -6,12 +6,12 @@
  * @date 12.10.2026
  */
 
+#ifndef SYMBOL_H
+#define SYMBOL_H
+
 #include "return.h"
 #include <stdbool.h>
 #include <stddef.h>
-
-#ifndef SYMBOL_H
-#define SYMBOL_H
 
 /**
  * @brief Enum specifying the two possible options for a symbol - a variable

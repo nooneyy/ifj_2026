@@ -8,13 +8,13 @@
 
 // SELECTED VARIANT: TRP-izp (hash-table implementation with open addressing)
 
+#ifndef SYMTABLE_H
+#define SYMTABLE_H
+
 #include "return.h"
 #include "symbol.h"
 #include <stdbool.h>
 #include <stddef.h>
-
-#ifndef SYMTABLE_H
-#define SYMTABLE_H
 
 /**
  * @brief Enum describing the possible states of hashtable/symtable slots
