@@ -179,8 +179,8 @@ void symtable_insert(Symtable *symtable, Symbol *symbol) {
     return;
   }
 
-  if (symtable->size == symtable->capacity) {
-    // todo if fails
+  if (symtable->size * 4 >= symtable->capacity * 3) {
+    // Enlarges the symtable if it is 75% full
     symtable_enlarge(symtable);
   }
 
