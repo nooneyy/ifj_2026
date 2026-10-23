@@ -9,6 +9,9 @@
 #include <stdlib.h>
 
 void token_free(Token *token) {
-  free(token->token_content);
-  token->token_content = NULL;
+  if (token->type == TOKEN_STRING || token->type == TOKEN_ID) {
+    free(token->content.string);
+  }
+
+  token->content.string = NULL;
 }

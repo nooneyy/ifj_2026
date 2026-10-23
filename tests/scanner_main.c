@@ -132,7 +132,7 @@ static void print_string(const char *str) {
  * @token: token to print
  *
  * Prints the token's type name, followed by its value
- * for tokens that carry token_content (ID, INT, DOUBLE, STRING).
+ * for tokens that carry content (ID, INT, DOUBLE, STRING).
  * DOUBLE is printed readable (%g) and exact (%a) in parentheses.
  */
 static void print_token(const Token *token) {
@@ -140,26 +140,26 @@ static void print_token(const Token *token) {
 
   switch (token->type) {
   case TOKEN_ID:
-    (void)printf(" %s", (const char *)token->token_content);
+    (void)printf(" %s", token->content.string);
     break;
 
   case TOKEN_INT:
-    (void)printf(" %lld", *(const long long *)token->token_content);
+    (void)printf(" %lld", token->content.int_val);
     break;
 
   case TOKEN_DOUBLE: {
-    double d = *(const double *)token->token_content;
+    double d = token->content.dbl_val;
     (void)printf(" %g (%a)", d, d);
     break;
   }
 
   case TOKEN_STRING:
     (void)putchar(' ');
-    print_string((const char *)token->token_content);
+    print_string(token->content.string);
     break;
 
   default:
-    break; // tokens without token_content
+    break; // tokens without content
   }
 
   if (token->lf_before) {
@@ -181,7 +181,7 @@ int main(int argc, char **argv) {
   }
 
   Scanner sc = scanner_init(src);
-  Token token = {.type = TOKEN_EOF, .lf_before = false, .token_content = NULL};
+  Token token = {.type = TOKEN_EOF, .lf_before = false};
   ReturnCodes rc = RETURN_SUCCESS;
 
   do {

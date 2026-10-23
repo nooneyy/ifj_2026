@@ -144,152 +144,38 @@ static TokenType id_or_keyword(const char *string) {
 }
 
 /**
- * double_ctor() - allocates space for a 64bit float
- * @d: pointer to allocate the memory to
- *
- * Allocates memory using malloc for a 64bit float (double).
- *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_INTERNAL in case of an error with allocation
- */
-static ReturnCodes double_ctor(double **d) {
-  *d = malloc(sizeof(double));
-  if (*d == NULL) {
-    return ERR_INTERNAL;
-  }
-  return RETURN_SUCCESS;
-}
-
-/**
- * string_to_double() - Converts a string to 64bit float
- * @num_str: string containing the double
- * @d: allocated space for the 64bit float
- *
- * Converting float value inside in a string format in num_str to
- * a 64bit float (double) using strtod function.
- *
- * Return: Returns RETURN_SUCCESS on success, otherwise ERR_LEX_ANA on
- * overflowing double value
- */
-static ReturnCodes string_to_double(const char *num_str, double *d) {
-  *d = strtod(num_str, NULL);
-
-  // Check for overflow that could violate spec (Double d = INF)
-  // todo: make test for this later
-  if (isinf(*d)) {
-    return ERR_LEX_ANA;
-  }
-
-  return RETURN_SUCCESS;
-}
-
-/**
  * double_to_token() - Converting a double from DynStr to completed token
  * @str: DynStr containing the double
- * @token: token to fill with type and token_content
- *
- * Lets double_ctor allocate memory for a 64bit float,
- * then lets string_to_double convert value from str
- * to the allocated 64bit float.
- * Finally writes that value into token_content, sets type of token
- * and frees str.
- * str is freed in every case, even in case of an error.
+ * @token: token to fill with type and content
  *
  * Return: Returns RETURN_SUCCESS in case of a success
  *         Returns ERR_LEX_ANA on double overflow
- *         Returns ERR_INTERNAL in case one of the function fails
  */
 static ReturnCodes double_to_token(DynStr *str, Token *token) {
-  ReturnCodes rc = RETURN_SUCCESS;
+  double d = strtod(str->data, NULL);
+  dynstr_free(str);
 
-  double *d = NULL;
-  rc = double_ctor(&d);
-  if (rc != RETURN_SUCCESS) {
-    dynstr_free(str);
-    return rc;
-  }
-
-  rc = string_to_double(str->data, d);
-  if (rc != RETURN_SUCCESS) {
-    free(d);
-    dynstr_free(str);
-    return rc;
+  // Check for overflow that could violate spec (Double d = INF)
+  if (isinf(d)) {
+    return ERR_LEX_ANA;
   }
 
   token->type = TOKEN_DOUBLE;
-  token->token_content = d;
-  d = NULL;
-  dynstr_free(str);
+  token->content.dbl_val = d;
 
-  return RETURN_SUCCESS;
-}
-
-/**
- * int_ctor() - allocates space for a 64bit integer
- * @i: pointer to allocate the memory to
- *
- * Allocates memory using malloc for a 64bit integer (long long).
- *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_INTERNAL in case of an error with allocation
- */
-static ReturnCodes int_ctor(long long **i) {
-  *i = malloc(sizeof(long long));
-  if (*i == NULL) {
-    return ERR_INTERNAL;
-  }
-  return RETURN_SUCCESS;
-}
-
-/**
- * string_to_int() - Converts a string to 64bit int
- * @num_str: string containing the int
- * @i: allocated space for the 64bit int
- *
- * Converting int value inside in a string format in num_str to
- * a 64bit int (long long) using strtoll function.
- *
- * Return: Returns RETURN_SUCCESS
- */
-static ReturnCodes string_to_int(const char *num_str, long long *i) {
-  *i = strtoll(num_str, NULL, 10);
   return RETURN_SUCCESS;
 }
 
 /**
  * int_to_token() - Converting an int from DynStr to completed token
  * @str: DynStr containing the int
- * @token: token to fill with type and token_content
+ * @token: token to fill with type and content
  *
- * Lets int_ctor allocate memory for a 64bit int,
- * then lets string_to_int convert value from str
- * to the allocated 64bit int.
- * Finally writes that value into token_content, sets type of token
- * and frees str.
- * str is freed in every case, even in case of an error.
- *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_INTERNAL in case one of the function fails
+ * Return: Always returns RETURN_SUCCESS
  */
 static ReturnCodes int_to_token(DynStr *str, Token *token) {
-  ReturnCodes rc = RETURN_SUCCESS;
-
-  long long *i = NULL; // 64bit int because of the IFJ26code int definition
-  rc = int_ctor(&i);
-  if (rc != RETURN_SUCCESS) {
-    dynstr_free(str);
-    return rc;
-  }
-
-  rc = string_to_int(str->data, i);
-  if (rc != RETURN_SUCCESS) {
-    free(i);
-    dynstr_free(str);
-    return rc;
-  }
-
   token->type = TOKEN_INT;
-  token->token_content = i;
+  token->content.int_val = strtoll(str->data, NULL, 10);
   dynstr_free(str);
 
   return RETURN_SUCCESS;
@@ -431,16 +317,16 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
 
 /**
  * scanner_fsm() - reading source file and creating a token
- * @token_to_fill: token to fill with type and token_content
+ * @token_to_fill: token to fill with type and content
  * @sc:            scanner struct filled with scanner's current state
  *
  * Reads sc->src char by char and moves through the FSM states
  * until the whole token is read and filled.
  * First char after the token is returned to sc->src
  * by ungetc() for the next token to start with it.
- * For tokens that need token_content (ID, INT, STRING, DOUBLE),
+ * For tokens that need content (ID, INT, STRING, DOUBLE),
  * str (DynStr) is filled first. ID and STRING hand str's memory
- * over to token_content, INT and DOUBLE convert it to a number.
+ * over to content, INT and DOUBLE convert it to a number.
  * In every other case, str is freed.
  *
  * Return: Returns RETURN_SUCCESS in case of a success
@@ -448,7 +334,7 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
  *         Returns ERR_INTERNAL in case of an internal error
  */
 static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
-  token_to_fill->token_content = NULL; // tokens without content keep NULL
+  token_to_fill->content.string = NULL; // tokens without content keep NULL
   token_to_fill->lf_before =
       false; // By default, no LF was read for a new token
 
@@ -653,7 +539,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (token_to_fill->type != TOKEN_ID) {
           dynstr_free(&str);
         } else {
-          token_to_fill->token_content = dynstr_take(&str); // token owns it now
+          token_to_fill->content.string =
+              dynstr_take(&str); // token owns it now
         }
         return RETURN_SUCCESS;
       }
@@ -704,11 +591,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        rc = int_to_token(&str, token_to_fill);
-        if (rc != RETURN_SUCCESS) {
-          return rc;
-        }
-        return RETURN_SUCCESS;
+        return int_to_token(&str, token_to_fill);
       }
       break;
 
@@ -765,11 +648,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        rc = double_to_token(&str, token_to_fill);
-        if (rc != RETURN_SUCCESS) {
-          return rc;
-        }
-        return RETURN_SUCCESS;
+        return double_to_token(&str, token_to_fill);
       } else {
         if (isalpha(c)) {
           // A unrecognized char after number -> lexical error
@@ -777,11 +656,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        rc = double_to_token(&str, token_to_fill);
-        if (rc != RETURN_SUCCESS) {
-          return rc;
-        }
-        return RETURN_SUCCESS;
+        return double_to_token(&str, token_to_fill);
       }
       break;
 
@@ -852,11 +727,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        rc = double_to_token(&str, token_to_fill);
-        if (rc != RETURN_SUCCESS) {
-          return rc;
-        }
-        return RETURN_SUCCESS;
+        return double_to_token(&str, token_to_fill);
       } else {
         if (isalpha(c)) {
           // Unrecognized char after suffix -> lexical error
@@ -864,11 +735,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        rc = double_to_token(&str, token_to_fill);
-        if (rc != RETURN_SUCCESS) {
-          return rc;
-        }
-        return RETURN_SUCCESS;
+        return double_to_token(&str, token_to_fill);
       }
       break;
 
@@ -931,11 +798,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        rc = int_to_token(&str, token_to_fill);
-        if (rc != RETURN_SUCCESS) {
-          return rc;
-        }
-        return RETURN_SUCCESS;
+        return int_to_token(&str, token_to_fill);
       }
       break;
 
@@ -1112,7 +975,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else {
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_STRING;
-        token_to_fill->token_content = dynstr_take(&str);
+        token_to_fill->content.string = dynstr_take(&str);
         return RETURN_SUCCESS;
       }
       break;
@@ -1120,7 +983,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_STR:
       if (c == '"') {
         token_to_fill->type = TOKEN_STRING;
-        token_to_fill->token_content = dynstr_take(&str);
+        token_to_fill->content.string = dynstr_take(&str);
         return RETURN_SUCCESS;
       }
 
@@ -1197,7 +1060,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           }
         }
         token_to_fill->type = TOKEN_STRING;
-        token_to_fill->token_content = dynstr_take(&str);
+        token_to_fill->content.string = dynstr_take(&str);
         return RETURN_SUCCESS;
       }
       if (c == EOF) {
