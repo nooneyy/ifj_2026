@@ -18,8 +18,8 @@
 #include <string.h>
 
 /**
-  @brief Macro for appending a character to a DynStr and returning with an error
-  code if it fails.
+ * @brief Macro for appending a character to a DynStr and returning with an
+ * error code if it fails.
  */
 #define APPEND_OR_ERROR(str, c)                                                \
   do {                                                                         \
@@ -31,88 +31,53 @@
   } while (0)
 
 /**
- * enum FsmState - listing of all possible FSM states
- *
- * @STATE_IDLE:               idle state - initial state
- * @STATE_LINE_START:         start of a line - indentation scanning state
- * @STATE_ID:                 ID scanning state
- * @STATE_AT:                 "@" is first in the sequence
- * @STATE_UND:                "_" is first in the sequence
- * @STATE_STR:                string scanning state
- * @STATE_STR_ML:             multiline string scanning state
- * @STATE_1_QUOT:             " is first in the sequence
- * @STATE_2_QUOT:             "" is first in the sequence
- * @STATE_STR_ML_1_QUOT:      " in multiline scanning state
- * @STATE_STR_ML_2_QUOT:      "" in multiline scanning state
- * @STATE_INT:                int scanning state
- * @STATE_INT_UNDER:          "_" appeared inside an int
- * @STATE_DOUBLE:             double scanning state
- * @STATE_DOUBLE_UNDER:       "_" appeared inside a double
- * @STATE_DOT:                "." appeared after an int
- * @STATE_DOT_START:          "." is first in the sequence
- * @STATE_E:                  "e" or "E" appeared inside a number
- * @STATE_E_SIGN:             "+" or "-" follows right after "e" or "E"
- * @STATE_EXP:                exponent scanning state
- * @STATE_EXP_UNDER:          "_" appeared inside an exponent
- * @STATE_ZERO:               "0" is first in the sequence
- * @STATE_ZERO_INT:           "0" followed with int number
- * @STATE_SLASH:              "/" is first in the sequence
- * @STATE_COMM_LINE:          line comment scanning state
- * @STATE_COMM_BLOCK:         block comment scanning state
- * @STATE_COMM_BLOCK_STAR:    "*" in block comment scanning state
- * @STATE_ASSIGN:             "=" is first in the sequence
- * @STATE_EXCL:               "!" is first in the sequence
- * @STATE_LOW:                "<" is first in the sequence
- * @STATE_GRE:                ">" is first in the sequence
- * @STATE_PAREN_NEWLINE:      newline inside of parenthesis
+ * @brief Listing of all possible FSM states
  */
 typedef enum FsmState {
-  STATE_IDLE,
-  STATE_LINE_START,
-  STATE_ID,
-  STATE_AT,
-  STATE_UND,
-  STATE_STR,
-  STATE_STR_ML,
-  STATE_1_QUOT,
-  STATE_2_QUOT,
-  STATE_STR_ML_1_QUOT,
-  STATE_STR_ML_2_QUOT,
-  STATE_INT,
-  STATE_INT_UNDER,
-  STATE_DOUBLE,
-  STATE_DOUBLE_UNDER,
-  STATE_DOT,
-  STATE_DOT_START,
-  STATE_E,
-  STATE_E_SIGN,
-  STATE_EXP,
-  STATE_EXP_UNDER,
-  STATE_ZERO,
-  STATE_ZERO_INT,
-  STATE_SLASH,
-  STATE_COMM_LINE,
-  STATE_COMM_BLOCK,
-  STATE_COMM_BLOCK_STAR,
-  STATE_ASSIGN,
-  STATE_EXCL,
-  STATE_LOW,
-  STATE_GRE,
-  STATE_PAREN_NEWLINE,
+  STATE_IDLE,            // Idle state - initial state
+  STATE_LINE_START,      // Start of a line - indentation scanning state
+  STATE_ID,              // ID scanning state
+  STATE_AT,              // "@" is first in the sequence
+  STATE_UND,             // "_" is first in the sequence
+  STATE_STR,             // String scanning state
+  STATE_STR_ML,          // Multiline string scanning state
+  STATE_1_QUOT,          // " is first in the sequence
+  STATE_2_QUOT,          // "" is first in the sequence
+  STATE_STR_ML_1_QUOT,   // " in multiline scanning state
+  STATE_STR_ML_2_QUOT,   // "" in multiline scanning state
+  STATE_INT,             // Int scanning state
+  STATE_INT_UNDER,       // "_" appeared inside an int
+  STATE_DOUBLE,          // Double scanning state
+  STATE_DOUBLE_UNDER,    // "_" appeared inside a double
+  STATE_DOT,             // "." appeared after an int
+  STATE_DOT_START,       // "." is first in the sequence
+  STATE_E,               // "e" or "E" appeared inside a number
+  STATE_E_SIGN,          // "+" or "-" follows right after "e" or "E"
+  STATE_EXP,             // Exponent scanning state
+  STATE_EXP_UNDER,       // "_" appeared inside an exponent
+  STATE_ZERO,            // "0" is first in the sequence
+  STATE_ZERO_INT,        // "0" followed with int number
+  STATE_SLASH,           // "/" is first in the sequence
+  STATE_COMM_LINE,       // Line comment scanning state
+  STATE_COMM_BLOCK,      // Block comment scanning state
+  STATE_COMM_BLOCK_STAR, // "*" in block comment scanning state
+  STATE_ASSIGN,          // "=" is first in the sequence
+  STATE_EXCL,            // "!" is first in the sequence
+  STATE_LOW,             // "<" is first in the sequence
+  STATE_GRE,             // ">" is first in the sequence
+  STATE_PAREN_NEWLINE,   // Newline inside of parenthesis
 } FsmState;
 
 /**
- * struct KeyWord - For comparing strings from source with keywords
- * @text: keyword as a string for comparison
- * @type: respective token type for the keyword
+ * @brief For comparing strings from source with keywords
  */
 typedef struct KeyWord {
-  const char *text;
-  TokenType type;
+  const char *text; // Keyword as a string for comparison
+  TokenType type;   // Respective token type for the keyword
 } KeyWord;
 
-/*
- * KEYWORDS - Initialization of all keywords and it's respective type
+/**
+ * @brief Initialization of all keywords and it's respective type
  *
  * Used by id_or_keyword to find out whether a string is
  * a keyword or not.
@@ -137,14 +102,14 @@ Scanner scanner_init(FILE *src_file) {
 }
 
 /**
- * id_or_keyword() - checks whether a string is unique or a keyword
- * @string: string to check
+ * @brief Checks whether a string is unique or a keyword
  *
  * Takes the string and compares it with each keyword
  * from KEYWORDS[].
-
- * Return: Returns TokenType - ID if it's not a keyword
- *                           - KW_* if it is a keyword
+ *
+ * @param string String to check
+ * @return TokenType - ID if it's not a keyword
+ *                   - KW_* if it is a keyword
  */
 static TokenType id_or_keyword(const char *string) {
   size_t len = sizeof(KEYWORDS) / sizeof(KEYWORDS[0]);
@@ -157,12 +122,11 @@ static TokenType id_or_keyword(const char *string) {
 }
 
 /**
- * double_to_token() - Converting a double from DynStr to completed token
- * @str: DynStr containing the double
- * @token: token to fill with type and content
- *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_LEX_ANA on double overflow
+ * @brief Converting a double from DynStr to completed token
+ * @param str DynStr containing the double
+ * @param token Token to fill with type and content
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_LEX_ANA on double overflow
  */
 static ReturnCodes double_to_token(DynStr *str, Token *token) {
   double d = strtod(str->data, NULL);
@@ -180,11 +144,10 @@ static ReturnCodes double_to_token(DynStr *str, Token *token) {
 }
 
 /**
- * int_to_token() - Converting an int from DynStr to completed token
- * @str: DynStr containing the int
- * @token: token to fill with type and content
- *
- * Return: Always returns RETURN_SUCCESS
+ * @brief Converting an int from DynStr to completed token
+ * @param str DynStr containing the int
+ * @param token Token to fill with type and content
+ * @return Always returns RETURN_SUCCESS
  */
 static ReturnCodes int_to_token(DynStr *str, Token *token) {
   token->type = TOKEN_INT;
@@ -195,18 +158,18 @@ static ReturnCodes int_to_token(DynStr *str, Token *token) {
 }
 
 /**
- * escape_seq_switch() - escape sequence processing
- * @c:   character that follows '\'
- * @s:   DynStr to store the string to
+ * @brief Escape sequence processing
  *
  * A switch determining whether the character after '\' is part of
  * an escape sequence or not.
  * If so, uses the escape sequence.
  * If not, returns error
  *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_LEX_ANA in case of an invalid escape sequence
- *         Returns ERR_INTERNAL in case of an internal error
+ * @param c Character that follows '\'
+ * @param s DynStr to store the string to
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_LEX_ANA in case of an invalid escape sequence
+ *         ERR_INTERNAL in case of an internal error
  */
 static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
   ReturnCodes rc = RETURN_SUCCESS;
@@ -248,11 +211,7 @@ static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
 }
 
 /**
- * count_indent() - counting indentation at the start of a line
- * @src:          source file to read from
- * @c:            first character of the line
- * @indent_cnt:   number of spaces, incremented for every space
- * @tab_appeared: set to true if a tab appeared in the indentation
+ * @brief Counting indentation at the start of a line
  *
  * Reads spaces and tabs from src, starting with c.
  * Only spaces count into indent_cnt, a tab only sets tab_appeared,
@@ -260,7 +219,11 @@ static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
  * The first character after the indentation is NOT returned to src,
  * caller decides what to do with it.
  *
- * Return: Returns the first character after the indentation
+ * @param src Source file to read from
+ * @param c First character of the line
+ * @param indent_cnt Number of spaces, incremented for every space
+ * @param tab_appeared Set to true if a tab appeared in the indentation
+ * @return The first character after the indentation
  */
 static int count_indent(FILE *src, int c, int *indent_cnt, bool *tab_appeared) {
   while (c == ' ' || c == '\t') {
@@ -275,11 +238,7 @@ static int count_indent(FILE *src, int c, int *indent_cnt, bool *tab_appeared) {
 }
 
 /**
- * indent_compare() - comparing new line's indentation with open levels
- * @sc:          scanner struct with the open indentation levels
- * @indent_cnt:  number of spaces at the start of the new line
- * @token:       token to fill with INDENT or DEDENT
- * @token_ready: set to true if token was filled, false if not
+ * @brief Comparing new line's indentation with open levels
  *
  * Compares indent_cnt with the innermost open level.
  * If indent_cnt is deeper, opens a new level and fills INDENT.
@@ -287,9 +246,13 @@ static int count_indent(FILE *src, int c, int *indent_cnt, bool *tab_appeared) {
  * If it is shallower, closes levels until indent_cnt is reached
  * and fills one DEDENT, the rest is stored in sc->dedents_pending.
  *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_LEX_ANA if indent_cnt is not an open level
- *         Returns ERR_INTERNAL if there are too many indentation levels
+ * @param sc Scanner struct with the open indentation levels
+ * @param indent_cnt Number of spaces at the start of the new line
+ * @param token Token to fill with INDENT or DEDENT
+ * @param token_ready Set to true if token was filled, false if not
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_LEX_ANA if indent_cnt is not an open level
+ *         ERR_INTERNAL if there are too many indentation levels
  */
 static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
                                   bool *token_ready) {
@@ -329,9 +292,7 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
 }
 
 /**
- * scanner_fsm() - reading source file and creating a token
- * @token_to_fill: token to fill with type and content
- * @sc:            scanner struct filled with scanner's current state
+ * @brief Reading source file and creating a token
  *
  * Reads sc->src char by char and moves through the FSM states
  * until the whole token is read and filled.
@@ -342,9 +303,11 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
  * over to content, INT and DOUBLE convert it to a number.
  * In every other case, str is freed.
  *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_LEX_ANA in case of a lexical error
- *         Returns ERR_INTERNAL in case of an internal error
+ * @param token_to_fill Token to fill with type and content
+ * @param sc Scanner struct filled with scanner's current state
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_LEX_ANA in case of a lexical error
+ *         ERR_INTERNAL in case of an internal error
  */
 static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   token_to_fill->content.string = NULL; // tokens without content keep NULL

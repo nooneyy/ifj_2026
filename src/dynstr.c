@@ -11,8 +11,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/*
- * DYNSTR_DEFAULT_CAP - Initial capacity of DynStr
+/**
+ * @brief Initial capacity of DynStr
  *
  * Used for the first allocation in dynstr_init().
  * Allocation adds 1 byte for '\0',
@@ -21,8 +21,7 @@
 static const size_t DYNSTR_DEFAULT_CAP = 31;
 
 /**
- * dynstr_realloc() - reallocating DynStr to double the bytes
- * @s: DynStr to grow
+ * @brief Reallocating DynStr to double the bytes
  *
  * Using realloc to double the allocated bytes of s->data.
  * New capacity is (s->cap * 2) + 1, so the allocation
@@ -31,8 +30,9 @@ static const size_t DYNSTR_DEFAULT_CAP = 31;
  * In case of an error, s stays unchanged and is NOT freed,
  * the owner of s has to call dynstr_free().
  *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_INTERNAL in case of an error with reallocation
+ * @param s DynStr to grow
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_INTERNAL in case of an error with reallocation
  */
 static ReturnCodes dynstr_realloc(DynStr *s) {
   // new allocation would be (s->cap * 2) + 2 bytes, it can't overflow size_t

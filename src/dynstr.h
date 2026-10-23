@@ -12,37 +12,32 @@
 #include <stddef.h>
 
 /**
- * struct DynStr - String that grows itself when it gets full
- * @data: Characters of the string, always terminated with '\0'
- *        NULL after dynstr_take() or dynstr_free()
- * @len:  Number of characters in data, '\0' not included
- * @cap:  Number of characters that fit into data, '\0' not included
- *        data is always allocated with cap + 1 bytes
+ * @brief String that grows itself when it gets full
  */
 typedef struct DynStr {
-  char *data;
-  size_t len;
-  size_t cap;
+  char *data; // Characters of the string, always terminated with '\0'
+              // NULL after dynstr_take() or dynstr_free()
+  size_t len; // Number of characters in data, '\0' not included
+  size_t cap; // Number of characters that fit into data, '\0' not included
+              // data is always allocated with cap + 1 bytes
 } DynStr;
 
 /**
- * dynstr_init() - allocating an empty DynStr
- * @s: DynStr to initialize
+ * @brief Allocating an empty DynStr
  *
  * Has to be called before any other dynstr function.
  * Allocates data and makes it an empty string ("").
  * In case of an error, s is left empty (data is NULL),
  * so calling dynstr_free() on it is still safe.
  *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_INTERNAL in case of an error with allocation
+ * @param s DynStr to initialize
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_INTERNAL in case of an error with allocation
  */
 ReturnCodes dynstr_init(DynStr *s);
 
 /**
- * dynstr_append() - appending a char to the end of DynStr
- * @s: DynStr to append to
- * @c: char to append, should not be '\0'
+ * @brief Appending a char to the end of DynStr
  *
  * If s is full, calls dynstr_realloc() first.
  * '\0' is added after c automatically,
@@ -50,41 +45,45 @@ ReturnCodes dynstr_init(DynStr *s);
  * In case of an error, s stays unchanged and is NOT freed,
  * the owner of s has to call dynstr_free().
  *
- * Return: Returns RETURN_SUCCESS in case of a success
- *         Returns ERR_INTERNAL in case of an error with reallocation
+ * @param s DynStr to append to
+ * @param c Char to append, should not be '\0'
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_INTERNAL in case of an error with reallocation
  */
 ReturnCodes dynstr_append(DynStr *s, int c);
 
 /**
- * dynstr_clear() - emptying DynStr without freeing it
- * @s: DynStr to clear
+ * @brief Emptying DynStr without freeing it
  *
  * Sets data to an empty string ("") and keeps the allocated memory,
  * so s can be filled again without a new allocation.
+ *
+ * @param s DynStr to clear
  */
 void dynstr_clear(DynStr *s);
 
 /**
- * dynstr_take() - handing data over to a new owner
- * @s: DynStr to take data from
+ * @brief Handing data over to a new owner
  *
  * The caller becomes the owner of the returned string
  * and is responsible for freeing it.
  * s is left empty (data is NULL), dynstr_free() on it is safe.
  * Before using s again, dynstr_init() has to be called.
  *
- * Return: Returns pointer to the string
- *         Returns NULL if s is already empty
+ * @param s DynStr to take data from
+ * @return Pointer to the string
+ *         NULL if s is already empty
  */
 char *dynstr_take(DynStr *s);
 
 /**
- * dynstr_free() - freeing DynStr's data
- * @s: DynStr to free
+ * @brief Freeing DynStr's data
  *
  * Frees data and leaves s empty (data is NULL).
  * Safe to call more than once and after dynstr_take().
  * Before using s again, dynstr_init() has to be called.
+ *
+ * @param s DynStr to free
  */
 void dynstr_free(DynStr *s);
 
