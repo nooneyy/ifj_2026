@@ -8,6 +8,17 @@
 #ifndef RETURN_H
 #define RETURN_H
 
+/**
+ * @brief Prints error message to stderr
+ *
+ * Prints "ERROR on line {line}: {string}\n" to stderr
+ *
+ * @param message Error message to be printed
+ * @param line    Line the error is on
+ *                0 if no line needed
+ */
+void print_error(const char *message, unsigned int line);
+
 typedef enum ReturnCodes {
 
   /**
