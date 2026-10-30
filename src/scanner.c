@@ -97,7 +97,7 @@ static const KeyWord KEYWORDS[] = {
 };
 
 Scanner scanner_init(FILE *src_file) {
-  Scanner to_fill = {.src = src_file, .at_line_start = true};
+  Scanner to_fill = {.src = src_file, .at_line_start = true, .line = 1};
   return to_fill;
 }
 
@@ -125,10 +125,12 @@ static TokenType id_or_keyword(const char *string) {
  * @brief Converting a double from DynStr to completed token
  * @param str DynStr containing the double
  * @param token Token to fill with type and content
+ * @param line Current line from the scanner's state
  * @return RETURN_SUCCESS in case of a success
  *         ERR_LEX_ANA on double overflow
  */
-static ReturnCodes double_to_token(DynStr *str, Token *token) {
+static ReturnCodes double_to_token(DynStr *str, Token *token,
+                                   unsigned int line) {
   double d = strtod(str->data, NULL);
   dynstr_free(str);
 
@@ -139,6 +141,7 @@ static ReturnCodes double_to_token(DynStr *str, Token *token) {
 
   token->type = TOKEN_DOUBLE;
   token->content.dbl_val = d;
+  token->line = line;
 
   return RETURN_SUCCESS;
 }
@@ -147,11 +150,13 @@ static ReturnCodes double_to_token(DynStr *str, Token *token) {
  * @brief Converting an int from DynStr to completed token
  * @param str DynStr containing the int
  * @param token Token to fill with type and content
+ * @param line Current line from the scanner's state
  * @return Always returns RETURN_SUCCESS
  */
-static ReturnCodes int_to_token(DynStr *str, Token *token) {
+static ReturnCodes int_to_token(DynStr *str, Token *token, unsigned int line) {
   token->type = TOKEN_INT;
   token->content.int_val = strtoll(str->data, NULL, 10);
+  token->line = line;
   dynstr_free(str);
 
   return RETURN_SUCCESS;
@@ -266,6 +271,7 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
     sc->indent_depth++;
     sc->indent_levels[sc->indent_depth] = indent_cnt;
     token->type = TOKEN_INDENT;
+    token->line = sc->line;
     *token_ready = true;
     return RETURN_SUCCESS;
   }
@@ -287,6 +293,7 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
   }
   sc->dedents_pending--;
   token->type = TOKEN_DEDENT;
+  token->line = sc->line;
   *token_ready = true;
   return RETURN_SUCCESS;
 }
@@ -358,6 +365,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
          */
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DEDENT;
+        token_to_fill->line = sc->line;
         sc->dedents_pending--;
         return RETURN_SUCCESS;
       }
@@ -406,6 +414,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return rc;
         }
       } else if (c == '\n') {
+        sc->line++;
         if (sc->parenth_depth == 0) {
           if (indent_pending) {
             // means that the line only contained a comment
@@ -418,6 +427,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
             break;
           }
           token_to_fill->type = TOKEN_EOL;
+          token_to_fill->line = sc->line - 1;
           sc->at_line_start = true;
           return RETURN_SUCCESS;
         }
@@ -429,12 +439,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (c == '(') {
         sc->parenth_depth++;
         token_to_fill->type = TOKEN_OPEN_PAR;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == ')') {
         if (sc->parenth_depth > 0) {
           sc->parenth_depth--;
         }
         token_to_fill->type = TOKEN_CLOSE_PAR;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == '!') {
         state = STATE_EXCL;
@@ -450,12 +462,15 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_SLASH;
       } else if (c == ';') {
         token_to_fill->type = TOKEN_SEMICOLON;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == ',') {
         token_to_fill->type = TOKEN_COMMA;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == ':') {
         token_to_fill->type = TOKEN_COLON;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == EOF) {
         if (sc->indent_depth > 0) {
@@ -464,15 +479,19 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         } else {
           token_to_fill->type = TOKEN_EOF;
         }
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == '*') {
         token_to_fill->type = TOKEN_MUL;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == '+') {
         token_to_fill->type = TOKEN_PLUS;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == '-') {
         token_to_fill->type = TOKEN_MINUS;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (isspace(c)) {
         break;
@@ -494,6 +513,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           token_to_fill->content.string =
               dynstr_take(&str); // token owns it now
         }
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
       break;
@@ -527,7 +547,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        return int_to_token(&str, token_to_fill);
+        return int_to_token(&str, token_to_fill, sc->line);
       }
       break;
 
@@ -568,7 +588,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        return double_to_token(&str, token_to_fill);
+        return double_to_token(&str, token_to_fill, sc->line);
       } else {
         if (isalpha(c)) {
           // A unrecognized char after number -> lexical error
@@ -576,7 +596,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        return double_to_token(&str, token_to_fill);
+        return double_to_token(&str, token_to_fill, sc->line);
       }
       break;
 
@@ -627,7 +647,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        return double_to_token(&str, token_to_fill);
+        return double_to_token(&str, token_to_fill, sc->line);
       } else {
         if (isalpha(c)) {
           // Unrecognized char after suffix -> lexical error
@@ -635,7 +655,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        return double_to_token(&str, token_to_fill);
+        return double_to_token(&str, token_to_fill, sc->line);
       }
       break;
 
@@ -657,6 +677,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         (void)ungetc(c, sc->src);
         dynstr_free(&str);
         token_to_fill->type = TOKEN_DOT;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
       break;
@@ -678,7 +699,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
-        return int_to_token(&str, token_to_fill);
+        return int_to_token(&str, token_to_fill, sc->line);
       }
       break;
 
@@ -701,6 +722,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_EXCL:
       if (c == '=') {
         token_to_fill->type = TOKEN_NOT_EQ;
+        token_to_fill->line = sc->line;
       } else {
         return ERR_LEX_ANA;
       }
@@ -713,6 +735,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_ASSIGN;
       }
+      token_to_fill->line = sc->line;
       return RETURN_SUCCESS;
 
     case STATE_GRE:
@@ -722,6 +745,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_GRE;
       }
+      token_to_fill->line = sc->line;
       return RETURN_SUCCESS;
 
     case STATE_LOW:
@@ -731,6 +755,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_LOW;
       }
+      token_to_fill->line = sc->line;
       return RETURN_SUCCESS;
 
     case STATE_AT:
@@ -743,6 +768,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (isspace(c) || c == '/' || c == EOF) {
           (void)ungetc(c, sc->src);
           token_to_fill->type = TOKEN_AT_MAIN;
+          token_to_fill->line = sc->line;
           return RETURN_SUCCESS;
         }
       }
@@ -757,6 +783,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (!must_follow_eol) {
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DIV;
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else {
         return ERR_LEX_ANA;
@@ -771,8 +798,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       break;
 
     case STATE_COMM_BLOCK:
-      if (c == '\n' && !comm_newline_flag) {
-        comm_newline_flag = true;
+      if (c == '\n') {
+        sc->line++;
+        if (!comm_newline_flag) {
+          comm_newline_flag = true;
+        }
       } else if (c == '*') {
         state = STATE_COMM_BLOCK_STAR;
       } else if (c == '/') {
@@ -840,6 +870,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_STRING;
         token_to_fill->content.string = dynstr_take(&str);
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
       break;
@@ -848,6 +879,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == '"') {
         token_to_fill->type = TOKEN_STRING;
         token_to_fill->content.string = dynstr_take(&str);
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
 
@@ -875,6 +907,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else {
+        if (c == '\n') {
+          sc->line++;
+        }
         APPEND_OR_ERROR(str, c);
       }
       break;
@@ -886,6 +921,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else {
+        if (c == '\n') {
+          sc->line++;
+        }
         APPEND_OR_ERROR(str, '"');
         APPEND_OR_ERROR(str, c);
         state = STATE_STR_ML;
@@ -905,6 +943,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         token_to_fill->type = TOKEN_STRING;
         token_to_fill->content.string = dynstr_take(&str);
+        token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
       if (c == EOF) {
@@ -913,6 +952,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       }
       for (int i = 0; i < 2; i++) {
         APPEND_OR_ERROR(str, '"');
+      }
+      if (c == '\n') {
+        sc->line++;
       }
       APPEND_OR_ERROR(str, c);
       state = STATE_STR_ML;
@@ -928,6 +970,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         break;
       }
       if (c == '\n') {
+        sc->line++;
         tab_appeared = false;
         indent_cnt = 0;
         break;
@@ -956,6 +999,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_PAREN_NEWLINE:
       c = count_indent(sc->src, c, &indent_cnt, &tab_appeared);
       if (c == '\n') {
+        sc->line++;
         tab_appeared = false;
         indent_cnt = 0;
         break;
