@@ -136,6 +136,7 @@ static ReturnCodes double_to_token(DynStr *str, Token *token,
 
   // Check for overflow that could violate spec (Double d = INF)
   if (isinf(d)) {
+    print_error("Overflow of type Double.", line);
     return ERR_LEX_ANA;
   }
 
@@ -176,7 +177,8 @@ static ReturnCodes int_to_token(DynStr *str, Token *token, unsigned int line) {
  *         ERR_LEX_ANA in case of an invalid escape sequence
  *         ERR_INTERNAL in case of an internal error
  */
-static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
+static ReturnCodes escape_seq_switch(const int c, DynStr *s,
+                                     unsigned int line) {
   ReturnCodes rc = RETURN_SUCCESS;
   switch (c) {
   case '\\':
@@ -209,6 +211,7 @@ static ReturnCodes escape_seq_switch(const int c, DynStr *s) {
     break;
 
   default:
+    print_error("Use of an invalid escape sequence.", line);
     return ERR_LEX_ANA;
   }
 
@@ -266,6 +269,7 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
 
   if (indent_cnt > top) {
     if (sc->indent_depth + 1 == MAX_INDENT_LEVELS) {
+      print_error("Too many indentation levels.", sc->line);
       return ERR_INTERNAL;
     }
     sc->indent_depth++;
@@ -289,6 +293,7 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
   }
   if (sc->indent_levels[sc->indent_depth] != indent_cnt) {
     // indent_cnt is between 2 open levels and is not open by itself
+    print_error("New indentation level between 2 open levels.", sc->line);
     return ERR_LEX_ANA;
   }
   sc->dedents_pending--;
@@ -342,6 +347,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (must_follow_eol) {
         // for multiline block comments containing \n
         if (c != EOF && c != '/' && !isspace(c)) {
+          print_error("Missing end of line.", sc->line);
           return ERR_LEX_ANA;
         }
       }
@@ -496,6 +502,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (isspace(c)) {
         break;
       } else {
+        print_error("Unknown character.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -524,6 +531,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_ID;
       } else {
         dynstr_free(&str);
+        print_error("Unexpected character after '_'.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -544,6 +552,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (isalpha(c)) {
           // A unrecognized char after number -> lexical error
           dynstr_free(&str);
+          print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
@@ -557,6 +566,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_INT;
       } else {
         dynstr_free(&str);
+        print_error("Unexpected identifier after '_' in integer.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -567,6 +577,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_DOUBLE;
       } else {
         dynstr_free(&str);
+        print_error("Unexpected indentifier after '.' in a number.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -585,6 +596,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (isalnum(c) || c == '_') {
           // Unrecognized char after double def. -> lexical error
           dynstr_free(&str);
+          print_error("Unexpected character after 'd' suffix.", sc->line);
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
@@ -593,6 +605,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (isalpha(c)) {
           // A unrecognized char after number -> lexical error
           dynstr_free(&str);
+          print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
@@ -606,6 +619,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_DOUBLE;
       } else {
         dynstr_free(&str);
+        print_error("Unexpected character after '_' in a number.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -619,6 +633,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_E_SIGN;
       } else {
         dynstr_free(&str);
+        print_error("Missing exponent after 'e'.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -629,6 +644,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_EXP;
       } else {
         dynstr_free(&str);
+        print_error("Missing exponent after the exponent sign.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -644,6 +660,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (isalnum(c) || c == '_') {
           // Unrecognized char after suffix -> lexical error
           dynstr_free(&str);
+          print_error("Unexpected character after 'd' suffix.", sc->line);
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
@@ -652,6 +669,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (isalpha(c)) {
           // Unrecognized char after suffix -> lexical error
           dynstr_free(&str);
+          print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
@@ -665,6 +683,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_EXP;
       } else {
         dynstr_free(&str);
+        print_error("Unexpected character after '_' in a number.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -696,6 +715,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (isalpha(c) || c == '_') {
           // A unrecognized char after number -> lexical error
           dynstr_free(&str);
+          print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
         (void)ungetc(c, sc->src);
@@ -715,6 +735,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_E;
       } else {
         dynstr_free(&str);
+        print_error("Integer with a leading zero.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -724,6 +745,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_NOT_EQ;
         token_to_fill->line = sc->line;
       } else {
+        print_error("Expected '=' after '!'.", sc->line);
         return ERR_LEX_ANA;
       }
       return RETURN_SUCCESS;
@@ -772,6 +794,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return RETURN_SUCCESS;
         }
       }
+      print_error("Unknown annotation, expected '@main'.", sc->line);
       return ERR_LEX_ANA;
 
     case STATE_SLASH:
@@ -786,6 +809,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else {
+        print_error("Missing end of line.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -813,6 +837,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           (void)ungetc(c, sc->src);
         }
       } else if (c == EOF) {
+        print_error("Unterminated block comment.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
@@ -848,10 +873,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_2_QUOT;
       } else if (c == '\n' || c == EOF) {
         dynstr_free(&str);
+        print_error("Unterminated string.", sc->line);
         return ERR_LEX_ANA;
       } else if (c == '\\') {
         c = fgetc(sc->src);
-        rc = escape_seq_switch(c, &str);
+        rc = escape_seq_switch(c, &str, sc->line);
         if (rc != RETURN_SUCCESS) {
           dynstr_free(&str);
           return rc;
@@ -885,12 +911,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
       if (c == '\n' || c == EOF) {
         dynstr_free(&str);
+        print_error("Unterminated string.", sc->line);
         return ERR_LEX_ANA;
       }
 
       if (c == '\\') {
         c = fgetc(sc->src);
-        rc = escape_seq_switch(c, &str);
+        rc = escape_seq_switch(c, &str, sc->line);
         if (rc != RETURN_SUCCESS) {
           dynstr_free(&str);
           return rc;
@@ -905,6 +932,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_STR_ML_1_QUOT;
       } else if (c == EOF) {
         dynstr_free(&str);
+        print_error("Unterminated multiline string.", sc->line);
         return ERR_LEX_ANA;
       } else {
         if (c == '\n') {
@@ -919,6 +947,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_STR_ML_2_QUOT;
       } else if (c == EOF) {
         dynstr_free(&str);
+        print_error("Unterminated multiline string.", sc->line);
         return ERR_LEX_ANA;
       } else {
         if (c == '\n') {
@@ -948,6 +977,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       }
       if (c == EOF) {
         dynstr_free(&str);
+        print_error("Unterminated multiline string.", sc->line);
         return ERR_LEX_ANA;
       }
       for (int i = 0; i < 2; i++) {
@@ -981,6 +1011,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         break;
       }
       if (tab_appeared) {
+        print_error("Tab in indentation.", sc->line);
         return ERR_LEX_ANA;
       }
       // For everything else the indentation matters
@@ -1010,12 +1041,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         break; // EOF or a comment, nothing to check
       }
       if (tab_appeared) {
+        print_error("Tab in indentation.", sc->line);
         return ERR_LEX_ANA; // tab at the start of a non-empty line
       }
       if (c == ')') {
         break; // only ) can be on a lower indent level
       }
       if (indent_cnt <= sc->indent_levels[sc->indent_depth]) {
+        print_error("Not enough indentation inside parentheses.", sc->line);
         return ERR_LEX_ANA;
       }
       break;
