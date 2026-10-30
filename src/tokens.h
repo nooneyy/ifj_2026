@@ -86,6 +86,7 @@ typedef struct Token {
   bool lf_before; // True if a newline was skipped before this token (used for
                   // trailing commas)
   TokenContent content; // Content of the token (see TokenContent union)
+  unsigned int line;    // Line the token is located on
 } Token;
 
 /**
