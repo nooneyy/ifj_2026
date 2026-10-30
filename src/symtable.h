@@ -8,19 +8,21 @@
 
 // SELECTED VARIANT: TRP-izp (hash-table implementation with open addressing)
 
-#include "symbol.h"
-#include <stdbool.h>
-
 #ifndef SYMTABLE_H
 #define SYMTABLE_H
+
+#include "return.h"
+#include "symbol.h"
+#include <stdbool.h>
+#include <stddef.h>
 
 /**
  * @brief Enum describing the possible states of hashtable/symtable slots
  */
 typedef enum {
-  EMPTY,   // The slot is empty and we can insert into it
-  FILLED,  // The slot is filled with data
-  DELETED, // The slot's data was removed and it can be inserted into again
+  EMPTY = 0,   // The slot is empty and we can insert into it
+  FILLED = 1,  // The slot is filled with data
+  DELETED = 2, // The slot's data was removed and it can be inserted into again
 } STItemState;
 
 /**
@@ -36,10 +38,10 @@ typedef struct {
  *   @brief Struct of the entire symtable
  */
 typedef struct {
-  unsigned capacity; // The maximum amount of items the symtable can hold
-                     // (before resizing)
-  unsigned size;     // The current amount of filled slots
-  STItem *items;     // Array of symtable slots
+  size_t capacity; // The maximum amount of items the symtable can hold
+                   // (before resizing)
+  size_t size;     // The current amount of filled slots
+  STItem *items;   // Array of symtable slots
 } Symtable;
 
 /**
@@ -53,8 +55,10 @@ Symtable *symtable_init(void);
     @brief Function that inserts (or possibly replaces) a Symbol
     @param symtable A pointer to the Symtable struct
     @param symbol A pointer to an already instantiated Symbol
+    @return RETURN_SUCCESS if the insertion was successful, otherwise
+   ERR_INTERNAL if the symtable could not be enlarged
  */
-void symtable_insert(Symtable *symtable, Symbol *symbol);
+ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol);
 
 /**
     @brief Function that deletes a value specified by its

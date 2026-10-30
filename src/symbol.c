@@ -7,6 +7,7 @@
  */
 
 #include "symbol.h"
+#include "return.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,7 +21,6 @@ static char *copy_string(char *src) {
   char *dest = malloc((strlen(src) + 1) * sizeof(char));
 
   if (!dest) {
-    // todo error handling
     return NULL;
   }
 
@@ -34,14 +34,12 @@ Symbol *init_variable_symbol(char *name, DataType data_type,
   Symbol *new_sym = malloc(sizeof(Symbol));
 
   if (!new_sym) {
-    // todo error handling
     return NULL;
   }
 
   new_sym->name = copy_string(name);
 
   if (new_sym->name == NULL) {
-    // todo error handling
     free(new_sym);
     return NULL;
   }
@@ -60,14 +58,12 @@ Symbol *init_function_symbol(char *name, DataType return_type,
   Symbol *new_sym = malloc(sizeof(Symbol));
 
   if (!new_sym) {
-    // todo error handling
     return NULL;
   }
 
   new_sym->name = copy_string(name);
 
   if (new_sym->name == NULL) {
-    // todo error handling
     free(new_sym);
     return NULL;
   }
@@ -86,11 +82,10 @@ Symbol *init_function_symbol(char *name, DataType return_type,
   return new_sym;
 }
 
-void add_function_param(Symbol *function_sym, char *param_name,
-                        DataType param_data_type) {
+ReturnCodes add_function_param(Symbol *function_sym, char *param_name,
+                               DataType param_data_type) {
   if (function_sym->type != FUNCTION) {
-    // todo error handling
-    return;
+    return ERR_INTERNAL;
   }
 
   FunctionSymbol *data = &function_sym->data.function;
@@ -98,8 +93,7 @@ void add_function_param(Symbol *function_sym, char *param_name,
   char *copied_param_name = copy_string(param_name);
 
   if (copied_param_name == NULL) {
-    // todo error handling
-    return;
+    return ERR_INTERNAL;
   }
 
   // Resizing the param array to add one more param
@@ -107,9 +101,8 @@ void add_function_param(Symbol *function_sym, char *param_name,
       realloc(data->params, sizeof(FunctionParam) * (data->param_count + 1));
 
   if (!temp_ptr) {
-    // todo error handling
     free(copied_param_name);
-    return;
+    return ERR_INTERNAL;
   }
 
   temp_ptr[data->param_count] =
@@ -117,12 +110,14 @@ void add_function_param(Symbol *function_sym, char *param_name,
 
   data->params = temp_ptr;
   data->param_count++;
+
+  return RETURN_SUCCESS;
 }
 
 void free_symbol(Symbol *symbol) {
   if (symbol->type == FUNCTION) {
     // Function symbol => we have to clear its param array
-    for (unsigned idx = 0; idx < symbol->data.function.param_count; idx++) {
+    for (size_t idx = 0; idx < symbol->data.function.param_count; idx++) {
       free(symbol->data.function.params[idx].name);
     }
 
