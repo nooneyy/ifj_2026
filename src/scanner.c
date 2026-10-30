@@ -406,6 +406,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           return rc;
         }
       } else if (c == '\n') {
+        sc->line++;
         if (sc->parenth_depth == 0) {
           if (indent_pending) {
             // means that the line only contained a comment
@@ -771,8 +772,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       break;
 
     case STATE_COMM_BLOCK:
-      if (c == '\n' && !comm_newline_flag) {
-        comm_newline_flag = true;
+      if (c == '\n') {
+        sc->line++;
+        if (!comm_newline_flag) {
+          comm_newline_flag = true;
+        }
       } else if (c == '*') {
         state = STATE_COMM_BLOCK_STAR;
       } else if (c == '/') {
@@ -875,6 +879,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else {
+        if (c == '\n') {
+          sc->line++;
+        }
         APPEND_OR_ERROR(str, c);
       }
       break;
@@ -886,6 +893,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         dynstr_free(&str);
         return ERR_LEX_ANA;
       } else {
+        if (c == '\n') {
+          sc->line++;
+        }
         APPEND_OR_ERROR(str, '"');
         APPEND_OR_ERROR(str, c);
         state = STATE_STR_ML;
@@ -914,6 +924,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       for (int i = 0; i < 2; i++) {
         APPEND_OR_ERROR(str, '"');
       }
+      if (c == '\n') {
+        sc->line++;
+      }
       APPEND_OR_ERROR(str, c);
       state = STATE_STR_ML;
 
@@ -928,6 +941,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         break;
       }
       if (c == '\n') {
+        sc->line++;
         tab_appeared = false;
         indent_cnt = 0;
         break;
@@ -956,6 +970,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_PAREN_NEWLINE:
       c = count_indent(sc->src, c, &indent_cnt, &tab_appeared);
       if (c == '\n') {
+        sc->line++;
         tab_appeared = false;
         indent_cnt = 0;
         break;
