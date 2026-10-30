@@ -321,6 +321,8 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
  *         ERR_LEX_ANA in case of a lexical error
  *         ERR_INTERNAL in case of an internal error
  */
+// FSM has a lot of cases, splitting it would be even more unreadable
+// NOLINTNEXTLINE(readability-function-size)
 static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   token_to_fill->content.string = NULL; // tokens without content keep NULL
   token_to_fill->lf_before =
