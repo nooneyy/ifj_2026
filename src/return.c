@@ -1,3 +1,11 @@
+/**
+ * @file return.c
+ * @brief File containing the implementation of a function to handle error
+ * messages.
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 30.10.2026
+ */
+
 #include "return.h"
 #include <stdio.h>
 
