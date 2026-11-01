@@ -15,6 +15,7 @@ ASTNode *ast_init_program(void) {
   ASTNode *program = malloc(sizeof(ASTNode));
 
   if (program == NULL) {
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -34,6 +35,7 @@ ASTNode *ast_init_func_def(char *name, bool is_main, unsigned int line) {
 
   if (func_def == NULL) {
     free(name);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -61,6 +63,8 @@ ReturnCodes ast_func_def_add_param(ASTNode *func_def, char *param_name,
                                    DataType data_type) {
   if (func_def == NULL || func_def->node_type != NODE_FUNCTION_DEF) {
     free(param_name);
+    print_error("Received NULL pointer or node was not of type FUNCTION_DEF",
+                0);
     return ERR_INTERNAL;
   }
 
@@ -71,6 +75,7 @@ ReturnCodes ast_func_def_add_param(ASTNode *func_def, char *param_name,
 
   if (temp == NULL) {
     free(param_name);
+    print_error("Reallocation failed!", 0);
     return ERR_INTERNAL;
   }
 
@@ -87,6 +92,7 @@ ASTNode *ast_init_block(unsigned int line) {
   ASTNode *block = malloc(sizeof(ASTNode));
 
   if (block == NULL) {
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -109,6 +115,7 @@ ASTNode *ast_init_var_def(char *name, VariableType variable_type,
   if (var_def == NULL) {
     free(name);
     ast_free(expr);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -136,6 +143,7 @@ ASTNode *ast_init_assign(char *left, ASTNode *right, unsigned int line) {
   if (assign == NULL) {
     free(left);
     ast_free(right);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -160,6 +168,7 @@ ASTNode *ast_init_if(ASTNode *condition, ASTNode *then_branch,
     ast_free(condition);
     ast_free(then_branch);
     ast_free(else_branch);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -190,6 +199,7 @@ ASTNode *ast_init_while(ASTNode *condition, ASTNode *body, unsigned int line) {
   if (while_node == NULL) {
     ast_free(condition);
     ast_free(body);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -211,6 +221,7 @@ ASTNode *ast_init_return(ASTNode *value, unsigned int line) {
 
   if (return_node == NULL) {
     ast_free(value);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -230,6 +241,7 @@ ASTNode *ast_init_func_call(char *name, unsigned int line) {
 
   if (func_call == NULL) {
     free(name);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -253,6 +265,7 @@ ASTNode *ast_init_binary_op(ASTOperator op, ASTNode *left, ASTNode *right,
   if (binary_op == NULL) {
     ast_free(left);
     ast_free(right);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -275,6 +288,7 @@ ASTNode *ast_init_unary_op(ASTOperator op, ASTNode *operand,
 
   if (unary_op == NULL) {
     ast_free(operand);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -296,6 +310,7 @@ ASTNode *ast_init_var_ref(char *name, unsigned int line) {
 
   if (var_ref == NULL) {
     free(name);
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -318,6 +333,7 @@ ASTNode *ast_init_literal(DataType data_type, ASTLiteralNodeData value,
     if (data_type == STRING) {
       free(value.string);
     }
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -334,6 +350,7 @@ ASTNode *ast_init_literal(DataType data_type, ASTLiteralNodeData value,
 
 void ast_ll_append(ASTNode **list_start, ASTNode *node) {
   if (list_start == NULL || node == NULL) {
+    print_error("Received NULL list pointer or node", 0);
     return;
   }
 
