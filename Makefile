@@ -18,7 +18,7 @@ TARGET := ifj26
 all: $(TARGET)
 
 # IMPORTANT - add all object files to be linked with final executable here with the .o extension 
-$(TARGET): src/main.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o src/return.o src/ast.o
+$(TARGET): src/main.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o src/return.o src/ast.o src/codegen.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 # Scanner's testing main - every module except src/main.o, it has its own main
