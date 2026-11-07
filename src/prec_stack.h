@@ -72,7 +72,7 @@ typedef struct {
 } PrecStack;
 
 /**
- * @brief Constructor for the precedence stack
+ * @brief Constructor for the precedence stack (autopushes the $ delimiter)
  * @return Pointer to PrecStack if successful, otherwise NULL
  */
 PrecStack *prec_stack_init(void);
