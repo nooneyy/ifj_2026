@@ -23,6 +23,6 @@
  *         ERR_SYN_ANA in case of a syntactic analysis error
  *         ERR_INTERNAL in case of an internal error
  */
-ReturnCodes parse_program(Scanner *scanner, ASTNode **program);
+ReturnCodes parse_input(Scanner *scanner, ASTNode **program);
 
 #endif
