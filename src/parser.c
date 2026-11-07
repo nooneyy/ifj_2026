@@ -33,7 +33,7 @@ typedef struct Parser {
   Token current_token; // Token being processed
   Token next_token;    // One token of lookahead
   ASTNode *program;    // Root of the AST being built
-  ReturnCodes rc;      // Parser's code to return
+  ReturnCodes rc;      // First error hit while parsing
 } Parser;
 
 /**
@@ -116,44 +116,46 @@ static bool expect(Parser *parser, const TokenType type) {
  * isn't overwritten.
  *
  * @param parser Parser's struct
+ * @return Prints a syntax error unless an error is already set, then returns
+ * the parser's error code
  */
-static void syntax_error(Parser *parser) {
+static ReturnCodes syntax_error(Parser *parser) {
   if (parser->rc == RETURN_SUCCESS) {
     print_error("Syntactic error: Missing or invalid prologue.",
                 parser->current_token.line);
     parser->rc = ERR_SYN_ANA;
   }
+  return parser->rc;
 }
 
 /**
  * @brief parses the prologue and starts the whole parsing tree
  *
  * @param parser Parser's struct
+ * @return parser's error if set or ERR_SYN_ANA or RETURN_SUCCESS in case of a
+ * success
  */
-static void parse_program(Parser *parser) {
+static ReturnCodes parse_program(Parser *parser) {
   if (!expect(parser, TOKEN_KW_IMPORT)) {
-    syntax_error(parser);
-    return;
+    return syntax_error(parser);
   }
   if (parser->current_token.type != TOKEN_ID ||
       strcmp(parser->current_token.content.string, "ifj26") != 0 ||
       !parser_advance(parser)) {
-    syntax_error(parser);
-    return;
+    return syntax_error(parser);
   }
   if (!expect(parser, TOKEN_DOT)) {
-    syntax_error(parser);
-    return;
+    return syntax_error(parser);
   }
+
   if (!expect(parser, TOKEN_MUL)) {
-    syntax_error(parser);
-    return;
+    return syntax_error(parser);
   }
   if (!expect(parser, TOKEN_EOL)) {
-    syntax_error(parser);
-    return;
+    return syntax_error(parser);
   }
   // TODO: correct = parse_defs(parser);
+  return RETURN_SUCCESS;
 }
 
 ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
@@ -166,12 +168,12 @@ ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
     return rc;
   }
 
-  parse_program(&parser);
+  rc = parse_program(&parser);
   parser_free(&parser);
 
-  if (parser.rc != RETURN_SUCCESS) {
+  if (rc != RETURN_SUCCESS) {
     ast_free(parser.program);
-    return parser.rc;
+    return rc;
   }
 
   *program = parser.program;
