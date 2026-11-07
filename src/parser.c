@@ -116,50 +116,86 @@ static bool expect(Parser *parser, const TokenType type) {
  * isn't overwritten.
  *
  * @param parser Parser's struct
- * @return Prints a syntax error unless an error is already set, then returns
- * the parser's error code
+ * @param message Message to be printed on stderr
  */
-static ReturnCodes syntax_error(Parser *parser) {
+static void syntax_error(Parser *parser, const char *message) {
   if (parser->rc == RETURN_SUCCESS) {
-    print_error("Syntactic error: Missing or invalid prologue.",
-                parser->current_token.line);
+    print_error(message, parser->current_token.line);
     parser->rc = ERR_SYN_ANA;
   }
-  return parser->rc;
 }
 
 /**
- * @brief parses the prologue and starts the whole parsing tree
+ * @brief Parses all function definitions
  *
  * @param parser Parser's struct
- * @return parser's error if set or ERR_SYN_ANA or RETURN_SUCCESS in case of a
- * success
+ * @return false if an error occured in this or any other called function, else
+ * true
  */
-static ReturnCodes parse_program(Parser *parser) {
+static bool parse_defs(Parser *parser) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_AT_MAIN ||
+      parser->current_token.type == TOKEN_KW_DEF) {
+    // TODO: correct = parse_fdef(Parser *parser)
+    // TODO: if not correct, return false
+    // TODO: correct = parse_defs(parser);
+    correct = false;                                                 // TMP
+    parser->rc = ERR_INTERNAL;                                       // TMP
+    print_error("Not implemented yet.", parser->current_token.line); // TMP
+
+  } else if (parser->current_token.type == TOKEN_EOF) {
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid function definition.");
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses the prologue and starts the whole parsing tree
+ *
+ * 1.RULE: PROGRAM —> KW_IMPORT ID(„ifj26“) DOT MUL EOL DEFS EOF
+ *
+ * @param parser Parser's struct
+ * @return false on an error, else true
+ */
+static bool parse_program(Parser *parser) {
+  bool correct = false;
   if (!expect(parser, TOKEN_KW_IMPORT)) {
-    return syntax_error(parser);
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
+    return false;
   }
   if (parser->current_token.type != TOKEN_ID ||
       strcmp(parser->current_token.content.string, "ifj26") != 0 ||
       !parser_advance(parser)) {
-    return syntax_error(parser);
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
+    return false;
   }
   if (!expect(parser, TOKEN_DOT)) {
-    return syntax_error(parser);
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
+    return false;
   }
 
   if (!expect(parser, TOKEN_MUL)) {
-    return syntax_error(parser);
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
+    return false;
   }
   if (!expect(parser, TOKEN_EOL)) {
-    return syntax_error(parser);
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
+    return false;
   }
-  // TODO: correct = parse_defs(parser);
-  return RETURN_SUCCESS;
+  correct = parse_defs(parser);
+  if (correct && parser->current_token.type != TOKEN_EOF) {
+    syntax_error(parser, "Syntactic error: Invalid content between or after "
+                         "function definitions.");
+    correct = false;
+  }
+  return correct;
 }
 
 ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
   ReturnCodes rc = RETURN_SUCCESS;
+  bool correct = false;
   Parser parser = {0};
 
   rc = parser_init(&parser, scanner);
@@ -168,12 +204,15 @@ ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
     return rc;
   }
 
-  rc = parse_program(&parser);
+  correct = parse_program(&parser);
   parser_free(&parser);
 
-  if (rc != RETURN_SUCCESS) {
+  if (!correct) {
     ast_free(parser.program);
-    return rc;
+    if (parser.rc == RETURN_SUCCESS) {
+      parser.rc = ERR_SYN_ANA;
+    }
+    return parser.rc;
   }
 
   *program = parser.program;
