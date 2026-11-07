@@ -32,26 +32,23 @@ typedef struct Parser {
   Token current_token; // Token being processed
   Token next_token;    // One token of lookahead
   ASTNode *program;    // Root of the AST being built
+  ReturnCodes rc;      // Parser's code to return
 } Parser;
 
 /**
  * @brief Moves to the next token, next becomes current and a new next is read
  *
+ * In case of an error, sets the parser's return code
+ *
  * @param parser Parser to advance
- * @return Return code of scanner_get_token()
  */
-static ReturnCodes parser_advance(Parser *parser) {
-  ReturnCodes rc = RETURN_SUCCESS;
-
+static void parser_advance(Parser *parser) {
   token_free(&parser->current_token);
   parser->current_token = parser->next_token;
   // The string is now owned by current_token, prevents a double free
   parser->next_token = (Token){0};
 
-  rc = scanner_get_token(parser->scanner, &parser->current_token);
-  CHECK_RC();
-
-  return RETURN_SUCCESS;
+  parser->rc = scanner_get_token(parser->scanner, &parser->current_token);
 }
 
 /**
