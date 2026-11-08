@@ -9,6 +9,7 @@
 #include "ast.h"
 #include "return.h"
 #include "scanner.h"
+#include "symbol.h"
 #include "tokens.h"
 #include <stdbool.h>
 #include <string.h>
@@ -123,6 +124,97 @@ static void syntax_error(Parser *parser, const char *message) {
     print_error(message, parser->current_token.line);
     parser->rc = ERR_SYN_ANA;
   }
+}
+
+/**
+ * @brief Parses TYPE and saves it into its node
+ *
+ * RULE 24 -> KW_INT
+ * RULE 25 -> KW_DOUBLE
+ * RULE 26 -> KW_STRING
+ * RULE 27 -> KW_BOOLEAN
+ * RULE 28 -> KW_UNIT
+ *
+ * @param parser Parser's current state
+ * @param type Where the parsed type is stored
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_type(Parser *parser, DataType *type) {
+  switch (parser->current_token.type) {
+  case TOKEN_KW_INT:
+    // KW_INT
+    // no deeper RULE
+    *type = INT;
+    break;
+  case TOKEN_KW_DOUBLE:
+    // KW_DOUBLE
+    // no deeper RULE
+    *type = DOUBLE;
+    break;
+  case TOKEN_KW_STRING:
+    // KW_STRING
+    // no deeper RULE
+    *type = STRING;
+    break;
+  case TOKEN_KW_BOOLEAN:
+    // KW_BOOLEAN
+    // no deeper RULE
+    *type = BOOLEAN;
+    break;
+  case TOKEN_KW_UNIT:
+    // KW_UNIT
+    // no deeper RULE
+    *type = UNIT;
+    break;
+  default:
+    syntax_error(parser,
+                 "Syntactic error: Invalid type assigned in declaration.");
+    return false;
+  }
+  return parser_advance(parser);
+}
+
+/**
+ * @brief Parses type declaration
+ *
+ * RULE 22: TYPE_DECL -> : TYPE
+ * RULE 23: TYPE_DECL -> eps
+ *
+ * @param parser Parser's current state
+ * @param type Where the parsed type is stored
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_type_decl(Parser *parser, DataType *type) {
+  bool correct = false;
+  if (expect(parser, TOKEN_COLON)) {
+    // :
+
+    if (parser->current_token.type == TOKEN_KW_INT ||
+        parser->current_token.type == TOKEN_KW_DOUBLE ||
+        parser->current_token.type == TOKEN_KW_STRING ||
+        parser->current_token.type == TOKEN_KW_BOOLEAN ||
+        parser->current_token.type == TOKEN_KW_UNIT) {
+      // : TYPE
+      // RULES 24, 25, 26, 27, 28
+      correct = parse_type(parser, type);
+    } else {
+      syntax_error(
+          parser,
+          "Syntactic error: Invalid syntax after ':' in type declaration.");
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_ASSIGN) {
+    // TODO: Could also be different than just = in val, var decl
+    // eps
+    // no deeper rules
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid type declaration.");
+    correct = false;
+  }
+  return correct;
 }
 
 /**
@@ -246,13 +338,13 @@ static bool parse_fdef(Parser *parser) {
     // OPT_MAIN KW_DEF ID ( PARAM_BODY
     // RULES 12, 13
     // TODO: correct = parse_param_body(parser, func)
-    if (parser->current_token.type == TOKEN_COLON) {
-      // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL
-      // RULES 22, 23
-      // TODO: correct = parse_type_decl(parser, func)
-      correct = false;
+    correct = parse_type_decl(parser, &func->data.function_def.return_type);
+    if (!correct) {
+      return false;
     }
     if (!expect(parser, TOKEN_ASSIGN)) {
+      syntax_error(parser, "Syntactic error: Missing function initialization "
+                           "after declaration.");
       return false;
     }
     // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL =
