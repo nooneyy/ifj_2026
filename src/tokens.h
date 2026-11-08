@@ -21,6 +21,7 @@ typedef enum TokenType {
   TOKEN_ASSIGN,       // "="
   TOKEN_IS_EQ,        // "=="
   TOKEN_NOT_EQ,       // "!="
+  TOKEN_EXCL_MARK,    // "!"
   TOKEN_MINUS,        // "-"
   TOKEN_PLUS,         // "+"
   TOKEN_MUL,          // "*"
