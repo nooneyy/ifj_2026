@@ -126,6 +126,64 @@ static void syntax_error(Parser *parser, const char *message) {
 }
 
 /**
+ * @brief Parses individual functions
+ *
+ * @param parser Parser's struct
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_fdef(Parser *parser) {
+  bool correct = false;
+  bool is_main = false;
+
+  if (parser->current_token.type == TOKEN_AT_MAIN) {
+    is_main = true;
+    // TODO: correct = parse_opt_main(parser);
+  }
+  if (expect(parser, TOKEN_KW_DEF) && parser->current_token.type == TOKEN_ID) {
+    ASTNode *func = ast_init_func_def(parser->current_token.content.string,
+                                      is_main, parser->current_token.line);
+    parser->current_token.content.string = NULL;
+    if (func == NULL) {
+      parser->rc = ERR_INTERNAL;
+      return false;
+    }
+    ast_ll_append(&parser->program->data.program.functions, func);
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    if (expect(parser, TOKEN_OPEN_PAR) &&
+        ((parser->current_token.type == TOKEN_CLOSE_PAR) ||
+         parser->current_token.type == TOKEN_ID)) {
+      // TODO: correct = parse_param_body(parser, func)
+      if (parser->current_token.type == TOKEN_COLON) {
+        // TODO: correct = parse_type_decl(parser, func)
+        correct = false;
+      } else if (expect(parser, TOKEN_ASSIGN) &&
+                 (parser->current_token.type == TOKEN_EOL ||
+                  parser->current_token.type == TOKEN_KW_IF ||
+                  parser->current_token.type == TOKEN_ID ||
+                  parser->current_token.type == TOKEN_MINUS ||
+                  parser->current_token.type == TOKEN_EXCL_MARK ||
+                  parser->current_token.type == TOKEN_INT ||
+                  parser->current_token.type == TOKEN_DOUBLE ||
+                  parser->current_token.type == TOKEN_OPEN_PAR)) {
+        // TODO: correct = parse_def_ex
+      } else {
+        syntax_error(parser, "Syntactic error: Invalid function definition.");
+      }
+    } else {
+      syntax_error(
+          parser,
+          "Syntactic error: Missing parameters in function declaration.");
+    }
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid function definition.");
+  }
+  return correct;
+}
+
+/**
  * @brief Parses all function definitions
  *
  * @param parser Parser's struct
@@ -136,12 +194,11 @@ static bool parse_defs(Parser *parser) {
   bool correct = false;
   if (parser->current_token.type == TOKEN_AT_MAIN ||
       parser->current_token.type == TOKEN_KW_DEF) {
-    // TODO: correct = parse_fdef(Parser *parser)
-    // TODO: if not correct, return false
-    // TODO: correct = parse_defs(parser);
-    correct = false;                                                 // TMP
-    parser->rc = ERR_INTERNAL;                                       // TMP
-    print_error("Not implemented yet.", parser->current_token.line); // TMP
+    correct = parse_fdef(parser);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_defs(parser);
 
   } else if (parser->current_token.type == TOKEN_EOF) {
     correct = true;
