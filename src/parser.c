@@ -12,6 +12,7 @@
 #include "symbol.h"
 #include "tokens.h"
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
 /**
@@ -127,6 +128,18 @@ static void syntax_error(Parser *parser, const char *message) {
 }
 
 /**
+ * @brief Parses each parameter
+ *
+ * RULE 14: PARAMS -> ID : TYPE NEXT
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_params(Parser *parser, ASTNode *func);
+
+/**
  * @brief Parses TYPE and saves it into its node
  *
  * RULE 24 -> KW_INT
@@ -213,6 +226,152 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
   } else {
     syntax_error(parser, "Syntactic error: Invalid type declaration.");
     correct = false;
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses what follow a ,
+ *
+ * RULE 17: NEXT_CONT -> )
+ * RULE 18: NEXT_CONT -> PARAMS
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_next_cont(Parser *parser, ASTNode *func) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_CLOSE_PAR) {
+    // )
+    // no deeper RULE
+    // Must check whether the trailing comma that led to this point is from
+    // multi-line parameter declaration.
+    if (parser->current_token.lf_before) {
+      correct = true;
+    } else {
+      // trailing comma in a single-line parameter declaration
+      syntax_error(
+          parser,
+          "Syntactic error: Trailing comma in one-line parameter definition.");
+      return false;
+    }
+    if (!parser_advance(parser)) {
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_ID) {
+    // PARAMS
+    // RULE 14
+    correct = parse_params(parser, func);
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Invalid syntax in parameters' declaration.");
+    correct = false;
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses , or ) after a parameter
+ *
+ * RULE 15: NEXT -> , NEXT_CONT
+ * RULE 16: NEXT -> )
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_next(Parser *parser, ASTNode *func) {
+  bool correct = false;
+  if (expect(parser, TOKEN_COMMA)) {
+    // ,
+    // RULES 17, 18
+    correct = parse_next_cont(parser, func);
+  } else if (expect(parser, TOKEN_CLOSE_PAR)) {
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid syntax after a parameter.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_params(Parser *parser, ASTNode *func) {
+  bool correct = false;
+  char *name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+  DataType type;
+  // ID
+  if (!parser_advance(parser)) {
+    free(name);
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_COLON)) {
+    syntax_error(parser, "Syntactic error: Missing parameter's data type in "
+                         "function definition.");
+    free(name);
+    return false;
+  }
+  // ID :
+
+  if (!(parser->current_token.type == TOKEN_KW_INT ||
+        parser->current_token.type == TOKEN_KW_DOUBLE ||
+        parser->current_token.type == TOKEN_KW_STRING ||
+        parser->current_token.type == TOKEN_KW_BOOLEAN ||
+        parser->current_token.type == TOKEN_KW_UNIT)) {
+    syntax_error(parser, "Syntactic error: Missing or invalid data type of a "
+                         "parameter in function declaration.");
+    free(name);
+    return false;
+  }
+  // ID : TYPE
+
+  correct = parse_type(parser, &type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+
+  const ReturnCodes rc = ast_func_def_add_param(func, name, type);
+  if (rc != RETURN_SUCCESS) {
+    parser->rc = rc;
+    return false;
+  }
+
+  if (!(parser->current_token.type == TOKEN_COMMA ||
+        parser->current_token.type == TOKEN_CLOSE_PAR)) {
+    syntax_error(parser, "Syntactic error: Invalid parameter definition.");
+    return false;
+  }
+
+  // RULES 15, 16
+  correct = parse_next(parser, func);
+  return correct;
+}
+
+/**
+ * @brief Parses parameters as a whole
+ *
+ * RULE 12: PARAM_BODY -> PARAMS
+ * RULE 13: PARAM_BODY -> )
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_param_body(Parser *parser, ASTNode *func) {
+  bool correct = false;
+
+  if (parser->current_token.type == TOKEN_ID) {
+    // PARAMS
+    // RULE 14
+    correct = parse_params(parser, func);
+  } else if (parser->current_token.type == TOKEN_CLOSE_PAR) {
+    correct = parser_advance(parser);
   }
   return correct;
 }
@@ -337,7 +496,10 @@ static bool parse_fdef(Parser *parser) {
       parser->current_token.type == TOKEN_ID) {
     // OPT_MAIN KW_DEF ID ( PARAM_BODY
     // RULES 12, 13
-    // TODO: correct = parse_param_body(parser, func)
+    correct = parse_param_body(parser, func);
+    if (!correct) {
+      return false;
+    }
     correct = parse_type_decl(parser, &func->data.function_def.return_type);
     if (!correct) {
       return false;
