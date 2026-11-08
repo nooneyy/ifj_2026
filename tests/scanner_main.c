@@ -38,6 +38,7 @@ static const char *const TOKEN_NAMES[] = {
     [TOKEN_ASSIGN] = "ASSIGN",
     [TOKEN_IS_EQ] = "IS_EQ",
     [TOKEN_NOT_EQ] = "NOT_EQ",
+    [TOKEN_EXCL_MARK] = "EXCL_MARK",
     [TOKEN_MINUS] = "MINUS",
     [TOKEN_PLUS] = "PLUS",
     [TOKEN_MUL] = "MUL",
