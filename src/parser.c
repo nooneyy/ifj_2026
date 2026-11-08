@@ -98,7 +98,7 @@ static void parser_free(Parser *parser) {
 /**
  * @brief Checks matching TokenType and scans for new token
  *
- * @param parser Parser's struct
+ * @param parser Parser's current state
  * @param type TokenType to match
  * @return false if token types don't match or parser_advance fails, else true
  */
@@ -115,7 +115,7 @@ static bool expect(Parser *parser, const TokenType type) {
  * Does nothing if an error was already set, so a scanner error
  * isn't overwritten.
  *
- * @param parser Parser's struct
+ * @param parser Parser's current state
  * @param message Message to be printed on stderr
  */
 static void syntax_error(Parser *parser, const char *message) {
@@ -126,9 +126,73 @@ static void syntax_error(Parser *parser, const char *message) {
 }
 
 /**
+ * @brief Parses optional EOL after \@main
+ *
+ * RULE 7: OPT_EOL -> EOL
+ * RULE 8: OPT_EOL -> eps
+ *
+ * @param parser Parser's current state
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_opt_eol(Parser *parser) {
+  bool correct = false;
+
+  if (parser->current_token.type == TOKEN_EOL) {
+    // EOL
+    // no deeper RULE
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = true;
+  } else if (parser->current_token.type == TOKEN_KW_DEF) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid function definition.");
+    correct = false;
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses optional \@main
+ *
+ * RULE 5: OPT_MAIN -> AT_MAIN OPT_EOL
+ * RULE 6: OPT_MAIN -> eps
+ *
+ * @param parser Parser's current state
+ * @param is_main Signals whether \@main occured
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_opt_main(Parser *parser, bool *is_main) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_AT_MAIN) {
+    // AT_MAIN OPT_EOL
+    // RULES 7, 8
+    *is_main = true;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = parse_opt_eol(parser);
+  } else if (parser->current_token.type == TOKEN_KW_DEF) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid function definition.");
+  }
+  return correct;
+}
+
+/**
  * @brief Parses individual functions
  *
- * @param parser Parser's struct
+ * RULE 4: FDEF -> OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
+ *
+ * @param parser Parser's current state
  * @return false if an error occured in this or any other called function, else
  * true
  */
@@ -137,58 +201,88 @@ static bool parse_fdef(Parser *parser) {
   bool is_main = false;
 
   if (parser->current_token.type == TOKEN_AT_MAIN) {
-    is_main = true;
-    // TODO: correct = parse_opt_main(parser);
+    // OPT_MAIN
+    // RULES 5, 6
+    correct = parse_opt_main(parser, &is_main);
+    if (!correct) {
+      return false;
+    }
   }
-  if (expect(parser, TOKEN_KW_DEF) && parser->current_token.type == TOKEN_ID) {
-    ASTNode *func = ast_init_func_def(parser->current_token.content.string,
-                                      is_main, parser->current_token.line);
-    parser->current_token.content.string = NULL;
-    if (func == NULL) {
-      parser->rc = ERR_INTERNAL;
-      return false;
-    }
-    ast_ll_append(&parser->program->data.program.functions, func);
-    if (!parser_advance(parser)) {
-      return false;
-    }
-    if (expect(parser, TOKEN_OPEN_PAR) &&
-        ((parser->current_token.type == TOKEN_CLOSE_PAR) ||
-         parser->current_token.type == TOKEN_ID)) {
-      // TODO: correct = parse_param_body(parser, func)
-      if (parser->current_token.type == TOKEN_COLON) {
-        // TODO: correct = parse_type_decl(parser, func)
-        correct = false;
-      } else if (expect(parser, TOKEN_ASSIGN) &&
-                 (parser->current_token.type == TOKEN_EOL ||
-                  parser->current_token.type == TOKEN_KW_IF ||
-                  parser->current_token.type == TOKEN_ID ||
-                  parser->current_token.type == TOKEN_MINUS ||
-                  parser->current_token.type == TOKEN_EXCL_MARK ||
-                  parser->current_token.type == TOKEN_INT ||
-                  parser->current_token.type == TOKEN_DOUBLE ||
-                  parser->current_token.type == TOKEN_OPEN_PAR)) {
-        // TODO: correct = parse_def_ex
-      } else {
-        syntax_error(parser, "Syntactic error: Invalid function definition.");
-      }
+
+  if (!expect(parser, TOKEN_KW_DEF)) {
+    syntax_error(parser, "Syntactic error: Missing function definition.");
+    return false;
+  }
+  // OPT_MAIN KW_DEF
+
+  if (parser->current_token.type != TOKEN_ID) {
+    syntax_error(parser, "Syntactic error: Missing function identification in "
+                         "declaration.");
+    return false;
+  }
+  // OPT_MAIN KW_DEF ID
+
+  ASTNode *func = ast_init_func_def(parser->current_token.content.string,
+                                    is_main, parser->current_token.line);
+  parser->current_token.content.string = NULL;
+  if (func == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  ast_ll_append(&parser->program->data.program.functions, func);
+  if (!parser_advance(parser)) {
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_OPEN_PAR)) {
+    syntax_error(parser, "Syntactic error: Missing parameters in function "
+                         "declaration.");
+    return false;
+  }
+  // OPT_MAIN KW_DEF ID (
+
+  if ((parser->current_token.type == TOKEN_CLOSE_PAR) ||
+      parser->current_token.type == TOKEN_ID) {
+    // OPT_MAIN KW_DEF ID ( PARAM_BODY
+    // RULES 12, 13
+    // TODO: correct = parse_param_body(parser, func)
+    if (parser->current_token.type == TOKEN_COLON) {
+      // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL
+      // RULES 22, 23
+      // TODO: correct = parse_type_decl(parser, func)
+      correct = false;
+    } else if (expect(parser, TOKEN_ASSIGN) &&
+               (parser->current_token.type == TOKEN_EOL ||
+                parser->current_token.type == TOKEN_KW_IF ||
+                parser->current_token.type == TOKEN_ID ||
+                parser->current_token.type == TOKEN_MINUS ||
+                parser->current_token.type == TOKEN_EXCL_MARK ||
+                parser->current_token.type == TOKEN_INT ||
+                parser->current_token.type == TOKEN_DOUBLE ||
+                parser->current_token.type == TOKEN_OPEN_PAR)) {
+      // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
+      // RULES 9, 10, 11
+      // TODO: correct = parse_def_ex
     } else {
-      syntax_error(
-          parser,
-          "Syntactic error: Missing parameters in function declaration.");
+      syntax_error(parser, "Syntactic error: Invalid function definition.");
     }
   } else {
-    syntax_error(parser, "Syntactic error: Invalid function definition.");
+    syntax_error(
+        parser, "Syntactic error: Missing parameters in function declaration.");
   }
+
   return correct;
 }
 
 /**
  * @brief Parses all function definitions
  *
- * @param parser Parser's struct
- * @return false if an error occured in this or any other called function, else
- * true
+ * RULE 2: DEFS -> FDEF DEFS
+ * RULE 3: DEFS -> eps
+ *
+ * @param parser Parser's current state
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
 static bool parse_defs(Parser *parser) {
   bool correct = false;
@@ -211,9 +305,9 @@ static bool parse_defs(Parser *parser) {
 /**
  * @brief Parses the prologue and starts the whole parsing tree
  *
- * 1.RULE: PROGRAM —> KW_IMPORT ID(„ifj26“) DOT MUL EOL DEFS EOF
+ * RULE 1: PROGRAM —> KW_IMPORT ID(„ifj26“) DOT MUL EOL DEFS EOF
  *
- * @param parser Parser's struct
+ * @param parser Parser's current state
  * @return false on an error, else true
  */
 static bool parse_program(Parser *parser) {
