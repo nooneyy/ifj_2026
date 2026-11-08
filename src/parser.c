@@ -251,15 +251,20 @@ static bool parse_fdef(Parser *parser) {
       // RULES 22, 23
       // TODO: correct = parse_type_decl(parser, func)
       correct = false;
-    } else if (expect(parser, TOKEN_ASSIGN) &&
-               (parser->current_token.type == TOKEN_EOL ||
-                parser->current_token.type == TOKEN_KW_IF ||
-                parser->current_token.type == TOKEN_ID ||
-                parser->current_token.type == TOKEN_MINUS ||
-                parser->current_token.type == TOKEN_EXCL_MARK ||
-                parser->current_token.type == TOKEN_INT ||
-                parser->current_token.type == TOKEN_DOUBLE ||
-                parser->current_token.type == TOKEN_OPEN_PAR)) {
+    }
+    if (!expect(parser, TOKEN_ASSIGN)) {
+      return false;
+    }
+    // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL =
+
+    if (parser->current_token.type == TOKEN_EOL ||
+        parser->current_token.type == TOKEN_KW_IF ||
+        parser->current_token.type == TOKEN_ID ||
+        parser->current_token.type == TOKEN_MINUS ||
+        parser->current_token.type == TOKEN_EXCL_MARK ||
+        parser->current_token.type == TOKEN_INT ||
+        parser->current_token.type == TOKEN_DOUBLE ||
+        parser->current_token.type == TOKEN_OPEN_PAR) {
       // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
       // RULES 9, 10, 11
       // TODO: correct = parse_def_ex
