@@ -420,6 +420,48 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
 }
 
 /**
+ * @brief Parses variable declaration
+ *
+ * RULE 19: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
+ *
+ * @param parser Parser's current state
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_var_decl(Parser *parser) {
+  bool correct = false;
+  // TODO: const char *name = {};
+  // VariableType val_var;
+  DataType var_type;
+  // correct = parse_edit_type(parser, &val_var);
+  if (!correct) {
+    return false;
+  }
+  if (parser->current_token.type != TOKEN_ID) {
+    syntax_error(parser, "Syntactic error: Variable declaration without name.");
+    return false;
+  }
+  // name = parser->current_token.content.string;
+  if (!parser_advance(parser)) {
+    return false;
+  }
+  correct = parse_type_decl(parser, &var_type);
+  if (!correct) {
+    return false;
+  }
+  if (!expect(parser, TOKEN_ASSIGN)) {
+    syntax_error(parser, "Syntactic error: Invalid variable declaration.");
+    return false;
+  }
+  // TODO: use these
+  // (void)name;
+  // (void)val_var;
+  (void)var_type;
+  // TODO: correct = parse_ecc(parser);
+  return correct;
+}
+
+/**
  * @brief Parses what follow a ,
  *
  * RULE 17: NEXT_CONT -> )
@@ -431,6 +473,7 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
  * else true
  */
 static bool parse_next_cont(Parser *parser, ASTNode *func) {
+  (void)parse_var_decl; // TODO: delete this
   bool correct = false;
   if (parser->current_token.type == TOKEN_CLOSE_PAR) {
     // )
