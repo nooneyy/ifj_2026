@@ -13,6 +13,7 @@
 #include "scanner.h"
 #include "symbol.h"
 #include "tokens.h"
+#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,19 @@
   do {                                                                         \
     if (rc != RETURN_SUCCESS) {                                                \
       return rc;                                                               \
+    }                                                                          \
+  } while (0)
+
+/**
+ * @brief Returns false and sets the parser's RC to ERR_INTERNAL if an AST node
+ * allocation went wrong (is NULL)
+ * @param node A pointer to an ASTNode
+ */
+#define CHECK_NODE_ALLOC(node)                                                 \
+  do {                                                                         \
+    if ((node) == NULL) {                                                      \
+      parser->rc = ERR_INTERNAL;                                               \
+      return false;                                                            \
     }                                                                          \
   } while (0)
 
@@ -336,6 +350,15 @@ static bool is_statement_first(const TokenType type) {
  * true
  */
 static bool parse_params(Parser *parser, ASTNode *func);
+
+/**
+ * @brief Parses an expression
+ * @param parser Pointer to the parser struct
+ * @param out A pointer to the location of the to-be-created ASTNode pointer
+ * @return true on success, false on an error with the error code in parser->rc,
+ * *out being NULL
+ */
+static bool parse_expr(Parser *parser, ASTNode **out);
 
 // TODO:
 static bool parse_statement(const Parser *parser,
@@ -735,6 +758,7 @@ static bool parse_def_ex(Parser *parser, ASTNode *func) {
     // <expr>
     // PRECEDENCE ANALYSIS
     // TODO: correct = parse_expr(parser)
+    (void)parse_expr;
     // TODO: check correct
     // TODO: if (!expect(parser, TOKEN_EOL)) {syntax_error; return false;}
     correct = true; // TODO
@@ -1047,4 +1071,419 @@ static PrecTerminal terminal_from_token(Parser *parser, PrecTerminal prev) {
   default:
     return PREC_DELIM;
   }
+}
+
+/**
+ * @brief Decides whether the item on the stack is a terminal of a certain type
+ * @param item A precedence stack item (PrecItem struct)
+ * @param terminal The type of the terminal
+ * @return true if yes, false if not :P
+ */
+static bool is_terminal(PrecItem item, PrecTerminal terminal) {
+  if (item.type == PREC_TERMINAL && item.terminal == terminal) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Decides whether the item on the stack is a binary operator
+ * @param item A precedence stack item (PrecItem struct)
+ * @return true if yes, false if not :P
+ */
+static bool is_binary_op(PrecItem item) {
+  if (item.type == PREC_TERMINAL &&
+      (item.terminal == PREC_ADD || item.terminal == PREC_SUB ||
+       item.terminal == PREC_MUL || item.terminal == PREC_DIV ||
+       item.terminal == PREC_LT || item.terminal == PREC_LTE ||
+       item.terminal == PREC_GT || item.terminal == PREC_GTE ||
+       item.terminal == PREC_EQ || item.terminal == PREC_NEQ ||
+       item.terminal == PREC_AND || item.terminal == PREC_OR)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Decides whether the item on the stack is a unary operator
+ * @param item A precedence stack item (PrecItem struct)
+ * @return true if yes, false if not :P
+ */
+static bool is_unary_op(PrecItem item) {
+  if (item.type == PREC_TERMINAL &&
+      (item.terminal == PREC_NEG || item.terminal == PREC_NOT)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Decides whether the item on the stack is an expression
+ * @param item A precedence stack item (PrecItem struct)
+ * @return true if yes, false if not :P
+ */
+static bool is_expr(PrecItem item) {
+  if (item.type == PREC_EXPR && item.expr != NULL) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Reduces the items from the top of the stack into an expression
+ * until the '<' terminal, then pushes the result onto the stack
+ * @param parser Pointer to the parser struct
+ * @param ps Pointer to the precedence stack
+ * @return true on success, false on failure with the error code in parser->rc
+ */
+static bool prec_reduce(Parser *parser, PrecStack *ps) {
+  size_t less_idx =
+      prec_stack_find_less(ps); // The location of the topmost '<' terminal
+
+  ASTNode *expr = NULL; // The resulting expression (E)
+
+  if (less_idx == 0) {
+    // No '<' terminal on the stack
+    syntax_error(parser, "Syntactic error: failed to parse expression");
+    return false;
+  }
+
+  size_t expr_len =
+      ps->item_count - less_idx - 1; // The amount of terminals to be reduced
+
+  PrecItem first_item =
+      ps->items[less_idx +
+                1]; // The first item pushed on the stack after the '<' terminal
+
+  if (is_terminal(first_item, PREC_OPERAND) && expr_len == 1) {
+    // E -> i
+
+    prec_stack_pop_to_less(ps); // Pop <i from stack
+
+    switch (first_item.terminal_token.type) {
+    case TOKEN_ID:
+      // Parse as identifier
+      expr = ast_init_var_ref(first_item.terminal_token.content.string,
+                              first_item.terminal_token.line);
+      break;
+    case TOKEN_DOUBLE:
+      // Parse as double literal
+      expr = ast_init_literal(
+          DOUBLE,
+          (ASTLiteralNodeData){
+              .dbl_val = first_item.terminal_token.content.dbl_val,
+          },
+          first_item.terminal_token.line);
+      break;
+    case TOKEN_INT:
+      // Parse as integer literal
+      expr = ast_init_literal(
+          INT,
+          (ASTLiteralNodeData){
+              .int_val = first_item.terminal_token.content.int_val,
+          },
+          first_item.terminal_token.line);
+      break;
+    case TOKEN_STRING:
+      // Parse as string literal
+      expr = ast_init_literal(
+          STRING,
+          (ASTLiteralNodeData){
+              .string = first_item.terminal_token.content.string,
+          },
+          first_item.terminal_token.line);
+      break;
+    default:
+      parser->rc = ERR_INTERNAL;
+      return false;
+    }
+    CHECK_NODE_ALLOC(expr);
+  } else if (is_expr(first_item) && expr_len == 3) {
+    PrecItem second_item = ps->items[less_idx + 2];
+    PrecItem third_item = ps->items[less_idx + 3];
+
+    if (is_binary_op(second_item) && is_expr(third_item)) {
+      // E -> E op E
+      prec_stack_pop_to_less(ps); // Pop <E op E from stack
+
+      switch (second_item.terminal) {
+      case PREC_MUL:
+        // Parse as E * E
+        expr = ast_init_binary_op(OP_MUL, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_DIV:
+        // Parse as E / E
+        expr = ast_init_binary_op(OP_DIV, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_ADD:
+        // Parse as E + E
+        expr = ast_init_binary_op(OP_ADD, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_SUB:
+        // Parse as E - E
+        expr = ast_init_binary_op(OP_SUB, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_LT:
+        // Parse as E < E
+        expr = ast_init_binary_op(OP_LT, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_LTE:
+        // Parse as E <= E
+        expr = ast_init_binary_op(OP_LTE, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_GT:
+        // Parse as E > E
+        expr = ast_init_binary_op(OP_GT, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_GTE:
+        // Parse as E >= E
+        expr = ast_init_binary_op(OP_GTE, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_EQ:
+        // Parse as E == E
+        expr = ast_init_binary_op(OP_EQ, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_NEQ:
+        // Parse as E != E
+        expr = ast_init_binary_op(OP_NEQ, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_AND:
+        // Parse as E && E
+        expr = ast_init_binary_op(OP_AND, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      case PREC_OR:
+        // Parse as E || E
+        expr = ast_init_binary_op(OP_OR, first_item.expr, third_item.expr,
+                                  first_item.expr->line);
+        break;
+      default:
+        // This should never happen (it's checked by is_binary_op)
+        parser->rc = ERR_INTERNAL;
+        return false;
+      }
+      CHECK_NODE_ALLOC(expr);
+    }
+  } else if (is_unary_op(first_item) && expr_len == 2) {
+    PrecItem second_item = ps->items[less_idx + 2];
+
+    if (is_expr(second_item)) {
+      // E -> op E
+      prec_stack_pop_to_less(ps); // Pop <opE from the stack
+
+      if (first_item.terminal == PREC_NEG) {
+        // Parse as -E
+        expr =
+            ast_init_unary_op(OP_NEG, second_item.expr, second_item.expr->line);
+      } else {
+        // Parse as !E
+        expr =
+            ast_init_unary_op(OP_NOT, second_item.expr, second_item.expr->line);
+      }
+      CHECK_NODE_ALLOC(expr);
+    }
+  } else if (is_terminal(first_item, PREC_LPAREN)) {
+    PrecItem second_item = ps->items[less_idx + 2];
+
+    if (expr_len == 2 && is_terminal(second_item, PREC_RPAREN)) {
+      // unit: E -> ()
+      prec_stack_pop_to_less(ps); // Pop <() from the stack
+      expr = ast_init_literal(UNIT, (ASTLiteralNodeData){0},
+                              first_item.terminal_token.line);
+      CHECK_NODE_ALLOC(expr);
+    } else if (expr_len == 3) {
+      PrecItem third_item = ps->items[less_idx + 3];
+      if (is_expr(second_item) && is_terminal(third_item, PREC_RPAREN)) {
+        // E -> (E)
+        prec_stack_pop_to_less(ps); // Pop <(E) from the stack
+        expr = second_item.expr;    // We'll push the parentheses contents back
+      }
+    }
+  } else if (is_terminal(first_item, PREC_FUNC) && expr_len >= 3) {
+    // E -> func(E, E,...)
+    PrecItem second_item = ps->items[less_idx + 2];
+    PrecItem last_item = ps->items[less_idx + expr_len];
+
+    if (is_terminal(second_item, PREC_LPAREN) &&
+        is_terminal(last_item, PREC_RPAREN)) {
+      // OK: func(___)
+      // left to check: E, E, E,...
+
+      size_t arg_len =
+          expr_len - 3; // The length of the arguments inside the parentheses
+
+      for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx++) {
+        PrecItem arg_item = ps->items[arg_idx + less_idx + 3];
+
+        if (arg_idx % 2 == 0) {
+          // Even argument index... must be E
+          if (!is_expr(arg_item)) {
+            syntax_error(parser,
+                         "Syntactic error: wrong arguments inside function "
+                         "call, expected expr, got something else");
+            return false;
+          }
+        } else {
+          // Odd argument index... must be comma
+          if (!is_terminal(arg_item, PREC_COMMA)) {
+            syntax_error(parser,
+                         "Syntactic error: wrong arguments inside "
+                         "function call, expected ',', got something else");
+            return false;
+          }
+        }
+      }
+
+      // Check trailing comma
+      if (arg_len > 0 && arg_len % 2 == 0 &&
+          !last_item.terminal_token.lf_before) {
+        syntax_error(parser, "Syntactic error: trailing comma inside "
+                             "function call not allowed");
+        return false;
+      }
+
+      // Function call is OK
+      prec_stack_pop_to_less(ps); // Pop <func(E, E,...) from the stack
+
+      expr = ast_init_func_call(first_item.terminal_token.content.string,
+                                first_item.terminal_token.line);
+
+      if (expr != NULL) {
+        for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx += 2) {
+          // for every E, add it as an argument
+          ast_ll_append(&expr->data.function_call.args,
+                        ps->items[arg_idx + less_idx + 3].expr);
+        }
+      } else {
+        for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx += 2) {
+          // for every E, free it because allocation failed
+          ast_free(ps->items[arg_idx + less_idx + 3].expr);
+        }
+        parser->rc = ERR_INTERNAL;
+        return false;
+      }
+    }
+  }
+
+  if (expr == NULL) {
+    syntax_error(
+        parser,
+        "Syntactic error: precedence analysis failed to reduce expression");
+    return false;
+  }
+
+  ReturnCodes ret =
+      prec_stack_push(ps, (PrecItem){.type = PREC_EXPR, .expr = expr});
+
+  if (ret != RETURN_SUCCESS) {
+    parser->rc = ret;
+    return false;
+  }
+
+  return true;
+}
+
+static bool parse_expr(Parser *parser, ASTNode **out) {
+  PrecStack *ps = prec_stack_init();
+
+  *out = NULL;
+
+  if (ps == NULL) {
+    // Failed to init prec stack
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  PrecTerminal prev_terminal = PREC_DELIM; // The stack always starts with a '$'
+  ReturnCodes ret;
+  while (true) {
+    PrecTerminal input_terminal =
+        terminal_from_token(parser, prev_terminal); // The token from the input
+    PrecTerminal top_terminal =
+        prec_stack_top_terminal(ps); // The topmost terminal on the stack
+
+    if (top_terminal == PREC_DELIM && input_terminal == PREC_DELIM) {
+      // The input is empty or the expression is successfully parsed
+      break;
+    }
+
+    switch (PREC_TABLE[top_terminal][input_terminal]) {
+    case '<':
+      // Insert a '<' terminal to the stack and go to case '='
+      ret = prec_stack_insert_less(ps);
+      if (ret != RETURN_SUCCESS) {
+        prec_stack_free(ps);
+        parser->rc = ERR_INTERNAL;
+        return false;
+      }
+    case '=':
+      // Push the input terminal to the stack
+      ret = prec_stack_push(ps, (PrecItem){
+                                    .type = PREC_TERMINAL,
+                                    .terminal = input_terminal,
+                                    .terminal_token = parser->current_token,
+                                });
+      parser->current_token.content.string =
+          NULL; // Take ownership of the string content
+
+      if (ret != RETURN_SUCCESS) {
+        prec_stack_free(ps);
+        parser->rc = ERR_INTERNAL;
+        return false;
+      }
+
+      prev_terminal = input_terminal; // The input terminal now becomes the
+                                      // previous terminal
+
+      if (!parser_advance(parser)) {
+        prec_stack_free(ps);
+        return false;
+      }
+      break;
+    case '>':
+      // Reduce the stack from the top until a '<'
+      if (!prec_reduce(parser, ps)) {
+        prec_stack_free(ps);
+        return false;
+      }
+      break;
+    default:
+    case ' ':
+      syntax_error(parser, "Syntactic error: failed to parse expression");
+      prec_stack_free(ps);
+      return false;
+    }
+  }
+
+  if (ps->item_count == 1) {
+    // Only '$' on the stack
+    syntax_error(parser, "Syntactic error: empty expression");
+    prec_stack_free(ps);
+    return false;
+  }
+
+  *out = prec_stack_pop_result(ps);
+  prec_stack_free(ps);
+
+  if (*out == NULL) {
+    // Wrong state of precedence stack
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  return true;
 }
