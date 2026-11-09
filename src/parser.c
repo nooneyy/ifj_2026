@@ -13,7 +13,6 @@
 #include "scanner.h"
 #include "symbol.h"
 #include "tokens.h"
-#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
