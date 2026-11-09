@@ -747,8 +747,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_NOT_EQ;
         token_to_fill->line = sc->line;
       } else {
-        print_error("Expected '=' after '!'.", sc->line);
-        return ERR_LEX_ANA;
+        (void)ungetc(c, sc->src);
+        token_to_fill->type = TOKEN_EXCL_MARK;
+        token_to_fill->line = sc->line;
       }
       return RETURN_SUCCESS;
 

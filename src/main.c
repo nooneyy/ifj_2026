@@ -6,12 +6,21 @@
  * @date 03.10.2026
  */
 
+#include "ast.h"
+#include "parser.h"
 #include "return.h"
 #include "scanner.h"
+#include <stdlib.h>
 
 int main(void) {
   Scanner sc = scanner_init(stdin);
-  (void)sc; // TODO: hand sc over to the parser, it asks the scanner for tokens
+  ASTNode *program = NULL;
 
+  ReturnCodes rc = parse_input(&sc, &program);
+  if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
+
+  ast_free(program);
   return RETURN_SUCCESS;
 }
