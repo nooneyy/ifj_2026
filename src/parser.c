@@ -281,6 +281,7 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
     // TODO: Could also be different than just = in val, var decl
     // eps
     // no deeper rules
+    *type = UNKNOWN;
     correct = true;
   } else {
     syntax_error(parser, "Syntactic error: Invalid type declaration.");
