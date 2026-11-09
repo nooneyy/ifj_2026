@@ -17,6 +17,9 @@
 // The initial capacity of the dynamic stack array
 #define INITIAL_PSTACK_CAPACITY 16
 
+// The size of the precedence table (it's a square!)
+#define PREC_TABLE_SIZE (PREC_DELIM + 1)
+
 /**
  * @brief Enum defining the types of Terminals the precedence stack accepts
  */
