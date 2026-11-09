@@ -191,6 +191,32 @@ static bool is_type_first(const TokenType type) {
 }
 
 /**
+ * @brief Checks whether token's type is in STATEMENT's FIRST()
+ *
+ * FIRST(STATEMENT) = {kw_if, kw_while, kw_for, kw_return, kw_var, kw_val, id,
+ * int, double, string, true, false, (}
+ *
+ * @param type TokenType of token to check
+ * @return true if is in FIRST(), else false
+ */
+static bool is_statement_first(const TokenType type) {
+  if (is_expr_base_first(type)) {
+    return true;
+  }
+  switch (type) {
+  case TOKEN_KW_IF:
+  case TOKEN_KW_WHILE:
+  case TOKEN_KW_FOR:
+  case TOKEN_KW_RETURN:
+  case TOKEN_KW_VAR:
+  case TOKEN_KW_VAL:
+    return true;
+  default:
+    return false;
+  }
+}
+
+/**
  * @brief Parses each parameter
  *
  * RULE 14: PARAMS -> ID : TYPE NEXT
@@ -201,6 +227,109 @@ static bool is_type_first(const TokenType type) {
  * true
  */
 static bool parse_params(Parser *parser, ASTNode *func);
+
+// TODO:
+static bool parse_statement(const Parser *parser,
+                            const ASTBlockNodeData *block) {
+  (void)parser;
+  (void)block;
+  return false;
+}
+
+/**
+ * @brief Parses block statements except for the first statement
+ *
+ * RULE 72: IN_BLOCK2 -> STATEMENT IN_BLOCK2
+ * RULE 73: IN_BLOCK2 -> eps
+ *
+ * @param parser Parser's current state
+ * @param block Current block to add statements to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block) {
+  bool correct = false;
+  if (is_statement_first(parser->current_token.type)) {
+    // STATEMENT
+    // RULES 74-80
+    correct = parse_statement(parser, block);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_in_block2(parser, block);
+  } else if (parser->current_token.type == TOKEN_DEDENT) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Expected a statement or end of block.");
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses the first statement in block
+ *
+ * RULE 71: IN_BLOCK -> STATEMENT IN_BLOCK2
+ *
+ * @param parser Parser's current state
+ * @param block Current block to add statements to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_in_block(Parser *parser, ASTBlockNodeData *block) {
+  bool correct = false;
+  // STATEMENT
+
+  correct = parse_statement(parser, block);
+  if (!correct) {
+    return false;
+  }
+  correct = parse_in_block2(parser, block);
+  return correct;
+}
+
+/**
+ * @brief Parses the entry to a Block
+ *
+ * RULE 70: BLOCK -> INDENT IN_BLOCK DEDENT
+ *
+ * @param parser Parser's current state
+ * @param out Where to put the block
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_block(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  if (!expect(parser, TOKEN_INDENT)) {
+    syntax_error(parser, "Syntactic error: Missing indentation for a block.");
+    return false;
+  }
+  // INDENT
+
+  *out = ast_init_block(parser->current_token.line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  if (is_statement_first(parser->current_token.type)) {
+    // INDENT IN_BLOCK
+    // RULE 71
+    correct = parse_in_block(parser, &(*out)->data.block);
+    if (!correct) {
+      return false;
+    }
+    if (!expect(parser, TOKEN_DEDENT)) {
+      syntax_error(parser, "Syntactic error: Missing dedent.");
+      correct = false;
+    }
+  } else {
+    syntax_error(parser, "Syntactic error: Empty block.");
+    correct = false;
+  }
+  return correct;
+}
 
 /**
  * @brief Parses TYPE and saves it into its node
@@ -259,8 +388,8 @@ static bool parse_type(Parser *parser, DataType *type) {
  *
  * @param parser Parser's current state
  * @param type Where the parsed type is stored
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
 static bool parse_type_decl(Parser *parser, DataType *type) {
   bool correct = false;
@@ -298,8 +427,8 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
  *
  * @param parser Parser's current state
  * @param func Function to assign parameters to
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
 static bool parse_next_cont(Parser *parser, ASTNode *func) {
   bool correct = false;
@@ -312,9 +441,8 @@ static bool parse_next_cont(Parser *parser, ASTNode *func) {
       correct = true;
     } else {
       // trailing comma in a single-line parameter declaration
-      syntax_error(
-          parser,
-          "Syntactic error: Trailing comma in one-line parameter definition.");
+      syntax_error(parser, "Syntactic error: Trailing comma in one-line "
+                           "parameter definition.");
       return false;
     }
     if (!parser_advance(parser)) {
@@ -340,8 +468,8 @@ static bool parse_next_cont(Parser *parser, ASTNode *func) {
  *
  * @param parser Parser's current state
  * @param func Function to assign parameters to
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
 static bool parse_next(Parser *parser, ASTNode *func) {
   bool correct = false;
@@ -416,8 +544,8 @@ static bool parse_params(Parser *parser, ASTNode *func) {
  *
  * @param parser Parser's current state
  * @param func Function to assign parameters to
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
 static bool parse_param_body(Parser *parser, ASTNode *func) {
   bool correct = false;
@@ -441,12 +569,11 @@ static bool parse_param_body(Parser *parser, ASTNode *func) {
  *
  * @param parser Parser's current state
  * @param func Function to fill
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
-static bool parse_def_ex(Parser *parser, const ASTNode *func) {
+static bool parse_def_ex(Parser *parser, ASTNode *func) {
   bool correct = false;
-  (void)func;
   if (parser->current_token.type == TOKEN_KW_IF) {
     // IF_REQ_ELSE
     // RULE 47
@@ -462,7 +589,7 @@ static bool parse_def_ex(Parser *parser, const ASTNode *func) {
   } else if (expect(parser, TOKEN_EOL)) {
     // EOL
     // RULE 70
-    // TODO: correct = parse_block(parser)
+    correct = parse_block(parser, &func->data.function_def.body);
   }
   return correct;
 }
@@ -474,8 +601,8 @@ static bool parse_def_ex(Parser *parser, const ASTNode *func) {
  * RULE 8: OPT_EOL -> eps
  *
  * @param parser Parser's current state
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
 static bool parse_opt_eol(Parser *parser) {
   bool correct = false;
@@ -506,8 +633,8 @@ static bool parse_opt_eol(Parser *parser) {
  *
  * @param parser Parser's current state
  * @param is_main Signals whether \@main occured
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
 static bool parse_opt_main(Parser *parser, bool *is_main) {
   bool correct = false;
@@ -535,8 +662,8 @@ static bool parse_opt_main(Parser *parser, bool *is_main) {
  * RULE 4: FDEF -> OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
  *
  * @param parser Parser's current state
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
 static bool parse_fdef(Parser *parser) {
   bool correct = false;
