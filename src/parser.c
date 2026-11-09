@@ -993,3 +993,58 @@ ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
   *program = parser.program;
   return RETURN_SUCCESS;
 }
+
+/**
+ * @brief Function for converting a Token into a Terminal based on some
+ * conditions (check PrecTerminal struct)
+ * @param parser Pointer to the parser struct
+ * @param prev Previous processed terminal (PREC_DELIM for the first terminal)
+ * @return An output terminal corresponding to the input token
+ */
+static PrecTerminal terminal_from_token(Parser *parser, PrecTerminal prev) {
+  // TODO: implement OR, AND once scanner has tokens for them
+  switch (parser->current_token.type) {
+  case TOKEN_ID:
+    if (parser->next_token.type == TOKEN_OPEN_PAR) {
+      return PREC_FUNC;
+    }
+    return PREC_OPERAND;
+  case TOKEN_INT:
+  case TOKEN_DOUBLE:
+  case TOKEN_STRING:
+    return PREC_OPERAND;
+  case TOKEN_OPEN_PAR:
+    return PREC_LPAREN;
+  case TOKEN_CLOSE_PAR:
+    return PREC_RPAREN;
+  case TOKEN_COMMA:
+    return PREC_COMMA;
+  case TOKEN_MINUS:
+    if (prev != PREC_OPERAND && prev != PREC_RPAREN) {
+      return PREC_NEG;
+    }
+    return PREC_SUB;
+  case TOKEN_EXCL_MARK:
+    return PREC_NOT;
+  case TOKEN_MUL:
+    return PREC_MUL;
+  case TOKEN_DIV:
+    return PREC_DIV;
+  case TOKEN_PLUS:
+    return PREC_ADD;
+  case TOKEN_LOW:
+    return PREC_LT;
+  case TOKEN_LOWEQ:
+    return PREC_LTE;
+  case TOKEN_GRE:
+    return PREC_GT;
+  case TOKEN_GREEQ:
+    return PREC_GTE;
+  case TOKEN_IS_EQ:
+    return PREC_EQ;
+  case TOKEN_NOT_EQ:
+    return PREC_NEQ;
+  default:
+    return PREC_DELIM;
+  }
+}
