@@ -128,6 +128,69 @@ static void syntax_error(Parser *parser, const char *message) {
 }
 
 /**
+ * @brief Checks whether token's type is in base <expr>'s FIRST()
+ *
+ * FIRST(base <expr>) = {id, int, string, double, (}
+ *
+ * @param type TokenType of token to check
+ * @return true if is in FIRST(), else false
+ */
+static bool is_expr_base_first(const TokenType type) {
+  switch (type) {
+  case TOKEN_INT:
+  case TOKEN_DOUBLE:
+  case TOKEN_STRING:
+  case TOKEN_ID:
+  case TOKEN_OPEN_PAR:
+    return true;
+  default:
+    return false;
+  }
+}
+
+/**
+ * @brief Checks whether token's type is in extended <expr>'s FIRST()
+ *
+ * FIRST(extended <expr>) = {id, int, double, string, (, -, !}
+ *
+ * @param type TokenType of token to check
+ * @return true if is in FIRST(), else false
+ */
+static bool is_expr_ext_first(const TokenType type) {
+  if (is_expr_base_first(type)) {
+    return true;
+  }
+  switch (type) {
+  case TOKEN_MINUS:
+  case TOKEN_EXCL_MARK:
+    return true;
+  default:
+    return false;
+  }
+}
+
+/**
+ * @brief Checks whether token's type is in TYPE's FIRST()
+ *
+ * FIRST(TYPE) = {kw_int, kw_double, kw_string, kw_boolean, kw_unit}
+ *
+ * @param type TokenType of token to check
+ * @return true if is in FIRST(), else false
+ */
+static bool is_type_first(const TokenType type) {
+  switch (type) {
+  case TOKEN_KW_INT:
+  case TOKEN_KW_DOUBLE:
+  case TOKEN_KW_STRING:
+  case TOKEN_KW_BOOLEAN:
+  case TOKEN_KW_UNIT:
+    return true;
+  default:
+    return false;
+  }
+}
+
+/**
  * @brief Parses each parameter
  *
  * RULE 14: PARAMS -> ID : TYPE NEXT
@@ -204,11 +267,7 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
   if (expect(parser, TOKEN_COLON)) {
     // :
 
-    if (parser->current_token.type == TOKEN_KW_INT ||
-        parser->current_token.type == TOKEN_KW_DOUBLE ||
-        parser->current_token.type == TOKEN_KW_STRING ||
-        parser->current_token.type == TOKEN_KW_BOOLEAN ||
-        parser->current_token.type == TOKEN_KW_UNIT) {
+    if (is_type_first(parser->current_token.type)) {
       // : TYPE
       // RULES 24, 25, 26, 27, 28
       correct = parse_type(parser, type);
@@ -317,11 +376,7 @@ static bool parse_params(Parser *parser, ASTNode *func) {
   }
   // ID :
 
-  if (!(parser->current_token.type == TOKEN_KW_INT ||
-        parser->current_token.type == TOKEN_KW_DOUBLE ||
-        parser->current_token.type == TOKEN_KW_STRING ||
-        parser->current_token.type == TOKEN_KW_BOOLEAN ||
-        parser->current_token.type == TOKEN_KW_UNIT)) {
+  if (!is_type_first(parser->current_token.type)) {
     syntax_error(parser, "Syntactic error: Missing or invalid data type of a "
                          "parameter in function declaration.");
     free(name);
@@ -372,6 +427,41 @@ static bool parse_param_body(Parser *parser, ASTNode *func) {
     correct = parse_params(parser, func);
   } else if (parser->current_token.type == TOKEN_CLOSE_PAR) {
     correct = parser_advance(parser);
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses function's right side
+ *
+ * RULE 9:  DEF_EX -> IF_REQ_ELSE
+ * RULE 10: DEF_EX -> <expr> EOL
+ * RULE 11: DEF_EX -> EOL BLOCK
+ *
+ * @param parser Parser's current state
+ * @param func Function to fill
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_def_ex(Parser *parser, const ASTNode *func) {
+  bool correct = false;
+  (void)func;
+  if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF_REQ_ELSE
+    // RULE 47
+    // TODO: parse_if_req_else()
+    correct = false; // TODO
+  } else if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr>
+    // PRECEDENCE ANALYSIS
+    // TODO: correct = parse_expr(parser)
+    // TODO: check correct
+    // TODO: if (!expect(parser, TOKEN_EOL)) {syntax_error; return false;}
+    correct = true; // TODO
+  } else if (expect(parser, TOKEN_EOL)) {
+    // EOL
+    // RULE 70
+    // TODO: correct = parse_block(parser)
   }
   return correct;
 }
@@ -461,7 +551,7 @@ static bool parse_fdef(Parser *parser) {
   }
 
   if (!expect(parser, TOKEN_KW_DEF)) {
-    syntax_error(parser, "Syntactic error: Missing function definition.");
+    syntax_error(parser, "Syntactic error: Missing function declaration.");
     return false;
   }
   // OPT_MAIN KW_DEF
@@ -511,17 +601,12 @@ static bool parse_fdef(Parser *parser) {
     }
     // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL =
 
-    if (parser->current_token.type == TOKEN_EOL ||
-        parser->current_token.type == TOKEN_KW_IF ||
-        parser->current_token.type == TOKEN_ID ||
-        parser->current_token.type == TOKEN_MINUS ||
-        parser->current_token.type == TOKEN_EXCL_MARK ||
-        parser->current_token.type == TOKEN_INT ||
-        parser->current_token.type == TOKEN_DOUBLE ||
-        parser->current_token.type == TOKEN_OPEN_PAR) {
+    if (is_expr_ext_first(parser->current_token.type) ||
+        parser->current_token.type == TOKEN_EOL ||
+        parser->current_token.type == TOKEN_KW_IF) {
       // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
       // RULES 9, 10, 11
-      // TODO: correct = parse_def_ex
+      correct = parse_def_ex(parser, func);
     } else {
       syntax_error(parser, "Syntactic error: Invalid function definition.");
     }
