@@ -811,6 +811,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_LOW:
       if (c == '=') {
         token_to_fill->type = TOKEN_LOWEQ;
+      } else if (c == '-') {
+        token_to_fill->type = TOKEN_GENERATOR;
       } else {
         (void)ungetc(c, sc->src);
         token_to_fill->type = TOKEN_LOW;
