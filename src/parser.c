@@ -738,8 +738,12 @@ static bool parse_only_if(Parser *parser, ASTNode **else_out) {
   *else_out = NULL;
   if (parser->current_token.type == TOKEN_SEMICOLON ||
       parser->current_token.type == TOKEN_EOL) {
+    // END
+    // RULES 31, 32
     correct = parse_end(parser);
   } else if (expect(parser, TOKEN_KW_ELSE)) {
+    // kw_else ELIF
+    // RULES 44-46
     correct = parse_elif(parser, else_out);
   } else {
     syntax_error(parser,
@@ -767,12 +771,17 @@ static bool parse_then_one(
   *then_out = NULL;
   *else_out = NULL;
   if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr> ONLY_IF
+    // RULES 37, 38
     correct = parse_expr(parser, then_out);
     if (!correct) {
       return false;
     }
     correct = parse_only_if(parser, else_out);
   } else if (expect(parser, TOKEN_EOL)) {
+    // eol BLOCK AFTER_BLOCK
+    // RULE 70
+    // RULES 42,43
     correct = parse_block(parser, then_out);
     if (!correct) {
       return false;
@@ -797,17 +806,19 @@ static bool parse_if(Parser *parser, ASTNode **out) {
     syntax_error(parser, "Syntactic error: Missing \"if\" in an if statement.");
     return false;
   }
-
+  // kw_if
   correct = parse_expr(parser, &if_node);
   if (!correct) {
     return false;
   }
+  // kw_if <expr>
 
   if (!expect(parser, TOKEN_KW_THEN)) {
     ast_free(if_node);
     syntax_error(parser, "Syntactic error: Missing \"then\" in if structure.");
     return false;
   }
+  // kw_if <expr> kw_then
 
   correct = parse_then_one(parser, &then_node, &else_node);
   if (!correct) {
@@ -816,6 +827,7 @@ static bool parse_if(Parser *parser, ASTNode **out) {
     ast_free(else_node);
     return false;
   }
+  // kw_if <expr> kw_then THEN_ONE
 
   *out = ast_init_if(if_node, then_node, else_node, false, line);
   if (*out == NULL) {
