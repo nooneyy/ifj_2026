@@ -1299,11 +1299,26 @@ ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
  */
 static PrecTerminal terminal_from_token(Parser *parser, PrecTerminal prev) {
   switch (parser->current_token.type) {
-  case TOKEN_ID:
+  case TOKEN_ID: {
+    bool prev_can_end_expr =
+        ((prev == PREC_RPAREN) || (prev == PREC_OPERAND)) != 0;
+    bool curr_eq_to = strcmp(parser->current_token.content.string, "to") == 0;
+    bool curr_eq_until =
+        strcmp(parser->current_token.content.string, "until") == 0;
+    bool curr_eq_by = strcmp(parser->current_token.content.string, "by") == 0;
+
+    if (prev_can_end_expr && (curr_eq_to || curr_eq_until || curr_eq_by)) {
+      // Parsed expression is in a for loop generator, end the expression when
+      // hitting a "to" | "until" | "by"
+      return PREC_DELIM;
+    }
+
     if (parser->next_token.type == TOKEN_OPEN_PAR) {
       return PREC_FUNC;
     }
+
     return PREC_OPERAND;
+  }
   case TOKEN_INT:
   case TOKEN_DOUBLE:
   case TOKEN_STRING:
