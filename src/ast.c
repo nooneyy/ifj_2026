@@ -216,6 +216,42 @@ ASTNode *ast_init_while(ASTNode *condition, ASTNode *body, unsigned int line) {
   return while_node;
 }
 
+ASTNode *ast_init_for(char *generator_name, ASTNode *range_start,
+                      ASTNode *range_end, ASTNode *range_step, ASTNode *body,
+                      bool includes_end, unsigned int line) {
+  ASTNode *for_node = malloc(sizeof(ASTNode));
+
+  if (for_node == NULL) {
+    free(generator_name);
+    ast_free(range_start);
+    ast_free(range_end);
+    ast_free(range_step);
+    ast_free(body);
+    print_error("Allocation failed!", 0);
+    return NULL;
+  }
+
+  ASTForNodeData data = {
+      .generator_name = generator_name,
+      .range_start = range_start,
+      .range_end = range_end,
+      .range_step = range_step,
+      .guards = NULL,
+      .body = body,
+      .includes_end = includes_end,
+  };
+
+  *for_node = (ASTNode){
+      .node_type = NODE_FOR,
+      .data_type = UNIT,
+      .line = line,
+      .next = NULL,
+      .data.for_node = data,
+  };
+
+  return for_node;
+}
+
 ASTNode *ast_init_return(ASTNode *value, unsigned int line) {
   ASTNode *return_node = malloc(sizeof(ASTNode));
 
@@ -413,6 +449,14 @@ void ast_free(ASTNode *node) {
     case NODE_WHILE:
       ast_free(node->data.while_node.condition);
       ast_free(node->data.while_node.body);
+      break;
+    case NODE_FOR:
+      ast_free(node->data.for_node.body);
+      ast_free(node->data.for_node.range_start);
+      ast_free(node->data.for_node.range_end);
+      ast_free(node->data.for_node.range_step);
+      ast_free(node->data.for_node.guards);
+      free(node->data.for_node.generator_name);
       break;
     case NODE_LITERAL:
       if (node->data_type == STRING) {
