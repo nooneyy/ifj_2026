@@ -1477,8 +1477,9 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
       // Parse as boolean literal
       expr = ast_init_literal(
           BOOLEAN,
-          (ASTLiteralNodeData){.bool_val =
-                                   first_item.terminal_token.content.boolean},
+          (ASTLiteralNodeData){
+              .bool_val = first_item.terminal_token.content.boolean,
+          },
           first_item.terminal_token.line);
       break;
     default:

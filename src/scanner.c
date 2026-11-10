@@ -96,7 +96,8 @@ static const KeyWord KEYWORDS[] = {
     {"class", TOKEN_KW_CLASS},     {"extension", TOKEN_KW_EXTENSION},
     {"for", TOKEN_KW_FOR},         {"List", TOKEN_KW_LIST},
     {"match", TOKEN_KW_MATCH},     {"type", TOKEN_KW_TYPE},
-    {"true", TOKEN_BOOL},          {"false", TOKEN_BOOL}};
+    {"true", TOKEN_BOOL},          {"false", TOKEN_BOOL},
+};
 
 Scanner scanner_init(FILE *src_file) {
   Scanner to_fill = {.src = src_file, .at_line_start = true, .line = 1};
