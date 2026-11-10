@@ -339,6 +339,18 @@ static bool is_statement_first(const TokenType type) {
 }
 
 /**
+ * @brief Parses variable declaration
+ *
+ * RULE 19: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to fill
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_var_decl(Parser *parser, ASTNode **out);
+
+/**
  * @brief Parses each parameter
  *
  * RULE 14: PARAMS -> ID : TYPE NEXT
@@ -364,6 +376,7 @@ static bool parse_statement(const Parser *parser,
                             const ASTBlockNodeData *block) {
   (void)parser;
   (void)block;
+  (void)parse_var_decl;
   return false;
 }
 
@@ -463,6 +476,43 @@ static bool parse_block(Parser *parser, ASTNode **out) {
 }
 
 /**
+ * @brief Parses expression, call or control (ECC (Idk I made that up :D))
+ *
+ * RULE 29: ECC -> <expr> END     covers expressions and calls EC
+ * RULE 30: ECC -> IF_REQ_ELSE    covers control C
+ *
+ * @param parser Parser's current state
+ * @param out Node to connect to
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_ecc(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF_REQ_ELSE
+    // RULE 47
+    // TODO: parse if_req_else
+    correct = false;
+    parser->rc = ERR_INTERNAL;
+    print_error("Not implemented yet.", 0);
+  } else if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr> END
+    // does with precedence analysis
+    correct = parse_expr(parser, out);
+    if (!correct) {
+      return false;
+    }
+    // TODO: parse_end()
+
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Expected expression, call or control.");
+    correct = false;
+  }
+  return correct;
+}
+
+/**
  * @brief Parses TYPE and saves it into its node
  *
  * RULE 24 -> KW_INT
@@ -538,7 +588,6 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
       return false;
     }
   } else if (parser->current_token.type == TOKEN_ASSIGN) {
-    // TODO: Could also be different than just = in val, var decl
     // eps
     // no deeper rules
     *type = UNKNOWN;
@@ -588,46 +637,55 @@ static bool parse_edit_type(Parser *parser, VariableType *to_set) {
   return correct;
 }
 
-/**
- * @brief Parses variable declaration
- *
- * RULE 19: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
- *
- * @param parser Parser's current state
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_var_decl(Parser *parser) {
+static bool parse_var_decl(Parser *parser, ASTNode **out) {
   bool correct = false;
-  // TODO: const char *name = {};
+  char *name = NULL;
   VariableType val_var;
-  DataType var_type;
+  DataType data_type;
+  ASTNode *init_node = NULL;
+  const unsigned int line = parser->current_token.line;
+
+  *out = NULL;
+
   correct = parse_edit_type(parser, &val_var);
   if (!correct) {
     return false;
   }
-
   if (parser->current_token.type != TOKEN_ID) {
     syntax_error(parser, "Syntactic error: Variable declaration without name.");
     return false;
   }
-  // name = parser->current_token.content.string;
+  name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+
   if (!parser_advance(parser)) {
+    free(name);
     return false;
   }
-  correct = parse_type_decl(parser, &var_type);
+  correct = parse_type_decl(parser, &data_type);
   if (!correct) {
+    free(name);
     return false;
   }
+
   if (!expect(parser, TOKEN_ASSIGN)) {
     syntax_error(parser, "Syntactic error: Invalid variable declaration.");
+    free(name);
     return false;
   }
-  // TODO: use these
-  // (void)name;
-  // (void)val_var;
-  (void)var_type;
-  // TODO: correct = parse_ecc(parser);
+
+  correct = parse_ecc(parser, &init_node);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+
+  *out = ast_init_var_def(name, val_var, data_type, init_node, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
   return correct;
 }
 
@@ -643,7 +701,6 @@ static bool parse_var_decl(Parser *parser) {
  * else true
  */
 static bool parse_next_cont(Parser *parser, ASTNode *func) {
-  (void)parse_var_decl; // TODO: delete this
   bool correct = false;
   if (parser->current_token.type == TOKEN_CLOSE_PAR) {
     // )
