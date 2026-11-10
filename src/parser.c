@@ -339,6 +339,29 @@ static bool is_statement_first(const TokenType type) {
 }
 
 /**
+ * @brief Parses if that requires else
+ *
+ * RULE 47: IF_REQ_ELSE -> kw_if <expr> kw_then THEN_REQ_ELSE
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to store the whole if
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_if_req_else(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses end where can't be end of file
+ *
+ * RULE 31: END -> EOL
+ * RULE 32: END -> ;
+ *
+ * @param parser Parser's current state
+ * @return true if end of line or semicolon, else false
+ */
+static bool parse_end(Parser *parser);
+
+/**
  * @brief Parses variable declaration
  *
  * RULE 19: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
@@ -441,8 +464,8 @@ static bool parse_in_block(Parser *parser, ASTBlockNodeData *block) {
  *
  * @param parser Parser's current state
  * @param out Where to put the block
- * @return false if an error occured in this or any other called function,
- * else true
+ * @return false if an error occured in this or any other called function, else
+ * true
  */
 static bool parse_block(Parser *parser, ASTNode **out) {
   bool correct = false;
@@ -476,6 +499,157 @@ static bool parse_block(Parser *parser, ASTNode **out) {
 }
 
 /**
+ * @brief Parses whether there's else if or just else
+ *
+ * RULE 50: IS_REQ_ELIF -> IF_REQ_ELSE
+ * RULE 51: IS_REQ_ELIF -> <expr> END
+ * RULE 52: IS_REQ_ELIF -> EOL BLOCK
+ *
+ * @param parser Parser's current state
+ * @param else_out Where to store the else branch
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_is_req_elif(Parser *parser, ASTNode **else_out) {
+  bool correct = false;
+  *else_out = NULL;
+
+  if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF_REQ_ELSE
+    // RULE 47
+    correct = parse_if_req_else(parser, else_out);
+  } else if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr> END
+    correct = parse_expr(parser, else_out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_end(parser);
+  } else if (expect(parser, TOKEN_EOL)) {
+    // EOL BLOCK
+    correct = parse_block(parser, else_out);
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Missing statement or if after else.");
+    return false;
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses state after if or else block where else is required
+ *
+ * RULE 53: AFTER_REQ_BLOCK -> kw_else IS_REQ_ELIF
+ *
+ * @param parser Parser's current state
+ * @param else_out Where to store the else branch
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_after_req_block(Parser *parser, ASTNode **else_out) {
+  bool correct = false;
+  *else_out = NULL;
+  if (!expect(parser, TOKEN_KW_ELSE)) {
+    syntax_error(
+        parser, "Syntactic error: Missing else after if where it's mandatory.");
+    return false;
+  }
+  correct = parse_is_req_elif(parser, else_out);
+  return correct;
+}
+
+/**
+ * @brief Parses then statements in if where else is required
+ *
+ * RULE 48: THEN_REQ_ELSE -> <expr> KW_ELSE IS_REQ_ELIF
+ * RULE 49: THEN_REQ_ELSE -> EOL BLOCK AFTER_REQ_BLOCK
+ *
+ * @param parser Parser's current state
+ * @param then_out Where to store the then branch
+ * @param else_out Where to store the else branch
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_then_req_else(
+    Parser *parser,
+    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **else_out) {
+  bool correct = false;
+  *then_out = NULL;
+  *else_out = NULL;
+  if (is_expr_ext_first(parser->current_token.type)) {
+    correct = parse_expr(parser, then_out);
+    if (!correct) {
+      return false;
+    }
+    if (!expect(parser, TOKEN_KW_ELSE)) {
+      syntax_error(parser,
+                   "Syntactic error: Missing else where it's mandatory.");
+      return false;
+    }
+    correct = parse_is_req_elif(parser, else_out);
+  } else if (expect(parser, TOKEN_EOL)) {
+    correct = parse_block(parser, then_out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_after_req_block(parser, else_out);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid input after then.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_if_req_else(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  ASTNode *if_node = NULL;
+  ASTNode *then_node = NULL;
+  ASTNode *else_node = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (!expect(parser, TOKEN_KW_IF)) {
+    return false;
+  }
+
+  correct = parse_expr(parser, &if_node);
+  if (!correct) {
+    return false;
+  }
+  if (!expect(parser, TOKEN_KW_THEN)) {
+    syntax_error(parser, "Syntactic error: Missing \"then\" after \"if\".");
+    ast_free(if_node);
+    return false;
+  }
+  correct = parse_then_req_else(parser, &then_node, &else_node);
+  if (!correct) {
+    ast_free(if_node);
+    ast_free(then_node);
+    ast_free(else_node);
+    return false;
+  }
+
+  *out = ast_init_if(if_node, then_node, else_node, true, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  return correct;
+}
+
+static bool parse_end(Parser *parser) {
+  bool correct = false;
+  if (expect(parser, TOKEN_EOL) || expect(parser, TOKEN_SEMICOLON)) {
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Expected ; or end of line");
+  }
+  return correct;
+}
+
+/**
  * @brief Parses expression, call or control (ECC (Idk I made that up :D))
  *
  * RULE 29: ECC -> <expr> END     covers expressions and calls EC
@@ -491,10 +665,7 @@ static bool parse_ecc(Parser *parser, ASTNode **out) {
   if (parser->current_token.type == TOKEN_KW_IF) {
     // IF_REQ_ELSE
     // RULE 47
-    // TODO: parse if_req_else
-    correct = false;
-    parser->rc = ERR_INTERNAL;
-    print_error("Not implemented yet.", 0);
+    correct = parse_if_req_else(parser, out);
   } else if (is_expr_ext_first(parser->current_token.type)) {
     // <expr> END
     // does with precedence analysis
@@ -502,8 +673,7 @@ static bool parse_ecc(Parser *parser, ASTNode **out) {
     if (!correct) {
       return false;
     }
-    // TODO: parse_end()
-
+    correct = parse_end(parser);
   } else {
     syntax_error(parser,
                  "Syntactic error: Expected expression, call or control.");
@@ -676,6 +846,7 @@ static bool parse_var_decl(Parser *parser, ASTNode **out) {
 
   correct = parse_ecc(parser, &init_node);
   if (!correct) {
+    ast_free(init_node);
     free(name);
     return false;
   }
@@ -847,8 +1018,7 @@ static bool parse_def_ex(Parser *parser, ASTNode *func) {
   if (parser->current_token.type == TOKEN_KW_IF) {
     // IF_REQ_ELSE
     // RULE 47
-    // TODO: parse_if_req_else()
-    correct = false; // TODO
+    correct = parse_if_req_else(parser, &func->data.function_def.body);
   } else if (is_expr_ext_first(parser->current_token.type)) {
     // <expr>
     // PRECEDENCE ANALYSIS
@@ -861,11 +1031,13 @@ static bool parse_def_ex(Parser *parser, ASTNode *func) {
                    "Syntactic error: Missing end of line after an expression.");
       return false;
     }
-    correct = true; // TODO
   } else if (expect(parser, TOKEN_EOL)) {
     // EOL
     // RULE 70
     correct = parse_block(parser, &func->data.function_def.body);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid missing expression or if.");
+    correct = false;
   }
   return correct;
 }
