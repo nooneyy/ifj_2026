@@ -351,6 +351,18 @@ static bool is_statement_first(const TokenType type) {
 static bool parse_if_req_else(Parser *parser, ASTNode **out);
 
 /**
+ * @brief Parses if that doesnt require else
+ *
+ * RULE 34: IF -> kw_if <expr> kw_then THEN_ONE
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to be filled
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_if(Parser *parser, ASTNode **out);
+
+/**
  * @brief Parses end where can't be end of file
  *
  * RULE 31: END -> EOL
@@ -400,6 +412,7 @@ static bool parse_statement(const Parser *parser,
   (void)parser;
   (void)block;
   (void)parse_var_decl;
+  (void)parse_if;
   return false;
 }
 
@@ -631,6 +644,180 @@ static bool parse_if_req_else(Parser *parser, ASTNode **out) {
   }
 
   *out = ast_init_if(if_node, then_node, else_node, true, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  return correct;
+}
+
+/**
+ * @brief Parses else and checks if it's else if
+ *
+ * RULE 44: ELIF -> EOL BLOCK
+ * RULE 45: ELIF -> IF
+ * RULE 46: ELIF -> <expr> END
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to be filled
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_elif(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  *out = NULL;
+  if (expect(parser, TOKEN_EOL)) {
+    // EOL BLOCK
+    // RULE 70
+    correct = parse_block(parser, out);
+  } else if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF
+    // RULE 34
+    correct = parse_if(parser, out);
+  } else if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr> END
+    // RULES 31, 32
+    correct = parse_expr(parser, out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_end(parser);
+  } else {
+    syntax_error(
+        parser,
+        "Syntactic error: Expected expression, if or end of line after else.");
+    correct = false;
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses syntax after IF THEN or ELSE block
+ *
+ * RULE 42: AFTER_BLOCK -> eps
+ * RULE 43: AFTER_BLOCK -> kw_else ELIF
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to be filled
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_after_block(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  *out = NULL;
+  if (expect(parser, TOKEN_KW_ELSE)) {
+    // kw_else ELIF
+    // RULES 44-46
+    correct = parse_elif(parser, out);
+  } else if (is_statement_first(parser->current_token.type) ||
+             parser->current_token.type == TOKEN_DEDENT) {
+    // eps
+    // No deeper rule
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid input after block.");
+    return false;
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses whether else branch exists
+ *
+ * RULE 37: ONLY_IF -> END
+ * RULE 38: ONLY_IF -> kw_else ELIF
+ *
+ * @param parser Parser's current state
+ * @param else_out ASTNode to be filled
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_only_if(Parser *parser, ASTNode **else_out) {
+  bool correct = false;
+  *else_out = NULL;
+  if (parser->current_token.type == TOKEN_SEMICOLON ||
+      parser->current_token.type == TOKEN_EOL) {
+    correct = parse_end(parser);
+  } else if (expect(parser, TOKEN_KW_ELSE)) {
+    correct = parse_elif(parser, else_out);
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Invalid syntax after then statement(s).");
+  }
+  return correct;
+}
+
+/**
+ * @brief Parses THEN's statement if one-line or parses THEN block
+ *
+ * RULE 35: THEN_ONE -> <expr> ONLY_IF
+ * RULE 36: THEN_ONE -> eol BLOCK AFTER_BLOCK
+ *
+ * @param parser Parser's current state
+ * @param then_out AST branch for if then branch
+ * @param else_out AST branch for else branch
+ * @return
+ */
+static bool parse_then_one(
+    Parser *parser,
+    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **else_out) {
+  bool correct = false;
+  *then_out = NULL;
+  *else_out = NULL;
+  if (is_expr_ext_first(parser->current_token.type)) {
+    correct = parse_expr(parser, then_out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_only_if(parser, else_out);
+  } else if (expect(parser, TOKEN_EOL)) {
+    correct = parse_block(parser, then_out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_after_block(parser, else_out);
+  } else {
+    syntax_error(parser, "Syntactic error: Missing expression after then.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_if(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  ASTNode *if_node = NULL;
+  ASTNode *then_node = NULL;
+  ASTNode *else_node = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (!expect(parser, TOKEN_KW_IF)) {
+    syntax_error(parser, "Syntactic error: Missing \"if\" in an if statement.");
+    return false;
+  }
+
+  correct = parse_expr(parser, &if_node);
+  if (!correct) {
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_KW_THEN)) {
+    ast_free(if_node);
+    syntax_error(parser, "Syntactic error: Missing \"then\" in if structure.");
+    return false;
+  }
+
+  correct = parse_then_one(parser, &then_node, &else_node);
+  if (!correct) {
+    ast_free(if_node);
+    ast_free(then_node);
+    ast_free(else_node);
+    return false;
+  }
+
+  *out = ast_init_if(if_node, then_node, else_node, false, line);
   if (*out == NULL) {
     parser->rc = ERR_INTERNAL;
     return false;
