@@ -340,40 +340,181 @@ static bool is_statement_first(const TokenType type) {
 }
 
 /**
- * @brief Parses return statement
+ * @brief Parses the prologue and starts the whole parsing tree
  *
- * RULE 64: RETURN -> KW_RETURN OPT_ECC
+ * RULE 1: PROGRAM -> KW_IMPORT ID(„ifj26“) DOT MUL EOL DEFS EOF
  *
  * @param parser Parser's current state
- * @param out ASTNode to store the whole return
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false on an error, else true
  */
-static bool parse_return(Parser *parser, ASTNode **out);
+static bool parse_program(Parser *parser);
 
 /**
- * @brief Parses if that requires else
+ * @brief Parses all function definitions
  *
- * RULE 44: IF_REQ_ELSE -> kw_if <expr> kw_then THEN_REQ_ELSE
+ * RULE 2: DEFS -> DEF DEFS
+ * RULE 3: DEFS -> eps
  *
  * @param parser Parser's current state
- * @param out ASTNode to store the whole if
- * @return false if an error occured in this or any other called function, else
- * true
+ * @return false if an error occured in this or any other called function,
+ * else true
  */
-static bool parse_if_req_else(Parser *parser, ASTNode **out);
+static bool parse_defs(Parser *parser);
 
 /**
- * @brief Parses if that doesnt require else
+ * @brief Parses individual functions
  *
- * RULE 34: IF -> kw_if <expr> kw_then THEN_ONE
+ * RULE 4: DEF -> OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
  *
  * @param parser Parser's current state
- * @param out ASTNode to be filled
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_fdef(Parser *parser);
+
+/**
+ * @brief Parses optional \@main
+ *
+ * RULE 5: OPT_MAIN -> AT_MAIN OPT_EOL
+ * RULE 6: OPT_MAIN -> eps
+ *
+ * @param parser Parser's current state
+ * @param is_main Signals whether \@main occured
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_opt_main(Parser *parser, bool *is_main);
+
+/**
+ * @brief Parses optional EOL after \@main
+ *
+ * RULE 7: OPT_EOL -> EOL
+ * RULE 8: OPT_EOL -> eps
+ *
+ * @param parser Parser's current state
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_opt_eol(Parser *parser);
+
+/**
+ * @brief Parses function's right side
+ *
+ * RULE 9:  DEF_EX -> IF_REQ_ELSE
+ * RULE 10: DEF_EX -> <expr> EOL
+ * RULE 11: DEF_EX -> EOL BLOCK
+ *
+ * @param parser Parser's current state
+ * @param func Function to fill
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_def_ex(Parser *parser, ASTNode *func);
+
+/**
+ * @brief Parses parameters as a whole
+ *
+ * RULE 12: PARAM_BODY -> PARAMS
+ * RULE 13: PARAM_BODY -> )
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_param_body(Parser *parser, ASTNode *func);
+
+/**
+ * @brief Parses each parameter
+ *
+ * RULE 14: PARAMS -> ID : TYPE NEXT
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_if(Parser *parser, ASTNode **out);
+static bool parse_params(Parser *parser, ASTNode *func);
+
+/**
+ * @brief Parses , or ) after a parameter
+ *
+ * RULE 15: NEXT -> , NEXT_CONT
+ * RULE 16: NEXT -> )
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_next(Parser *parser, ASTNode *func);
+
+/**
+ * @brief Parses what follow a ,
+ *
+ * RULE 17: NEXT_CONT -> )
+ * RULE 18: NEXT_CONT -> PARAMS
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_next_cont(Parser *parser, ASTNode *func);
+
+/**
+ * @brief Parses variable declaration
+ *
+ * RULE 19: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to fill
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_var_decl(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses Val/Var in Variable declaration
+ *
+ * RULE 20: EDIT_TYPE -> KW_VAR
+ * RULE 21: EDIT_TYPE -> KW_VAL
+ *
+ * @param parser Parser's current state
+ * @param to_set Edit type variable to be set
+ * @return false if current token is not val nor var or parser_advance fails,
+ * else true
+ */
+static bool parse_edit_type(Parser *parser, VariableType *to_set);
+
+/**
+ * @brief Parses type declaration
+ *
+ * RULE 22: TYPE_DECL -> : TYPE
+ * RULE 23: TYPE_DECL -> eps
+ *
+ * @param parser Parser's current state
+ * @param type Where the parsed type is stored
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_type_decl(Parser *parser, DataType *type);
+
+/**
+ * @brief Parses TYPE and saves it into its node
+ *
+ * RULE 24: TYPE -> KW_INT
+ * RULE 25: TYPE -> KW_DOUBLE
+ * RULE 26: TYPE -> KW_STRING
+ * RULE 27: TYPE -> KW_BOOLEAN
+ * RULE 28: TYPE -> KW_UNIT
+ *
+ * @param parser Parser's current state
+ * @param type Where the parsed type is stored
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_type(Parser *parser, DataType *type);
 
 /**
  * @brief Parses expression, call or control (ECC (Idk I made that up :D))
@@ -412,37 +553,128 @@ static bool parse_end(Parser *parser);
 static bool parse_assign(Parser *parser, ASTNode **out);
 
 /**
- * @brief Parses variable declaration
+ * @brief Parses if that doesnt require else
  *
- * RULE 19: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
- *
- * @param parser Parser's current state
- * @param out ASTNode to fill
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_var_decl(Parser *parser, ASTNode **out);
-
-/**
- * @brief Parses each parameter
- *
- * RULE 14: PARAMS -> ID : TYPE NEXT
+ * RULE 34: IF -> kw_if <expr> kw_then THEN_ONE
  *
  * @param parser Parser's current state
- * @param func Function to assign parameters to
+ * @param out ASTNode to be filled
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_params(Parser *parser, ASTNode *func);
+static bool parse_if(Parser *parser, ASTNode **out);
 
 /**
- * @brief Parses an expression
- * @param parser Pointer to the parser struct
- * @param out A pointer to the location of the to-be-created ASTNode pointer
- * @return true on success, false on an error with the error code in parser->rc,
- * *out being NULL
+ * @brief Parses THEN's statement if one-line or parses THEN block
+ *
+ * RULE 35: THEN_ONE -> <expr> ONLY_IF
+ * RULE 36: THEN_ONE -> eol BLOCK AFTER_BLOCK
+ *
+ * @param parser Parser's current state
+ * @param then_out AST branch for if then branch
+ * @param else_out AST branch for else branch
+ * @return false if an error occured in this or any other called function, else
+ * true
  */
-static bool parse_expr(Parser *parser, ASTNode **out);
+static bool parse_then_one(
+    Parser *parser,
+    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **else_out);
+
+/**
+ * @brief Parses whether else branch exists
+ *
+ * RULE 37: ONLY_IF -> END
+ * RULE 38: ONLY_IF -> kw_else ELIF
+ *
+ * @param parser Parser's current state
+ * @param else_out ASTNode to be filled
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_only_if(Parser *parser, ASTNode **else_out);
+
+/**
+ * @brief Parses syntax after IF THEN or ELSE block
+ *
+ * RULE 39: AFTER_BLOCK -> eps
+ * RULE 40: AFTER_BLOCK -> kw_else ELIF
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to be filled
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_after_block(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses else and checks if it's else if
+ *
+ * RULE 41: ELIF -> EOL BLOCK
+ * RULE 42: ELIF -> IF
+ * RULE 43: ELIF -> <expr> END
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to be filled
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_elif(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses if that requires else
+ *
+ * RULE 44: IF_REQ_ELSE -> kw_if <expr> kw_then THEN_REQ_ELSE
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to store the whole if
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_if_req_else(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses then statements in if where else is required
+ *
+ * RULE 45: THEN_REQ_ELSE -> <expr> KW_ELSE IS_REQ_ELIF
+ * RULE 46: THEN_REQ_ELSE -> EOL BLOCK AFTER_REQ_BLOCK
+ *
+ * @param parser Parser's current state
+ * @param then_out Where to store the then branch
+ * @param else_out Where to store the else branch
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_then_req_else(
+    Parser *parser,
+    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **else_out);
+
+/**
+ * @brief Parses whether there's else if or just else
+ *
+ * RULE 47: IS_REQ_ELIF -> IF_REQ_ELSE
+ * RULE 48: IS_REQ_ELIF -> <expr> END
+ * RULE 49: IS_REQ_ELIF -> EOL BLOCK
+ *
+ * @param parser Parser's current state
+ * @param else_out Where to store the else branch
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_is_req_elif(Parser *parser, ASTNode **else_out);
+
+/**
+ * @brief Parses state after if or else block where else is required
+ *
+ * RULE 50: AFTER_REQ_BLOCK -> kw_else IS_REQ_ELIF
+ *
+ * @param parser Parser's current state
+ * @param else_out Where to store the else branch
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_after_req_block(Parser *parser, ASTNode **else_out);
 
 /**
  * @brief Parses while loop
@@ -455,6 +687,68 @@ static bool parse_expr(Parser *parser, ASTNode **out);
  * true
  */
 static bool parse_while(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses return statement
+ *
+ * RULE 64: RETURN -> KW_RETURN OPT_ECC
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to store the whole return
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_return(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses optional returned value after return
+ *
+ * RULE 65: OPT_ECC -> ECC
+ * RULE 66: OPT_ECC -> END
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to fill, stays NULL if there's no returned value
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_opt_ecc(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses the entry to a Block
+ *
+ * RULE 67: BLOCK -> INDENT IN_BLOCK DEDENT
+ *
+ * @param parser Parser's current state
+ * @param out Where to put the block
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_block(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses the first statement in block
+ *
+ * RULE 68: IN_BLOCK -> STATEMENT IN_BLOCK2
+ *
+ * @param parser Parser's current state
+ * @param block Current block to add statements to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_in_block(Parser *parser, ASTBlockNodeData *block);
+
+/**
+ * @brief Parses block statements except for the first statement
+ *
+ * RULE 69: IN_BLOCK2 -> STATEMENT IN_BLOCK2
+ * RULE 70: IN_BLOCK2 -> eps
+ *
+ * @param parser Parser's current state
+ * @param block Current block to add statements to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block);
 
 /**
  * @brief Parses a single statement and appends it to the block
@@ -472,1106 +766,62 @@ static bool parse_while(Parser *parser, ASTNode **out);
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
-  bool correct = false;
-  ASTNode *statement = NULL;
-  if (parser->current_token.type == TOKEN_KW_VAL ||
-      parser->current_token.type == TOKEN_KW_VAR) {
-    // VAR_DECL
-    // RULE 19
-    correct = parse_var_decl(parser, &statement);
-    if (!correct) {
-      return false;
-    }
-  } else if (parser->current_token.type == TOKEN_KW_WHILE) {
-    // WHILE
-    // RULE 51
-    correct = parse_while(parser, &statement);
-    if (!correct) {
-      return false;
-    }
-  } else if (parser->current_token.type == TOKEN_KW_IF) {
-    // IF
-    // RULE 34
-    correct = parse_if(parser, &statement);
-    if (!correct) {
-      return false;
-    }
-  } else if (is_expr_base_first(parser->current_token.type) &&
-             parser->next_token.type != TOKEN_ASSIGN) {
-    // <expr> END
-    // RULES 31, 32
-    correct = parse_expr(parser, &statement);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_end(parser);
-    if (!correct) {
-      ast_free(statement);
-      return false;
-    }
-  } else if (parser->current_token.type == TOKEN_KW_FOR) {
-    // FOR
-    // RULE 52
-    // TODO: FOR BRANCH
-    parser->rc = ERR_INTERNAL;
-    print_error("Not implemented for yet", 0);
-    return false;
-  } else if (parser->current_token.type == TOKEN_ID &&
-             parser->next_token.type == TOKEN_ASSIGN) {
-    // ASSIGN
-    // RULE 33
-    correct = parse_assign(parser, &statement);
-    if (!correct) {
-      return false;
-    }
-  } else if (parser->current_token.type == TOKEN_KW_RETURN) {
-    // RETURN
-    // RULE 64
-    correct = parse_return(parser, &statement);
-    if (!correct) {
-      return false;
-    }
-  } else {
-    syntax_error(parser, "Syntactic error: Invalid statement in block.");
-    return false;
-  }
-  ast_ll_append(&block->statements, statement);
-  return correct;
-}
+static bool parse_statement(Parser *parser, ASTBlockNodeData *block);
 
 /**
- * @brief Parses block statements except for the first statement
- *
- * RULE 69: IN_BLOCK2 -> STATEMENT IN_BLOCK2
- * RULE 70: IN_BLOCK2 -> eps
- *
- * @param parser Parser's current state
- * @param block Current block to add statements to
- * @return false if an error occured in this or any other called function, else
- * true
+ * @brief Parses an expression
+ * @param parser Pointer to the parser struct
+ * @param out A pointer to the location of the to-be-created ASTNode pointer
+ * @return true on success, false on an error with the error code in parser->rc,
+ * *out being NULL
  */
-static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block) {
+static bool parse_expr(Parser *parser, ASTNode **out);
+
+static bool parse_program(Parser *parser) {
   bool correct = false;
-  if (is_statement_first(parser->current_token.type)) {
-    // STATEMENT
-    // RULES 71-77
-    correct = parse_statement(parser, block);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_in_block2(parser, block);
-  } else if (parser->current_token.type == TOKEN_DEDENT) {
-    // eps
-    // no deeper RULE
-    correct = true;
-  } else {
-    syntax_error(parser,
-                 "Syntactic error: Expected a statement or end of block.");
-  }
-  return correct;
-}
-
-/**
- * @brief Parses the first statement in block
- *
- * RULE 68: IN_BLOCK -> STATEMENT IN_BLOCK2
- *
- * @param parser Parser's current state
- * @param block Current block to add statements to
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_in_block(Parser *parser, ASTBlockNodeData *block) {
-  bool correct = false;
-  // STATEMENT
-
-  correct = parse_statement(parser, block);
-  if (!correct) {
+  if (!expect(parser, TOKEN_KW_IMPORT)) {
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
     return false;
   }
-  correct = parse_in_block2(parser, block);
-  return correct;
-}
-
-/**
- * @brief Parses the entry to a Block
- *
- * RULE 67: BLOCK -> INDENT IN_BLOCK DEDENT
- *
- * @param parser Parser's current state
- * @param out Where to put the block
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_block(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  if (!expect(parser, TOKEN_INDENT)) {
-    syntax_error(parser, "Syntactic error: Missing indentation for a block.");
+  if (parser->current_token.type != TOKEN_ID ||
+      strcmp(parser->current_token.content.string, "ifj26") != 0 ||
+      !parser_advance(parser)) {
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
     return false;
   }
-  // INDENT
-
-  *out = ast_init_block(parser->current_token.line);
-  if (*out == NULL) {
-    parser->rc = ERR_INTERNAL;
-    return false;
-  }
-  if (is_statement_first(parser->current_token.type)) {
-    // INDENT IN_BLOCK
-    // RULE 68
-    correct = parse_in_block(parser, &(*out)->data.block);
-    if (!correct) {
-      return false;
-    }
-    if (!expect(parser, TOKEN_DEDENT)) {
-      syntax_error(parser, "Syntactic error: Missing dedent.");
-      correct = false;
-    }
-  } else {
-    syntax_error(parser, "Syntactic error: Empty block.");
-    correct = false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses whether there's else if or just else
- *
- * RULE 47: IS_REQ_ELIF -> IF_REQ_ELSE
- * RULE 48: IS_REQ_ELIF -> <expr> END
- * RULE 49: IS_REQ_ELIF -> EOL BLOCK
- *
- * @param parser Parser's current state
- * @param else_out Where to store the else branch
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_is_req_elif(Parser *parser, ASTNode **else_out) {
-  bool correct = false;
-  *else_out = NULL;
-
-  if (parser->current_token.type == TOKEN_KW_IF) {
-    // IF_REQ_ELSE
-    // RULE 44
-    correct = parse_if_req_else(parser, else_out);
-  } else if (is_expr_ext_first(parser->current_token.type)) {
-    // <expr> END
-    correct = parse_expr(parser, else_out);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_end(parser);
-  } else if (expect(parser, TOKEN_EOL)) {
-    // EOL BLOCK
-    correct = parse_block(parser, else_out);
-  } else {
-    syntax_error(parser,
-                 "Syntactic error: Missing statement or if after else.");
-    return false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses optional returned value after return
- *
- * RULE 65: OPT_ECC -> ECC
- * RULE 66: OPT_ECC -> END
- *
- * @param parser Parser's current state
- * @param out ASTNode to fill, stays NULL if there's no returned value
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_opt_ecc(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  if (is_expr_ext_first(parser->current_token.type) ||
-      parser->current_token.type == TOKEN_KW_IF) {
-    // ECC
-    // RULES 29, 30
-    correct = parse_ecc(parser, out);
-  } else if (parser->current_token.type == TOKEN_EOL ||
-             parser->current_token.type == TOKEN_SEMICOLON) {
-    // END
-    // RULES 31, 32
-    correct = parse_end(parser);
-  } else {
-    syntax_error(parser, "Syntactic error: Invalid syntax after return.");
-    correct = false;
-  }
-  return correct;
-}
-
-static bool parse_return(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  ASTNode *ret = NULL;
-  const unsigned int line = parser->current_token.line;
-  *out = NULL;
-
-  if (!expect(parser, TOKEN_KW_RETURN)) {
-    syntax_error(parser, "Syntactic error: Missing return statement.");
-    return false;
-  }
-  // KW_RETURN
-
-  // KW_RETURN OPT_ECC
-  // RULES 65, 66
-  correct = parse_opt_ecc(parser, &ret);
-  if (!correct) {
-    ast_free(ret);
+  if (!expect(parser, TOKEN_DOT)) {
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
     return false;
   }
 
-  *out = ast_init_return(ret, line);
-  if (*out == NULL) {
-    parser->rc = ERR_INTERNAL;
+  if (!expect(parser, TOKEN_MUL)) {
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
     return false;
   }
-  return correct;
-}
-
-static bool parse_while(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  ASTNode *condition = NULL;
-  ASTNode *body = NULL;
-  const unsigned int line = parser->current_token.line;
-  *out = NULL;
-
-  if (!expect(parser, TOKEN_KW_WHILE)) {
-    syntax_error(parser, "Syntactic error: Missing while.");
-    return false;
-  }
-  // KW_WHILE
-
-  correct = parse_expr(parser, &condition);
-  if (!correct) {
-    ast_free(condition);
-    return false;
-  }
-  // KW_WHILE <expr>
-
-  if (!expect(parser, TOKEN_KW_DO)) {
-    ast_free(condition);
-    syntax_error(parser, "Syntactic error: Missing do after while.");
-    return false;
-  }
-  // KW_WHILE <expr> KW_DO
-
   if (!expect(parser, TOKEN_EOL)) {
-    ast_free(condition);
-    syntax_error(parser, "Syntactic error: Missing end of line after do.");
+    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
     return false;
   }
-  // KW_WHILE <expr> KW_DO EOL
-
-  // KW_WHILE <expr> KW_DO EOL BLOCK
-  // RULE 67
-  correct = parse_block(parser, &body);
-  if (!correct) {
-    ast_free(condition);
-    ast_free(body);
-    return false;
+  correct = parse_defs(parser);
+  if (correct && parser->current_token.type != TOKEN_EOF) {
+    syntax_error(parser, "Syntactic error: Invalid content between or after "
+                         "function definitions.");
+    correct = false;
   }
-  *out = ast_init_while(condition, body, line);
-  if (*out == NULL) {
-    parser->rc = ERR_INTERNAL;
-    return false;
-  }
-
   return correct;
 }
 
-/**
- * @brief Parses state after if or else block where else is required
- *
- * RULE 50: AFTER_REQ_BLOCK -> kw_else IS_REQ_ELIF
- *
- * @param parser Parser's current state
- * @param else_out Where to store the else branch
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_after_req_block(Parser *parser, ASTNode **else_out) {
+static bool parse_defs(Parser *parser) {
   bool correct = false;
-  *else_out = NULL;
-  if (!expect(parser, TOKEN_KW_ELSE)) {
-    syntax_error(
-        parser, "Syntactic error: Missing else after if where it's mandatory.");
-    return false;
-  }
-  correct = parse_is_req_elif(parser, else_out);
-  return correct;
-}
-
-/**
- * @brief Parses then statements in if where else is required
- *
- * RULE 45: THEN_REQ_ELSE -> <expr> KW_ELSE IS_REQ_ELIF
- * RULE 46: THEN_REQ_ELSE -> EOL BLOCK AFTER_REQ_BLOCK
- *
- * @param parser Parser's current state
- * @param then_out Where to store the then branch
- * @param else_out Where to store the else branch
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_then_req_else(
-    Parser *parser,
-    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **else_out) {
-  bool correct = false;
-  *then_out = NULL;
-  *else_out = NULL;
-  if (is_expr_ext_first(parser->current_token.type)) {
-    correct = parse_expr(parser, then_out);
+  if (parser->current_token.type == TOKEN_AT_MAIN ||
+      parser->current_token.type == TOKEN_KW_DEF) {
+    correct = parse_fdef(parser);
     if (!correct) {
       return false;
     }
-    if (!expect(parser, TOKEN_KW_ELSE)) {
-      syntax_error(parser,
-                   "Syntactic error: Missing else where it's mandatory.");
-      return false;
-    }
-    correct = parse_is_req_elif(parser, else_out);
-  } else if (expect(parser, TOKEN_EOL)) {
-    correct = parse_block(parser, then_out);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_after_req_block(parser, else_out);
-  } else {
-    syntax_error(parser, "Syntactic error: Invalid input after then.");
-    correct = false;
-  }
-  return correct;
-}
+    correct = parse_defs(parser);
 
-static bool parse_if_req_else(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  ASTNode *if_node = NULL;
-  ASTNode *then_node = NULL;
-  ASTNode *else_node = NULL;
-  const unsigned int line = parser->current_token.line;
-  *out = NULL;
-
-  if (!expect(parser, TOKEN_KW_IF)) {
-    return false;
-  }
-
-  correct = parse_expr(parser, &if_node);
-  if (!correct) {
-    return false;
-  }
-  if (!expect(parser, TOKEN_KW_THEN)) {
-    syntax_error(parser, "Syntactic error: Missing \"then\" after \"if\".");
-    ast_free(if_node);
-    return false;
-  }
-  correct = parse_then_req_else(parser, &then_node, &else_node);
-  if (!correct) {
-    ast_free(if_node);
-    ast_free(then_node);
-    ast_free(else_node);
-    return false;
-  }
-
-  *out = ast_init_if(if_node, then_node, else_node, true, line);
-  if (*out == NULL) {
-    parser->rc = ERR_INTERNAL;
-    return false;
-  }
-
-  return correct;
-}
-
-/**
- * @brief Parses else and checks if it's else if
- *
- * RULE 41: ELIF -> EOL BLOCK
- * RULE 42: ELIF -> IF
- * RULE 43: ELIF -> <expr> END
- *
- * @param parser Parser's current state
- * @param out ASTNode to be filled
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_elif(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  *out = NULL;
-  if (expect(parser, TOKEN_EOL)) {
-    // EOL BLOCK
-    // RULE 67
-    correct = parse_block(parser, out);
-  } else if (parser->current_token.type == TOKEN_KW_IF) {
-    // IF
-    // RULE 34
-    correct = parse_if(parser, out);
-  } else if (is_expr_ext_first(parser->current_token.type)) {
-    // <expr> END
-    // RULES 31, 32
-    correct = parse_expr(parser, out);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_end(parser);
-  } else {
-    syntax_error(
-        parser,
-        "Syntactic error: Expected expression, if or end of line after else.");
-    correct = false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses syntax after IF THEN or ELSE block
- *
- * RULE 39: AFTER_BLOCK -> eps
- * RULE 40: AFTER_BLOCK -> kw_else ELIF
- *
- * @param parser Parser's current state
- * @param out ASTNode to be filled
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_after_block(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  *out = NULL;
-  if (expect(parser, TOKEN_KW_ELSE)) {
-    // kw_else ELIF
-    // RULES 41-43
-    correct = parse_elif(parser, out);
-  } else if (is_statement_first(parser->current_token.type) ||
-             parser->current_token.type == TOKEN_DEDENT) {
-    // eps
-    // No deeper rule
-    correct = true;
-  } else {
-    syntax_error(parser, "Syntactic error: Invalid input after block.");
-    return false;
-  }
-  return correct;
-}
-
-static bool parse_assign(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  ASTNode *expr = NULL;
-  char *name = NULL;
-  const unsigned int line = parser->current_token.line;
-  *out = NULL;
-
-  if (parser->current_token.type != TOKEN_ID) {
-    syntax_error(parser, "Syntactic error: Missing identifier in assignment.");
-    return false;
-  }
-
-  name = parser->current_token.content.string;
-  parser->current_token.content.string = NULL;
-
-  if (!parser_advance(parser)) {
-    free(name);
-    return false;
-  }
-  // ID
-
-  if (!expect(parser, TOKEN_ASSIGN)) {
-    free(name);
-    syntax_error(parser, "Syntactic error: Missing assignment symbol (=).");
-    return false;
-  }
-  // ID =
-
-  if (!(parser->current_token.type == TOKEN_KW_IF ||
-        is_expr_ext_first(parser->current_token.type))) {
-    free(name);
-    syntax_error(parser,
-                 "Syntactic error: Missing expression after assignment.");
-    return false;
-  }
-
-  // ID = ECC
-  // RULES 29, 30
-  correct = parse_ecc(parser, &expr);
-  if (!correct) {
-    ast_free(expr);
-    free(name);
-    return false;
-  }
-
-  *out = ast_init_assign(name, expr, line);
-  if (*out == NULL) {
-    parser->rc = ERR_INTERNAL;
-    return false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses whether else branch exists
- *
- * RULE 37: ONLY_IF -> END
- * RULE 38: ONLY_IF -> kw_else ELIF
- *
- * @param parser Parser's current state
- * @param else_out ASTNode to be filled
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_only_if(Parser *parser, ASTNode **else_out) {
-  bool correct = false;
-  *else_out = NULL;
-  if (parser->current_token.type == TOKEN_SEMICOLON ||
-      parser->current_token.type == TOKEN_EOL) {
-    // END
-    // RULES 31, 32
-    correct = parse_end(parser);
-  } else if (expect(parser, TOKEN_KW_ELSE)) {
-    // kw_else ELIF
-    // RULES 41-43
-    correct = parse_elif(parser, else_out);
-  } else {
-    syntax_error(parser,
-                 "Syntactic error: Invalid syntax after then statement(s).");
-  }
-  return correct;
-}
-
-/**
- * @brief Parses THEN's statement if one-line or parses THEN block
- *
- * RULE 35: THEN_ONE -> <expr> ONLY_IF
- * RULE 36: THEN_ONE -> eol BLOCK AFTER_BLOCK
- *
- * @param parser Parser's current state
- * @param then_out AST branch for if then branch
- * @param else_out AST branch for else branch
- * @return false if an error occured in this or any other called function, else
- * true
- */
-static bool parse_then_one(
-    Parser *parser,
-    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **else_out) {
-  bool correct = false;
-  *then_out = NULL;
-  *else_out = NULL;
-  if (is_expr_ext_first(parser->current_token.type)) {
-    // <expr> ONLY_IF
-    // RULES 37, 38
-    correct = parse_expr(parser, then_out);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_only_if(parser, else_out);
-  } else if (expect(parser, TOKEN_EOL)) {
-    // eol BLOCK AFTER_BLOCK
-    // RULE 67
-    // RULES 39, 40
-    correct = parse_block(parser, then_out);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_after_block(parser, else_out);
-  } else {
-    syntax_error(parser, "Syntactic error: Missing expression after then.");
-    correct = false;
-  }
-  return correct;
-}
-
-static bool parse_if(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  ASTNode *if_node = NULL;
-  ASTNode *then_node = NULL;
-  ASTNode *else_node = NULL;
-  const unsigned int line = parser->current_token.line;
-  *out = NULL;
-
-  if (!expect(parser, TOKEN_KW_IF)) {
-    syntax_error(parser, "Syntactic error: Missing \"if\" in an if statement.");
-    return false;
-  }
-  // kw_if
-  correct = parse_expr(parser, &if_node);
-  if (!correct) {
-    return false;
-  }
-  // kw_if <expr>
-
-  if (!expect(parser, TOKEN_KW_THEN)) {
-    ast_free(if_node);
-    syntax_error(parser, "Syntactic error: Missing \"then\" in if structure.");
-    return false;
-  }
-  // kw_if <expr> kw_then
-
-  correct = parse_then_one(parser, &then_node, &else_node);
-  if (!correct) {
-    ast_free(if_node);
-    ast_free(then_node);
-    ast_free(else_node);
-    return false;
-  }
-  // kw_if <expr> kw_then THEN_ONE
-
-  *out = ast_init_if(if_node, then_node, else_node, false, line);
-  if (*out == NULL) {
-    parser->rc = ERR_INTERNAL;
-    return false;
-  }
-
-  return correct;
-}
-
-static bool parse_end(Parser *parser) {
-  bool correct = false;
-  if (expect(parser, TOKEN_EOL) || expect(parser, TOKEN_SEMICOLON)) {
-    correct = true;
-  } else {
-    syntax_error(parser, "Syntactic error: Expected ; or end of line");
-  }
-  return correct;
-}
-
-static bool parse_ecc(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  if (parser->current_token.type == TOKEN_KW_IF) {
-    // IF_REQ_ELSE
-    // RULE 44
-    correct = parse_if_req_else(parser, out);
-  } else if (is_expr_ext_first(parser->current_token.type)) {
-    // <expr> END
-    // does with precedence analysis
-    correct = parse_expr(parser, out);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_end(parser);
-  } else {
-    syntax_error(parser,
-                 "Syntactic error: Expected expression, call or control.");
-    correct = false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses TYPE and saves it into its node
- *
- * RULE 24: TYPE -> KW_INT
- * RULE 25: TYPE -> KW_DOUBLE
- * RULE 26: TYPE -> KW_STRING
- * RULE 27: TYPE -> KW_BOOLEAN
- * RULE 28: TYPE -> KW_UNIT
- *
- * @param parser Parser's current state
- * @param type Where the parsed type is stored
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_type(Parser *parser, DataType *type) {
-  switch (parser->current_token.type) {
-  case TOKEN_KW_INT:
-    // KW_INT
-    // no deeper RULE
-    *type = INT;
-    break;
-  case TOKEN_KW_DOUBLE:
-    // KW_DOUBLE
-    // no deeper RULE
-    *type = DOUBLE;
-    break;
-  case TOKEN_KW_STRING:
-    // KW_STRING
-    // no deeper RULE
-    *type = STRING;
-    break;
-  case TOKEN_KW_BOOLEAN:
-    // KW_BOOLEAN
-    // no deeper RULE
-    *type = BOOLEAN;
-    break;
-  case TOKEN_KW_UNIT:
-    // KW_UNIT
-    // no deeper RULE
-    *type = UNIT;
-    break;
-  default:
-    syntax_error(parser,
-                 "Syntactic error: Invalid type assigned in declaration.");
-    return false;
-  }
-  return parser_advance(parser);
-}
-
-/**
- * @brief Parses type declaration
- *
- * RULE 22: TYPE_DECL -> : TYPE
- * RULE 23: TYPE_DECL -> eps
- *
- * @param parser Parser's current state
- * @param type Where the parsed type is stored
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_type_decl(Parser *parser, DataType *type) {
-  bool correct = false;
-  if (expect(parser, TOKEN_COLON)) {
-    // :
-
-    if (is_type_first(parser->current_token.type)) {
-      // : TYPE
-      // RULES 24, 25, 26, 27, 28
-      correct = parse_type(parser, type);
-    } else {
-      syntax_error(
-          parser,
-          "Syntactic error: Invalid syntax after ':' in type declaration.");
-      return false;
-    }
-  } else if (parser->current_token.type == TOKEN_ASSIGN) {
-    // eps
-    // no deeper rules
-    *type = UNKNOWN;
-    correct = true;
-  } else {
-    syntax_error(parser, "Syntactic error: Invalid type declaration.");
-    correct = false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses Val/Var in Variable declaration
- *
- * RULE 20: EDIT_TYPE -> KW_VAR
- * RULE 21: EDIT_TYPE -> KW_VAL
- *
- * @param parser Parser's current state
- * @param to_set Edit type variable to be set
- * @return false if current token is not val nor var or parser_advance fails,
- * else true
- */
-static bool parse_edit_type(Parser *parser, VariableType *to_set) {
-  bool correct = false;
-  if (parser->current_token.type == TOKEN_KW_VAR) {
-    // KW_VAR
-    // No deeper rule
-    *to_set = VAR;
-    if (!parser_advance(parser)) {
-      return false;
-    }
-    correct = true;
-  } else if (parser->current_token.type == TOKEN_KW_VAL) {
-    // KW_VAL
-    // No deeper rule
-    *to_set = VAL;
-    if (!parser_advance(parser)) {
-      return false;
-    }
-    correct = true;
-  } else {
-    syntax_error(
-        parser,
-        "Syntactic error: Invalid variable data type. Must be val or var.");
-    correct = false;
-  }
-  return correct;
-}
-
-static bool parse_var_decl(Parser *parser, ASTNode **out) {
-  bool correct = false;
-  char *name = NULL;
-  VariableType val_var;
-  DataType data_type;
-  ASTNode *init_node = NULL;
-  const unsigned int line = parser->current_token.line;
-
-  *out = NULL;
-
-  correct = parse_edit_type(parser, &val_var);
-  if (!correct) {
-    return false;
-  }
-  if (parser->current_token.type != TOKEN_ID) {
-    syntax_error(parser, "Syntactic error: Variable declaration without name.");
-    return false;
-  }
-  name = parser->current_token.content.string;
-  parser->current_token.content.string = NULL;
-
-  if (!parser_advance(parser)) {
-    free(name);
-    return false;
-  }
-  correct = parse_type_decl(parser, &data_type);
-  if (!correct) {
-    free(name);
-    return false;
-  }
-
-  if (!expect(parser, TOKEN_ASSIGN)) {
-    syntax_error(parser, "Syntactic error: Invalid variable declaration.");
-    free(name);
-    return false;
-  }
-
-  correct = parse_ecc(parser, &init_node);
-  if (!correct) {
-    ast_free(init_node);
-    free(name);
-    return false;
-  }
-
-  *out = ast_init_var_def(name, val_var, data_type, init_node, line);
-  if (*out == NULL) {
-    parser->rc = ERR_INTERNAL;
-    return false;
-  }
-
-  return correct;
-}
-
-/**
- * @brief Parses what follow a ,
- *
- * RULE 17: NEXT_CONT -> )
- * RULE 18: NEXT_CONT -> PARAMS
- *
- * @param parser Parser's current state
- * @param func Function to assign parameters to
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_next_cont(Parser *parser, ASTNode *func) {
-  bool correct = false;
-  if (parser->current_token.type == TOKEN_CLOSE_PAR) {
-    // )
-    // no deeper RULE
-    // Must check whether the trailing comma that led to this point is from
-    // multi-line parameter declaration.
-    if (parser->current_token.lf_before) {
-      correct = true;
-    } else {
-      // trailing comma in a single-line parameter declaration
-      syntax_error(parser, "Syntactic error: Trailing comma in one-line "
-                           "parameter definition.");
-      return false;
-    }
-    if (!parser_advance(parser)) {
-      return false;
-    }
-  } else if (parser->current_token.type == TOKEN_ID) {
-    // PARAMS
-    // RULE 14
-    correct = parse_params(parser, func);
-  } else {
-    syntax_error(parser,
-                 "Syntactic error: Invalid syntax in parameters' declaration.");
-    correct = false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses , or ) after a parameter
- *
- * RULE 15: NEXT -> , NEXT_CONT
- * RULE 16: NEXT -> )
- *
- * @param parser Parser's current state
- * @param func Function to assign parameters to
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_next(Parser *parser, ASTNode *func) {
-  bool correct = false;
-  if (expect(parser, TOKEN_COMMA)) {
-    // ,
-    // RULES 17, 18
-    correct = parse_next_cont(parser, func);
-  } else if (expect(parser, TOKEN_CLOSE_PAR)) {
-    correct = true;
-  } else {
-    syntax_error(parser, "Syntactic error: Invalid syntax after a parameter.");
-    correct = false;
-  }
-  return correct;
-}
-
-static bool parse_params(Parser *parser, ASTNode *func) {
-  bool correct = false;
-  char *name = parser->current_token.content.string;
-  parser->current_token.content.string = NULL;
-  DataType type;
-  // ID
-  if (!parser_advance(parser)) {
-    free(name);
-    return false;
-  }
-
-  if (!expect(parser, TOKEN_COLON)) {
-    syntax_error(parser, "Syntactic error: Missing parameter's data type in "
-                         "function definition.");
-    free(name);
-    return false;
-  }
-  // ID :
-
-  if (!is_type_first(parser->current_token.type)) {
-    syntax_error(parser, "Syntactic error: Missing or invalid data type of a "
-                         "parameter in function declaration.");
-    free(name);
-    return false;
-  }
-  // ID : TYPE
-
-  correct = parse_type(parser, &type);
-  if (!correct) {
-    free(name);
-    return false;
-  }
-
-  const ReturnCodes rc = ast_func_def_add_param(func, name, type);
-  if (rc != RETURN_SUCCESS) {
-    parser->rc = rc;
-    return false;
-  }
-
-  if (!(parser->current_token.type == TOKEN_COMMA ||
-        parser->current_token.type == TOKEN_CLOSE_PAR)) {
-    syntax_error(parser, "Syntactic error: Invalid parameter definition.");
-    return false;
-  }
-
-  // RULES 15, 16
-  correct = parse_next(parser, func);
-  return correct;
-}
-
-/**
- * @brief Parses parameters as a whole
- *
- * RULE 12: PARAM_BODY -> PARAMS
- * RULE 13: PARAM_BODY -> )
- *
- * @param parser Parser's current state
- * @param func Function to assign parameters to
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_param_body(Parser *parser, ASTNode *func) {
-  bool correct = false;
-
-  if (parser->current_token.type == TOKEN_ID) {
-    // PARAMS
-    // RULE 14
-    correct = parse_params(parser, func);
-  } else if (parser->current_token.type == TOKEN_CLOSE_PAR) {
-    correct = parser_advance(parser);
-  }
-  return correct;
-}
-
-/**
- * @brief Parses function's right side
- *
- * RULE 9:  DEF_EX -> IF_REQ_ELSE
- * RULE 10: DEF_EX -> <expr> EOL
- * RULE 11: DEF_EX -> EOL BLOCK
- *
- * @param parser Parser's current state
- * @param func Function to fill
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_def_ex(Parser *parser, ASTNode *func) {
-  bool correct = false;
-  if (parser->current_token.type == TOKEN_KW_IF) {
-    // IF_REQ_ELSE
-    // RULE 44
-    correct = parse_if_req_else(parser, &func->data.function_def.body);
-  } else if (is_expr_ext_first(parser->current_token.type)) {
-    // <expr>
-    // PRECEDENCE ANALYSIS
-    correct = parse_expr(parser, &func->data.function_def.body);
-    if (!correct) {
-      return false;
-    }
-    if (!expect(parser, TOKEN_EOL)) {
-      syntax_error(parser,
-                   "Syntactic error: Missing end of line after an expression.");
-      return false;
-    }
-  } else if (expect(parser, TOKEN_EOL)) {
-    // EOL
-    // RULE 67
-    correct = parse_block(parser, &func->data.function_def.body);
-  } else {
-    syntax_error(parser, "Syntactic error: Invalid missing expression or if.");
-    correct = false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses optional EOL after \@main
- *
- * RULE 7: OPT_EOL -> EOL
- * RULE 8: OPT_EOL -> eps
- *
- * @param parser Parser's current state
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_opt_eol(Parser *parser) {
-  bool correct = false;
-
-  if (parser->current_token.type == TOKEN_EOL) {
-    // EOL
-    // no deeper RULE
-    if (!parser_advance(parser)) {
-      return false;
-    }
-    correct = true;
-  } else if (parser->current_token.type == TOKEN_KW_DEF) {
-    // eps
-    // no deeper RULE
-    correct = true;
-  } else {
-    syntax_error(parser, "Syntactic error: Invalid function definition.");
-    correct = false;
-  }
-  return correct;
-}
-
-/**
- * @brief Parses optional \@main
- *
- * RULE 5: OPT_MAIN -> AT_MAIN OPT_EOL
- * RULE 6: OPT_MAIN -> eps
- *
- * @param parser Parser's current state
- * @param is_main Signals whether \@main occured
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_opt_main(Parser *parser, bool *is_main) {
-  bool correct = false;
-  if (parser->current_token.type == TOKEN_AT_MAIN) {
-    // AT_MAIN OPT_EOL
-    // RULES 7, 8
-    *is_main = true;
-    if (!parser_advance(parser)) {
-      return false;
-    }
-    correct = parse_opt_eol(parser);
-  } else if (parser->current_token.type == TOKEN_KW_DEF) {
-    // eps
-    // no deeper RULE
+  } else if (parser->current_token.type == TOKEN_EOF) {
     correct = true;
   } else {
     syntax_error(parser, "Syntactic error: Invalid function definition.");
@@ -1579,15 +829,6 @@ static bool parse_opt_main(Parser *parser, bool *is_main) {
   return correct;
 }
 
-/**
- * @brief Parses individual functions
- *
- * RULE 4: DEF -> OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
- *
- * @param parser Parser's current state
- * @return false if an error occured in this or any other called function,
- * else true
- */
 static bool parse_fdef(Parser *parser) {
   bool correct = false;
   bool is_main = false;
@@ -1669,27 +910,19 @@ static bool parse_fdef(Parser *parser) {
   return correct;
 }
 
-/**
- * @brief Parses all function definitions
- *
- * RULE 2: DEFS -> DEF DEFS
- * RULE 3: DEFS -> eps
- *
- * @param parser Parser's current state
- * @return false if an error occured in this or any other called function,
- * else true
- */
-static bool parse_defs(Parser *parser) {
+static bool parse_opt_main(Parser *parser, bool *is_main) {
   bool correct = false;
-  if (parser->current_token.type == TOKEN_AT_MAIN ||
-      parser->current_token.type == TOKEN_KW_DEF) {
-    correct = parse_fdef(parser);
-    if (!correct) {
+  if (parser->current_token.type == TOKEN_AT_MAIN) {
+    // AT_MAIN OPT_EOL
+    // RULES 7, 8
+    *is_main = true;
+    if (!parser_advance(parser)) {
       return false;
     }
-    correct = parse_defs(parser);
-
-  } else if (parser->current_token.type == TOKEN_EOF) {
+    correct = parse_opt_eol(parser);
+  } else if (parser->current_token.type == TOKEN_KW_DEF) {
+    // eps
+    // no deeper RULE
     correct = true;
   } else {
     syntax_error(parser, "Syntactic error: Invalid function definition.");
@@ -1697,48 +930,880 @@ static bool parse_defs(Parser *parser) {
   return correct;
 }
 
-/**
- * @brief Parses the prologue and starts the whole parsing tree
- *
- * RULE 1: PROGRAM -> KW_IMPORT ID(„ifj26“) DOT MUL EOL DEFS EOF
- *
- * @param parser Parser's current state
- * @return false on an error, else true
- */
-static bool parse_program(Parser *parser) {
+static bool parse_opt_eol(Parser *parser) {
   bool correct = false;
-  if (!expect(parser, TOKEN_KW_IMPORT)) {
-    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
-    return false;
-  }
-  if (parser->current_token.type != TOKEN_ID ||
-      strcmp(parser->current_token.content.string, "ifj26") != 0 ||
-      !parser_advance(parser)) {
-    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
-    return false;
-  }
-  if (!expect(parser, TOKEN_DOT)) {
-    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
-    return false;
-  }
 
-  if (!expect(parser, TOKEN_MUL)) {
-    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
-    return false;
-  }
-  if (!expect(parser, TOKEN_EOL)) {
-    syntax_error(parser, "Syntactic error: Missing or invalid prologue.");
-    return false;
-  }
-  correct = parse_defs(parser);
-  if (correct && parser->current_token.type != TOKEN_EOF) {
-    syntax_error(parser, "Syntactic error: Invalid content between or after "
-                         "function definitions.");
+  if (parser->current_token.type == TOKEN_EOL) {
+    // EOL
+    // no deeper RULE
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = true;
+  } else if (parser->current_token.type == TOKEN_KW_DEF) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid function definition.");
     correct = false;
   }
   return correct;
 }
 
+static bool parse_def_ex(Parser *parser, ASTNode *func) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF_REQ_ELSE
+    // RULE 44
+    correct = parse_if_req_else(parser, &func->data.function_def.body);
+  } else if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr>
+    // PRECEDENCE ANALYSIS
+    correct = parse_expr(parser, &func->data.function_def.body);
+    if (!correct) {
+      return false;
+    }
+    if (!expect(parser, TOKEN_EOL)) {
+      syntax_error(parser,
+                   "Syntactic error: Missing end of line after an expression.");
+      return false;
+    }
+  } else if (expect(parser, TOKEN_EOL)) {
+    // EOL
+    // RULE 67
+    correct = parse_block(parser, &func->data.function_def.body);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid missing expression or if.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_param_body(Parser *parser, ASTNode *func) {
+  bool correct = false;
+
+  if (parser->current_token.type == TOKEN_ID) {
+    // PARAMS
+    // RULE 14
+    correct = parse_params(parser, func);
+  } else if (parser->current_token.type == TOKEN_CLOSE_PAR) {
+    correct = parser_advance(parser);
+  }
+  return correct;
+}
+
+static bool parse_params(Parser *parser, ASTNode *func) {
+  bool correct = false;
+  char *name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+  DataType type;
+  // ID
+  if (!parser_advance(parser)) {
+    free(name);
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_COLON)) {
+    syntax_error(parser, "Syntactic error: Missing parameter's data type in "
+                         "function definition.");
+    free(name);
+    return false;
+  }
+  // ID :
+
+  if (!is_type_first(parser->current_token.type)) {
+    syntax_error(parser, "Syntactic error: Missing or invalid data type of a "
+                         "parameter in function declaration.");
+    free(name);
+    return false;
+  }
+  // ID : TYPE
+
+  correct = parse_type(parser, &type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+
+  const ReturnCodes rc = ast_func_def_add_param(func, name, type);
+  if (rc != RETURN_SUCCESS) {
+    parser->rc = rc;
+    return false;
+  }
+
+  if (!(parser->current_token.type == TOKEN_COMMA ||
+        parser->current_token.type == TOKEN_CLOSE_PAR)) {
+    syntax_error(parser, "Syntactic error: Invalid parameter definition.");
+    return false;
+  }
+
+  // RULES 15, 16
+  correct = parse_next(parser, func);
+  return correct;
+}
+
+static bool parse_next(Parser *parser, ASTNode *func) {
+  bool correct = false;
+  if (expect(parser, TOKEN_COMMA)) {
+    // ,
+    // RULES 17, 18
+    correct = parse_next_cont(parser, func);
+  } else if (expect(parser, TOKEN_CLOSE_PAR)) {
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid syntax after a parameter.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_next_cont(Parser *parser, ASTNode *func) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_CLOSE_PAR) {
+    // )
+    // no deeper RULE
+    // Must check whether the trailing comma that led to this point is from
+    // multi-line parameter declaration.
+    if (parser->current_token.lf_before) {
+      correct = true;
+    } else {
+      // trailing comma in a single-line parameter declaration
+      syntax_error(parser, "Syntactic error: Trailing comma in one-line "
+                           "parameter definition.");
+      return false;
+    }
+    if (!parser_advance(parser)) {
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_ID) {
+    // PARAMS
+    // RULE 14
+    correct = parse_params(parser, func);
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Invalid syntax in parameters' declaration.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_var_decl(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  char *name = NULL;
+  VariableType val_var;
+  DataType data_type;
+  ASTNode *init_node = NULL;
+  const unsigned int line = parser->current_token.line;
+
+  *out = NULL;
+
+  correct = parse_edit_type(parser, &val_var);
+  if (!correct) {
+    return false;
+  }
+  if (parser->current_token.type != TOKEN_ID) {
+    syntax_error(parser, "Syntactic error: Variable declaration without name.");
+    return false;
+  }
+  name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+
+  if (!parser_advance(parser)) {
+    free(name);
+    return false;
+  }
+  correct = parse_type_decl(parser, &data_type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_ASSIGN)) {
+    syntax_error(parser, "Syntactic error: Invalid variable declaration.");
+    free(name);
+    return false;
+  }
+
+  correct = parse_ecc(parser, &init_node);
+  if (!correct) {
+    ast_free(init_node);
+    free(name);
+    return false;
+  }
+
+  *out = ast_init_var_def(name, val_var, data_type, init_node, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  return correct;
+}
+
+static bool parse_edit_type(Parser *parser, VariableType *to_set) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_KW_VAR) {
+    // KW_VAR
+    // No deeper rule
+    *to_set = VAR;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = true;
+  } else if (parser->current_token.type == TOKEN_KW_VAL) {
+    // KW_VAL
+    // No deeper rule
+    *to_set = VAL;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = true;
+  } else {
+    syntax_error(
+        parser,
+        "Syntactic error: Invalid variable data type. Must be val or var.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_type_decl(Parser *parser, DataType *type) {
+  bool correct = false;
+  if (expect(parser, TOKEN_COLON)) {
+    // :
+
+    if (is_type_first(parser->current_token.type)) {
+      // : TYPE
+      // RULES 24, 25, 26, 27, 28
+      correct = parse_type(parser, type);
+    } else {
+      syntax_error(
+          parser,
+          "Syntactic error: Invalid syntax after ':' in type declaration.");
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_ASSIGN) {
+    // eps
+    // no deeper rules
+    *type = UNKNOWN;
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid type declaration.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_type(Parser *parser, DataType *type) {
+  switch (parser->current_token.type) {
+  case TOKEN_KW_INT:
+    // KW_INT
+    // no deeper RULE
+    *type = INT;
+    break;
+  case TOKEN_KW_DOUBLE:
+    // KW_DOUBLE
+    // no deeper RULE
+    *type = DOUBLE;
+    break;
+  case TOKEN_KW_STRING:
+    // KW_STRING
+    // no deeper RULE
+    *type = STRING;
+    break;
+  case TOKEN_KW_BOOLEAN:
+    // KW_BOOLEAN
+    // no deeper RULE
+    *type = BOOLEAN;
+    break;
+  case TOKEN_KW_UNIT:
+    // KW_UNIT
+    // no deeper RULE
+    *type = UNIT;
+    break;
+  default:
+    syntax_error(parser,
+                 "Syntactic error: Invalid type assigned in declaration.");
+    return false;
+  }
+  return parser_advance(parser);
+}
+
+static bool parse_ecc(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF_REQ_ELSE
+    // RULE 44
+    correct = parse_if_req_else(parser, out);
+  } else if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr> END
+    // does with precedence analysis
+    correct = parse_expr(parser, out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_end(parser);
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Expected expression, call or control.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_end(Parser *parser) {
+  bool correct = false;
+  if (expect(parser, TOKEN_EOL) || expect(parser, TOKEN_SEMICOLON)) {
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Expected ; or end of line");
+  }
+  return correct;
+}
+
+static bool parse_assign(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  ASTNode *expr = NULL;
+  char *name = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (parser->current_token.type != TOKEN_ID) {
+    syntax_error(parser, "Syntactic error: Missing identifier in assignment.");
+    return false;
+  }
+
+  name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+
+  if (!parser_advance(parser)) {
+    free(name);
+    return false;
+  }
+  // ID
+
+  if (!expect(parser, TOKEN_ASSIGN)) {
+    free(name);
+    syntax_error(parser, "Syntactic error: Missing assignment symbol (=).");
+    return false;
+  }
+  // ID =
+
+  if (!(parser->current_token.type == TOKEN_KW_IF ||
+        is_expr_ext_first(parser->current_token.type))) {
+    free(name);
+    syntax_error(parser,
+                 "Syntactic error: Missing expression after assignment.");
+    return false;
+  }
+
+  // ID = ECC
+  // RULES 29, 30
+  correct = parse_ecc(parser, &expr);
+  if (!correct) {
+    ast_free(expr);
+    free(name);
+    return false;
+  }
+
+  *out = ast_init_assign(name, expr, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_if(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  ASTNode *if_node = NULL;
+  ASTNode *then_node = NULL;
+  ASTNode *else_node = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (!expect(parser, TOKEN_KW_IF)) {
+    syntax_error(parser, "Syntactic error: Missing \"if\" in an if statement.");
+    return false;
+  }
+  // kw_if
+  correct = parse_expr(parser, &if_node);
+  if (!correct) {
+    return false;
+  }
+  // kw_if <expr>
+
+  if (!expect(parser, TOKEN_KW_THEN)) {
+    ast_free(if_node);
+    syntax_error(parser, "Syntactic error: Missing \"then\" in if structure.");
+    return false;
+  }
+  // kw_if <expr> kw_then
+
+  correct = parse_then_one(parser, &then_node, &else_node);
+  if (!correct) {
+    ast_free(if_node);
+    ast_free(then_node);
+    ast_free(else_node);
+    return false;
+  }
+  // kw_if <expr> kw_then THEN_ONE
+
+  *out = ast_init_if(if_node, then_node, else_node, false, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  return correct;
+}
+
+static bool parse_then_one(
+    Parser *parser,
+    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **else_out) {
+  bool correct = false;
+  *then_out = NULL;
+  *else_out = NULL;
+  if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr> ONLY_IF
+    // RULES 37, 38
+    correct = parse_expr(parser, then_out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_only_if(parser, else_out);
+  } else if (expect(parser, TOKEN_EOL)) {
+    // eol BLOCK AFTER_BLOCK
+    // RULE 67
+    // RULES 39, 40
+    correct = parse_block(parser, then_out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_after_block(parser, else_out);
+  } else {
+    syntax_error(parser, "Syntactic error: Missing expression after then.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_only_if(Parser *parser, ASTNode **else_out) {
+  bool correct = false;
+  *else_out = NULL;
+  if (parser->current_token.type == TOKEN_SEMICOLON ||
+      parser->current_token.type == TOKEN_EOL) {
+    // END
+    // RULES 31, 32
+    correct = parse_end(parser);
+  } else if (expect(parser, TOKEN_KW_ELSE)) {
+    // kw_else ELIF
+    // RULES 41-43
+    correct = parse_elif(parser, else_out);
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Invalid syntax after then statement(s).");
+  }
+  return correct;
+}
+
+static bool parse_after_block(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  *out = NULL;
+  if (expect(parser, TOKEN_KW_ELSE)) {
+    // kw_else ELIF
+    // RULES 41-43
+    correct = parse_elif(parser, out);
+  } else if (is_statement_first(parser->current_token.type) ||
+             parser->current_token.type == TOKEN_DEDENT) {
+    // eps
+    // No deeper rule
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid input after block.");
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_elif(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  *out = NULL;
+  if (expect(parser, TOKEN_EOL)) {
+    // EOL BLOCK
+    // RULE 67
+    correct = parse_block(parser, out);
+  } else if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF
+    // RULE 34
+    correct = parse_if(parser, out);
+  } else if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr> END
+    // RULES 31, 32
+    correct = parse_expr(parser, out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_end(parser);
+  } else {
+    syntax_error(
+        parser,
+        "Syntactic error: Expected expression, if or end of line after else.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_if_req_else(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  ASTNode *if_node = NULL;
+  ASTNode *then_node = NULL;
+  ASTNode *else_node = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (!expect(parser, TOKEN_KW_IF)) {
+    return false;
+  }
+
+  correct = parse_expr(parser, &if_node);
+  if (!correct) {
+    return false;
+  }
+  if (!expect(parser, TOKEN_KW_THEN)) {
+    syntax_error(parser, "Syntactic error: Missing \"then\" after \"if\".");
+    ast_free(if_node);
+    return false;
+  }
+  correct = parse_then_req_else(parser, &then_node, &else_node);
+  if (!correct) {
+    ast_free(if_node);
+    ast_free(then_node);
+    ast_free(else_node);
+    return false;
+  }
+
+  *out = ast_init_if(if_node, then_node, else_node, true, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  return correct;
+}
+
+static bool parse_then_req_else(
+    Parser *parser,
+    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **else_out) {
+  bool correct = false;
+  *then_out = NULL;
+  *else_out = NULL;
+  if (is_expr_ext_first(parser->current_token.type)) {
+    correct = parse_expr(parser, then_out);
+    if (!correct) {
+      return false;
+    }
+    if (!expect(parser, TOKEN_KW_ELSE)) {
+      syntax_error(parser,
+                   "Syntactic error: Missing else where it's mandatory.");
+      return false;
+    }
+    correct = parse_is_req_elif(parser, else_out);
+  } else if (expect(parser, TOKEN_EOL)) {
+    correct = parse_block(parser, then_out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_after_req_block(parser, else_out);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid input after then.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_is_req_elif(Parser *parser, ASTNode **else_out) {
+  bool correct = false;
+  *else_out = NULL;
+
+  if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF_REQ_ELSE
+    // RULE 44
+    correct = parse_if_req_else(parser, else_out);
+  } else if (is_expr_ext_first(parser->current_token.type)) {
+    // <expr> END
+    correct = parse_expr(parser, else_out);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_end(parser);
+  } else if (expect(parser, TOKEN_EOL)) {
+    // EOL BLOCK
+    correct = parse_block(parser, else_out);
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Missing statement or if after else.");
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_after_req_block(Parser *parser, ASTNode **else_out) {
+  bool correct = false;
+  *else_out = NULL;
+  if (!expect(parser, TOKEN_KW_ELSE)) {
+    syntax_error(
+        parser, "Syntactic error: Missing else after if where it's mandatory.");
+    return false;
+  }
+  correct = parse_is_req_elif(parser, else_out);
+  return correct;
+}
+
+static bool parse_while(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  ASTNode *condition = NULL;
+  ASTNode *body = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (!expect(parser, TOKEN_KW_WHILE)) {
+    syntax_error(parser, "Syntactic error: Missing while.");
+    return false;
+  }
+  // KW_WHILE
+
+  correct = parse_expr(parser, &condition);
+  if (!correct) {
+    ast_free(condition);
+    return false;
+  }
+  // KW_WHILE <expr>
+
+  if (!expect(parser, TOKEN_KW_DO)) {
+    ast_free(condition);
+    syntax_error(parser, "Syntactic error: Missing do after while.");
+    return false;
+  }
+  // KW_WHILE <expr> KW_DO
+
+  if (!expect(parser, TOKEN_EOL)) {
+    ast_free(condition);
+    syntax_error(parser, "Syntactic error: Missing end of line after do.");
+    return false;
+  }
+  // KW_WHILE <expr> KW_DO EOL
+
+  // KW_WHILE <expr> KW_DO EOL BLOCK
+  // RULE 67
+  correct = parse_block(parser, &body);
+  if (!correct) {
+    ast_free(condition);
+    ast_free(body);
+    return false;
+  }
+  *out = ast_init_while(condition, body, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  return correct;
+}
+
+static bool parse_return(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  ASTNode *ret = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (!expect(parser, TOKEN_KW_RETURN)) {
+    syntax_error(parser, "Syntactic error: Missing return statement.");
+    return false;
+  }
+  // KW_RETURN
+
+  // KW_RETURN OPT_ECC
+  // RULES 65, 66
+  correct = parse_opt_ecc(parser, &ret);
+  if (!correct) {
+    ast_free(ret);
+    return false;
+  }
+
+  *out = ast_init_return(ret, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_opt_ecc(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  if (is_expr_ext_first(parser->current_token.type) ||
+      parser->current_token.type == TOKEN_KW_IF) {
+    // ECC
+    // RULES 29, 30
+    correct = parse_ecc(parser, out);
+  } else if (parser->current_token.type == TOKEN_EOL ||
+             parser->current_token.type == TOKEN_SEMICOLON) {
+    // END
+    // RULES 31, 32
+    correct = parse_end(parser);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid syntax after return.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_block(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  if (!expect(parser, TOKEN_INDENT)) {
+    syntax_error(parser, "Syntactic error: Missing indentation for a block.");
+    return false;
+  }
+  // INDENT
+
+  *out = ast_init_block(parser->current_token.line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  if (is_statement_first(parser->current_token.type)) {
+    // INDENT IN_BLOCK
+    // RULE 68
+    correct = parse_in_block(parser, &(*out)->data.block);
+    if (!correct) {
+      return false;
+    }
+    if (!expect(parser, TOKEN_DEDENT)) {
+      syntax_error(parser, "Syntactic error: Missing dedent.");
+      correct = false;
+    }
+  } else {
+    syntax_error(parser, "Syntactic error: Empty block.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_in_block(Parser *parser, ASTBlockNodeData *block) {
+  bool correct = false;
+  // STATEMENT
+
+  correct = parse_statement(parser, block);
+  if (!correct) {
+    return false;
+  }
+  correct = parse_in_block2(parser, block);
+  return correct;
+}
+
+static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block) {
+  bool correct = false;
+  if (is_statement_first(parser->current_token.type)) {
+    // STATEMENT
+    // RULES 71-77
+    correct = parse_statement(parser, block);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_in_block2(parser, block);
+  } else if (parser->current_token.type == TOKEN_DEDENT) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Expected a statement or end of block.");
+  }
+  return correct;
+}
+
+static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
+  bool correct = false;
+  ASTNode *statement = NULL;
+  if (parser->current_token.type == TOKEN_KW_VAL ||
+      parser->current_token.type == TOKEN_KW_VAR) {
+    // VAR_DECL
+    // RULE 19
+    correct = parse_var_decl(parser, &statement);
+    if (!correct) {
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_KW_WHILE) {
+    // WHILE
+    // RULE 51
+    correct = parse_while(parser, &statement);
+    if (!correct) {
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_KW_IF) {
+    // IF
+    // RULE 34
+    correct = parse_if(parser, &statement);
+    if (!correct) {
+      return false;
+    }
+  } else if (is_expr_base_first(parser->current_token.type) &&
+             parser->next_token.type != TOKEN_ASSIGN) {
+    // <expr> END
+    // RULES 31, 32
+    correct = parse_expr(parser, &statement);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_end(parser);
+    if (!correct) {
+      ast_free(statement);
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_KW_FOR) {
+    // FOR
+    // RULE 52
+    // TODO: FOR BRANCH
+    parser->rc = ERR_INTERNAL;
+    print_error("Not implemented for yet", 0);
+    return false;
+  } else if (parser->current_token.type == TOKEN_ID &&
+             parser->next_token.type == TOKEN_ASSIGN) {
+    // ASSIGN
+    // RULE 33
+    correct = parse_assign(parser, &statement);
+    if (!correct) {
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_KW_RETURN) {
+    // RETURN
+    // RULE 64
+    correct = parse_return(parser, &statement);
+    if (!correct) {
+      return false;
+    }
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid statement in block.");
+    return false;
+  }
+  ast_ll_append(&block->statements, statement);
+  return correct;
+}
+
+/**
+ * @brief Parses the whole program and builds its AST
+ *
+ * @param scanner Scanner the parser asks for tokens
+ * @param program Set to the root of the built AST on success,
+ *                the caller frees it with ast_free()
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_LEX_ANA in case of a lexical analysis error
+ *         ERR_SYN_ANA in case of a syntactic analysis error
+ *         ERR_INTERNAL in case of an internal error
+ */
 ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
   ReturnCodes rc = RETURN_SUCCESS;
   bool correct = false;
