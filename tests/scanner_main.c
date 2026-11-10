@@ -35,6 +35,7 @@ static const char *const TOKEN_NAMES[] = {
     [TOKEN_INT] = "INT",
     [TOKEN_DOUBLE] = "DOUBLE",
     [TOKEN_STRING] = "STRING",
+    [TOKEN_BOOL] = "BOOL",
     [TOKEN_ASSIGN] = "ASSIGN",
     [TOKEN_IS_EQ] = "IS_EQ",
     [TOKEN_NOT_EQ] = "NOT_EQ",
@@ -47,6 +48,8 @@ static const char *const TOKEN_NAMES[] = {
     [TOKEN_LOWEQ] = "LOWEQ",
     [TOKEN_GRE] = "GRE",
     [TOKEN_GREEQ] = "GREEQ",
+    [TOKEN_AND] = "AND",
+    [TOKEN_OR] = "OR",
     [TOKEN_OPEN_PAR] = "OPEN_PAR",
     [TOKEN_CLOSE_PAR] = "CLOSE_PAR",
     [TOKEN_COMMA] = "COMMA",
@@ -133,7 +136,7 @@ static void print_string(const char *str) {
  * @token: token to print
  *
  * Prints the token's type name, followed by its value
- * for tokens that carry content (ID, INT, DOUBLE, STRING).
+ * for tokens that carry content (ID, INT, DOUBLE, STRING, BOOL).
  * DOUBLE is printed readable (%g) and exact (%a) in parentheses.
  */
 static void print_token(const Token *token) {
@@ -157,6 +160,14 @@ static void print_token(const Token *token) {
   case TOKEN_STRING:
     (void)putchar(' ');
     print_string(token->content.string);
+    break;
+
+  case TOKEN_BOOL:
+    if (token->content.boolean) {
+      (void)printf(" true");
+    } else {
+      (void)printf(" false");
+    }
     break;
 
   default:
