@@ -29,6 +29,7 @@ typedef enum TokenType {
   TOKEN_DIV,          // "/"
   TOKEN_LOW,          // "<"
   TOKEN_LOWEQ,        // "<="
+  TOKEN_GENERATOR,    // "<-"
   TOKEN_GRE,          // ">"
   TOKEN_GREEQ,        // ">="
   TOKEN_AND,          // "&&"
