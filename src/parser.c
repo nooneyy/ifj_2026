@@ -1298,7 +1298,6 @@ ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
  * @return An output terminal corresponding to the input token
  */
 static PrecTerminal terminal_from_token(Parser *parser, PrecTerminal prev) {
-  // TODO: implement OR, AND once scanner has tokens for them
   switch (parser->current_token.type) {
   case TOKEN_ID:
     if (parser->next_token.type == TOKEN_OPEN_PAR) {
@@ -1308,6 +1307,7 @@ static PrecTerminal terminal_from_token(Parser *parser, PrecTerminal prev) {
   case TOKEN_INT:
   case TOKEN_DOUBLE:
   case TOKEN_STRING:
+  case TOKEN_BOOL:
     return PREC_OPERAND;
   case TOKEN_OPEN_PAR:
     return PREC_LPAREN;
@@ -1340,6 +1340,10 @@ static PrecTerminal terminal_from_token(Parser *parser, PrecTerminal prev) {
     return PREC_EQ;
   case TOKEN_NOT_EQ:
     return PREC_NEQ;
+  case TOKEN_OR:
+    return PREC_OR;
+  case TOKEN_AND:
+    return PREC_AND;
   default:
     return PREC_DELIM;
   }
@@ -1467,6 +1471,14 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
           (ASTLiteralNodeData){
               .string = first_item.terminal_token.content.string,
           },
+          first_item.terminal_token.line);
+      break;
+    case TOKEN_BOOL:
+      // Parse as boolean literal
+      expr = ast_init_literal(
+          BOOLEAN,
+          (ASTLiteralNodeData){.bool_val =
+                                   first_item.terminal_token.content.boolean},
           first_item.terminal_token.line);
       break;
     default:

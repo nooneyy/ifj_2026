@@ -1,0 +1,36 @@
+/**
+ * @file bool.ifj
+ * @brief Boolean literal and logical operator testing input
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 10.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model on xhigh
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please make those and follow the same AI rules and test conventions as
+ * before"
+ * (context: "those" = scanner tests for the new BOOL, AND and OR tokens)
+ */
+// Bool test: true && false || !x in a comment must be ignored
+import ifj26.*
+def both(a: Boolean, b: Boolean): Boolean = a && b
+def either(a: Boolean, b: Boolean): Boolean = a || b
+@main def main(): Unit =
+  val t = true; val f: Boolean = false
+  val trueish = 1; val falsey = 2; val True = 3; val FALSE = 4
+  val true_ = 5; val false1 = 6; val istrue = 7
+  val packed = true&&false||!true
+  val idents = t&&f||!t
+  val cmp = (trueish < falsey) && !(True == FALSE) || t != f
+  val s = "true && false || x"
+  val r = both(t, f)
+  val e = either(r, true)
+  if e then
+    print(true)
+  else
+    print(false)

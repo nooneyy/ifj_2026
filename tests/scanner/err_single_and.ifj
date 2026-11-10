@@ -1,0 +1,23 @@
+/**
+ * @file err_single_and.ifj
+ * @brief Single '&' testing input
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 10.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model on xhigh
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please make those and follow the same AI rules and test conventions as
+ * before"
+ * (context: "those" = scanner tests for the new BOOL, AND and OR tokens)
+ */
+// a single '&' is not an IFJ26 operator, only '&&' is -> lexical error 1
+import ifj26.*
+@main def main(): Unit =
+  val a = true; val b = false
+  val x = a & b

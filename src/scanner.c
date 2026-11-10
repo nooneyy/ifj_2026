@@ -65,6 +65,8 @@ typedef enum FsmState {
   STATE_EXCL,            // "!" is first in the sequence
   STATE_LOW,             // "<" is first in the sequence
   STATE_GRE,             // ">" is first in the sequence
+  STATE_AND,             // "&" is first in the sequence
+  STATE_OR,              // "|" is first in the sequence
   STATE_PAREN_NEWLINE,   // Newline inside of parenthesis
 } FsmState;
 
@@ -94,7 +96,7 @@ static const KeyWord KEYWORDS[] = {
     {"class", TOKEN_KW_CLASS},     {"extension", TOKEN_KW_EXTENSION},
     {"for", TOKEN_KW_FOR},         {"List", TOKEN_KW_LIST},
     {"match", TOKEN_KW_MATCH},     {"type", TOKEN_KW_TYPE},
-};
+    {"true", TOKEN_BOOL},          {"false", TOKEN_BOOL}};
 
 Scanner scanner_init(FILE *src_file) {
   Scanner to_fill = {.src = src_file, .at_line_start = true, .line = 1};
@@ -462,6 +464,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_ASSIGN;
       } else if (c == '>') {
         state = STATE_GRE;
+      } else if (c == '&') {
+        state = STATE_AND;
+      } else if (c == '|') {
+        state = STATE_OR;
       } else if (c == '<') {
         state = STATE_LOW;
       } else if (c == '@') {
@@ -516,11 +522,19 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else {
         (void)ungetc(c, sc->src); // for the next token to read
         token_to_fill->type = id_or_keyword(str.data);
-        if (token_to_fill->type != TOKEN_ID) {
-          dynstr_free(&str);
+        if (token_to_fill->type == TOKEN_ID) {
+          token_to_fill->content.string = dynstr_take(&str);
         } else {
-          token_to_fill->content.string =
-              dynstr_take(&str); // token owns it now
+          if (token_to_fill->type == TOKEN_BOOL) {
+            // Because token is TOKEN_BOOL, its string data must be either
+            // "true" or "false"
+            if (strcmp(str.data, "true") == 0) {
+              token_to_fill->content.boolean = true;
+            } else {
+              token_to_fill->content.boolean = false;
+            }
+          }
+          dynstr_free(&str);
         }
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
@@ -771,6 +785,26 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_GRE;
       }
       token_to_fill->line = sc->line;
+      return RETURN_SUCCESS;
+
+    case STATE_AND:
+      if (c == '&') {
+        token_to_fill->type = TOKEN_AND;
+        token_to_fill->line = sc->line;
+      } else {
+        print_error("Expected '&' after '&'.", sc->line);
+        return ERR_LEX_ANA;
+      }
+      return RETURN_SUCCESS;
+
+    case STATE_OR:
+      if (c == '|') {
+        token_to_fill->type = TOKEN_OR;
+        token_to_fill->line = sc->line;
+      } else {
+        print_error("Expected '|' after '|'.", sc->line);
+        return ERR_LEX_ANA;
+      }
       return RETURN_SUCCESS;
 
     case STATE_LOW:
