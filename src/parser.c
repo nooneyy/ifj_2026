@@ -551,6 +551,44 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
 }
 
 /**
+ * @brief Parses Val/Var in Variable declaration
+ *
+ * RULE 20: EDIT_TYPE -> KW_VAR
+ * RULE 21: EDIT_TYPE -> KW_VAL
+ *
+ * @param parser Parser's current state
+ * @param to_set Edit type variable to be set
+ * @return false if current token is not val nor var or parser_advance fails,
+ * else true
+ */
+static bool parse_edit_type(Parser *parser, VariableType *to_set) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_KW_VAR) {
+    // KW_VAR
+    // No deeper rule
+    *to_set = VAR;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = true;
+  } else if (parser->current_token.type == TOKEN_KW_VAL) {
+    // KW_VAL
+    // No deeper rule
+    *to_set = VAL;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = true;
+  } else {
+    syntax_error(
+        parser,
+        "Syntactic error: Invalid variable data type. Must be val or var.");
+    correct = false;
+  }
+  return correct;
+}
+
+/**
  * @brief Parses variable declaration
  *
  * RULE 19: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
@@ -562,12 +600,13 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
 static bool parse_var_decl(Parser *parser) {
   bool correct = false;
   // TODO: const char *name = {};
-  // VariableType val_var;
+  VariableType val_var;
   DataType var_type;
-  // correct = parse_edit_type(parser, &val_var);
+  correct = parse_edit_type(parser, &val_var);
   if (!correct) {
     return false;
   }
+
   if (parser->current_token.type != TOKEN_ID) {
     syntax_error(parser, "Syntactic error: Variable declaration without name.");
     return false;
@@ -756,10 +795,15 @@ static bool parse_def_ex(Parser *parser, ASTNode *func) {
   } else if (is_expr_ext_first(parser->current_token.type)) {
     // <expr>
     // PRECEDENCE ANALYSIS
-    // TODO: correct = parse_expr(parser)
-    (void)parse_expr;
-    // TODO: check correct
-    // TODO: if (!expect(parser, TOKEN_EOL)) {syntax_error; return false;}
+    correct = parse_expr(parser, &func->data.function_def.body);
+    if (!correct) {
+      return false;
+    }
+    if (!expect(parser, TOKEN_EOL)) {
+      syntax_error(parser,
+                   "Syntactic error: Missing end of line after an expression.");
+      return false;
+    }
     correct = true; // TODO
   } else if (expect(parser, TOKEN_EOL)) {
     // EOL
