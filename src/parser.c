@@ -1761,8 +1761,12 @@ static bool parse_expr(Parser *parser, ASTNode **out) {
     PrecTerminal top_terminal =
         prec_stack_top_terminal(ps); // The topmost terminal on the stack
 
-    if (top_terminal == PREC_DELIM && input_terminal == PREC_DELIM) {
-      // The input is empty or the expression is successfully parsed
+    if (top_terminal == PREC_DELIM &&
+        (input_terminal == PREC_DELIM || input_terminal == PREC_COMMA ||
+         input_terminal == PREC_RPAREN)) {
+      // The input is empty, the expression is successfully parsed or the next
+      // terminal which would lead to a syntax error belongs to an outer
+      // expression
       break;
     }
 
