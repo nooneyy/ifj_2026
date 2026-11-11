@@ -2262,6 +2262,69 @@ static bool starts_if_statement(Parser *parser, PrecTerminal prev_terminal) {
   return false;
 }
 
+/**
+ * @brief Recursive descent function for parsing if node in expression
+ * (precedence analysis)
+ * @param parser Pointer to the parser struct
+ * @param out A pointer to the location of the to-be-created ASTNode pointer
+ * @return true on success,  false on error with the error code being in
+ * parser->rc, *out being NULL
+ */
+static bool parse_if_in_expr(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  ASTNode *condition = NULL;
+  ASTNode *then_node = NULL;
+  ASTNode *else_node = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (!expect(parser, TOKEN_KW_IF)) {
+    return false;
+  }
+
+  correct = parse_expr(parser, &condition);
+  if (!correct) {
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_KW_THEN)) {
+    syntax_error(parser,
+                 "Syntactic error: Missing \"then\" after \"if\" in expr.");
+    ast_free(condition);
+    return false;
+  }
+
+  correct = parse_expr(parser, &then_node);
+  if (!correct) {
+    ast_free(condition);
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_KW_ELSE)) {
+    syntax_error(parser,
+                 "Syntactic error: Missing \"else\" after \"then\" in expr.");
+    ast_free(condition);
+    ast_free(then_node);
+    return false;
+  }
+
+  correct = parse_expr(parser, &else_node);
+
+  if (!correct) {
+    ast_free(condition);
+    ast_free(then_node);
+    return false;
+  }
+
+  *out = ast_init_if(condition, then_node, else_node, true, line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  return correct;
+}
+
 static bool parse_expr(Parser *parser, ASTNode **out) {
   PrecStack *ps = prec_stack_init();
 
@@ -2279,7 +2342,7 @@ static bool parse_expr(Parser *parser, ASTNode **out) {
     if (starts_if_statement(parser, prev_terminal)) {
       // CONTROL extension - if statement evaluates into an OPERAND
       ASTNode *if_node = NULL;
-      bool correct = parse_if_req_else(parser, &if_node);
+      bool correct = parse_if_in_expr(parser, &if_node);
 
       if (!correct) {
         prec_stack_free(ps);
