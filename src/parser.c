@@ -757,8 +757,8 @@ static bool parse_opt_by(Parser *parser, ASTNode **range_step);
 /**
  * @brief Parses guards of a for loop
  *
- * RULE 60: GUARDS -> KW_IF <expr> EOL GUARDS
- * RULE 61: GUARDS -> eps
+ * RULE 59: GUARDS -> KW_IF <expr> EOL GUARDS
+ * RULE 60: GUARDS -> eps
  *
  * @param parser Parser's current state
  * @param guards List to add the guards to
@@ -770,8 +770,8 @@ static bool parse_guards(Parser *parser, ASTNode **guards);
 /**
  * @brief Parses body of a for loop after do
  *
- * RULE 62: AFTER_DO -> EOL BLOCK
- * RULE 63: AFTER_DO -> ECC
+ * RULE 61: AFTER_DO -> EOL BLOCK
+ * RULE 62: AFTER_DO -> ECC
  *
  * @param parser Parser's current state
  * @param body Where to store the body of the for
@@ -783,7 +783,7 @@ static bool parse_after_do(Parser *parser, ASTNode **body);
 /**
  * @brief Parses return statement
  *
- * RULE 64: RETURN -> KW_RETURN OPT_ECC
+ * RULE 63: RETURN -> KW_RETURN OPT_ECC
  *
  * @param parser Parser's current state
  * @param out ASTNode to store the whole return
@@ -795,8 +795,8 @@ static bool parse_return(Parser *parser, ASTNode **out);
 /**
  * @brief Parses optional returned value after return
  *
- * RULE 65: OPT_ECC -> ECC
- * RULE 66: OPT_ECC -> END
+ * RULE 64: OPT_ECC -> ECC
+ * RULE 65: OPT_ECC -> END
  *
  * @param parser Parser's current state
  * @param out ASTNode to fill, stays NULL if there's no returned value
@@ -808,7 +808,7 @@ static bool parse_opt_ecc(Parser *parser, ASTNode **out);
 /**
  * @brief Parses the entry to a Block
  *
- * RULE 67: BLOCK -> INDENT IN_BLOCK DEDENT
+ * RULE 66: BLOCK -> INDENT IN_BLOCK DEDENT
  *
  * @param parser Parser's current state
  * @param out Where to put the block
@@ -820,7 +820,7 @@ static bool parse_block(Parser *parser, ASTNode **out);
 /**
  * @brief Parses the first statement in block
  *
- * RULE 68: IN_BLOCK -> STATEMENT IN_BLOCK2
+ * RULE 67: IN_BLOCK -> STATEMENT IN_BLOCK2
  *
  * @param parser Parser's current state
  * @param block Current block to add statements to
@@ -832,8 +832,8 @@ static bool parse_in_block(Parser *parser, ASTBlockNodeData *block);
 /**
  * @brief Parses block statements except for the first statement
  *
- * RULE 69: IN_BLOCK2 -> STATEMENT IN_BLOCK2
- * RULE 70: IN_BLOCK2 -> eps
+ * RULE 68: IN_BLOCK2 -> STATEMENT IN_BLOCK2
+ * RULE 69: IN_BLOCK2 -> eps
  *
  * @param parser Parser's current state
  * @param block Current block to add statements to
@@ -845,13 +845,13 @@ static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block);
 /**
  * @brief Parses a single statement and appends it to the block
  *
- * RULE 71: STATEMENT -> VAR_DECL
- * RULE 72: STATEMENT -> WHILE
- * RULE 73: STATEMENT -> IF
- * RULE 74: STATEMENT -> <expr> END
- * RULE 75: STATEMENT -> FOR
- * RULE 76: STATEMENT -> ASSIGN
- * RULE 77: STATEMENT -> RETURN
+ * RULE 70: STATEMENT -> VAR_DECL
+ * RULE 71: STATEMENT -> WHILE
+ * RULE 72: STATEMENT -> IF
+ * RULE 73: STATEMENT -> <expr> END
+ * RULE 74: STATEMENT -> FOR
+ * RULE 75: STATEMENT -> ASSIGN
+ * RULE 76: STATEMENT -> RETURN
  *
  * @param parser Parser's current state
  * @param block Current block to add the statement to
@@ -1063,7 +1063,7 @@ static bool parse_def_ex(Parser *parser, ASTNode *func) {
     }
   } else if (expect(parser, TOKEN_EOL)) {
     // EOL
-    // RULE 67
+    // RULE 66
     correct = parse_block(parser, &func->data.function_def.body);
   } else {
     syntax_error(parser, "Syntactic error: Invalid missing expression or if.");
@@ -1468,7 +1468,7 @@ static bool parse_then_one(
     correct = parse_only_if(parser, else_out);
   } else if (expect(parser, TOKEN_EOL)) {
     // eol BLOCK AFTER_BLOCK
-    // RULE 67
+    // RULE 66
     // RULES 39, 40
     correct = parse_block(parser, then_out);
     if (!correct) {
@@ -1525,7 +1525,7 @@ static bool parse_elif(Parser *parser, ASTNode **out) {
   *out = NULL;
   if (expect(parser, TOKEN_EOL)) {
     // EOL BLOCK
-    // RULE 67
+    // RULE 66
     correct = parse_block(parser, out);
   } else if (parser->current_token.type == TOKEN_KW_IF) {
     // IF
@@ -1690,7 +1690,7 @@ static bool parse_while(Parser *parser, ASTNode **out) {
   // KW_WHILE <expr> KW_DO EOL
 
   // KW_WHILE <expr> KW_DO EOL BLOCK
-  // RULE 67
+  // RULE 66
   correct = parse_block(parser, &body);
   if (!correct) {
     ast_free(condition);
@@ -1749,7 +1749,7 @@ static bool parse_for(Parser *parser, ASTNode **out) {
   // KW_FOR FOR_SET KW_DO
 
   // KW_FOR FOR_SET KW_DO AFTER_DO
-  // RULES 62, 63
+  // RULES 61, 62
   correct = parse_after_do(parser, &body);
   if (!correct) {
     free(gen_name);
@@ -1828,7 +1828,7 @@ static bool parse_for_set(
     // EOL INDENT ID ARROW <expr> UN_TO EOL
 
     // EOL INDENT ID ARROW <expr> UN_TO EOL GUARDS
-    // RULES 60, 61
+    // RULES 59, 60
     correct = parse_guards(parser, guards);
     if (!correct) {
       return false;
@@ -1939,7 +1939,7 @@ static bool parse_guards(Parser *parser, ASTNode **guards) {
                    "Syntactic error: Missing end of line after a guard.");
       return false;
     }
-    // RULES 60, 61
+    // RULES 59, 60
     correct = parse_guards(parser, guards);
     if (!correct) {
       return false;
@@ -1959,7 +1959,7 @@ static bool parse_after_do(Parser *parser, ASTNode **body) {
   bool correct = false;
   if (expect(parser, TOKEN_EOL)) {
     // EOL BLOCK
-    // RULE 67
+    // RULE 66
     correct = parse_block(parser, body);
   } else if (is_expr_ext_first(parser->current_token.type) ||
              parser->current_token.type == TOKEN_KW_IF) {
@@ -1986,7 +1986,7 @@ static bool parse_return(Parser *parser, ASTNode **out) {
   // KW_RETURN
 
   // KW_RETURN OPT_ECC
-  // RULES 65, 66
+  // RULES 64, 65
   correct = parse_opt_ecc(parser, &ret);
   if (!correct) {
     ast_free(ret);
@@ -2035,7 +2035,7 @@ static bool parse_block(Parser *parser, ASTNode **out) {
   }
   if (is_statement_first(parser->current_token.type)) {
     // INDENT IN_BLOCK
-    // RULE 68
+    // RULE 67
     correct = parse_in_block(parser, &(*out)->data.block);
     if (!correct) {
       return false;
@@ -2067,7 +2067,7 @@ static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block) {
   bool correct = false;
   if (is_statement_first(parser->current_token.type)) {
     // STATEMENT
-    // RULES 71-77
+    // RULES 70-76
     correct = parse_statement(parser, block);
     if (!correct) {
       return false;
@@ -2140,7 +2140,7 @@ static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
     }
   } else if (parser->current_token.type == TOKEN_KW_RETURN) {
     // RETURN
-    // RULE 64
+    // RULE 63
     correct = parse_return(parser, &statement);
     if (!correct) {
       return false;
