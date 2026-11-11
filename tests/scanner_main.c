@@ -46,6 +46,7 @@ static const char *const TOKEN_NAMES[] = {
     [TOKEN_DIV] = "DIV",
     [TOKEN_LOW] = "LOW",
     [TOKEN_LOWEQ] = "LOWEQ",
+    [TOKEN_GENERATOR] = "GENERATOR",
     [TOKEN_GRE] = "GRE",
     [TOKEN_GREEQ] = "GREEQ",
     [TOKEN_AND] = "AND",

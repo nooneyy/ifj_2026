@@ -29,7 +29,7 @@ typedef enum {
   NODE_IF,            // An if statement node
   NODE_RETURN,        // A return statement node
   NODE_WHILE,         // A while loop node
-  //   NODE_FOR, not supported yet
+  NODE_FOR,           // A for loop node
   NODE_LITERAL,   // A literal value node (Int, Double, String, Unit, Boolean)
   NODE_BINARY_OP, // A binary operation node
   NODE_UNARY_OP,  // A unary operation node
@@ -159,10 +159,25 @@ typedef struct {
                       // statement
 } ASTWhileNodeData;
 
-// for loop (CONTROL extension), not supported yet
-// typedef struct {
-//   ASTNode *condition;
-// } ASTForNodeData;
+/**
+ * @brief Data specific to the For loop node
+ */
+typedef struct {
+  char *generator_name; // The name of the for loop variable [example: (for x <-
+                        // 0 to 10) => x]
+  ASTNode *range_start; // The expression of the start boundary [example: (for x
+                        // <- (z + 1) to 10) => (z + 1)]
+  ASTNode *range_end;  // The expression of the end boundary [example: (for x <-
+                       // 0 to (z - 5)) => (z - 5)]
+  ASTNode *range_step; // The expression of the step size [example: (for x <- 0
+                       // to 10 by 2) => 2]
+  ASTNode *guards; // The guard conditions of the for loop (i < 5, i < z,...) -
+                   // MULTIPLE! Append with ast_ll_append
+  ASTNode *body; // A block or expression node(if one-line) specifying the body
+                 // of the for loop
+  bool includes_end; // If the end boundary is included in the range or not (to
+                     // = true, until = false)
+} ASTForNodeData;
 
 /**
  * @brief Data specific to the Literal node
@@ -206,6 +221,7 @@ typedef union {
   ASTIfNodeData if_node;
   ASTReturnNodeData return_node;
   ASTWhileNodeData while_node;
+  ASTForNodeData for_node;
   ASTLiteralNodeData literal;
   ASTBinaryOpNodeData binary_op;
   ASTUnaryOpNodeData unary_op;
@@ -314,6 +330,26 @@ ASTNode *ast_init_if(ASTNode *condition, ASTNode *then_branch,
  * (condition and body get freed)
  */
 ASTNode *ast_init_while(ASTNode *condition, ASTNode *body, unsigned int line);
+
+/**
+ * @brief A constructor function for a For node
+ * @param generator_name The name of the for loop variable (i,...)
+ * @param range_start A pointer to the expression node representing the start
+ * boundary
+ * @param range_end A pointer to the expression node representing the end
+ * boundary
+ * @param range_step A pointer to the expression node representing the step size
+ * (can be NULL if no "by" in for loop)
+ * @param body A pointer to the body or expression node(if one-line)
+ * representing the body of the for loop
+ * @param includes_end Is the end boundary included in the for loop range?
+ * @param line The line number in the input where the node was created
+ * @return A pointer to the created AST node on success, otherwise NULL (all
+ * ASTNode pointers and generator_name get freed)
+ */
+ASTNode *ast_init_for(char *generator_name, ASTNode *range_start,
+                      ASTNode *range_end, ASTNode *range_step, ASTNode *body,
+                      bool includes_end, unsigned int line);
 
 /**
  * @brief A constructor function for a Return node

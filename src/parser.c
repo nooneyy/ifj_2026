@@ -1841,11 +1841,26 @@ ReturnCodes parse_input(Scanner *scanner, ASTNode **program) {
  */
 static PrecTerminal terminal_from_token(Parser *parser, PrecTerminal prev) {
   switch (parser->current_token.type) {
-  case TOKEN_ID:
+  case TOKEN_ID: {
+    bool prev_can_end_expr =
+        ((prev == PREC_RPAREN) || (prev == PREC_OPERAND)) != 0;
+    bool curr_eq_to = strcmp(parser->current_token.content.string, "to") == 0;
+    bool curr_eq_until =
+        strcmp(parser->current_token.content.string, "until") == 0;
+    bool curr_eq_by = strcmp(parser->current_token.content.string, "by") == 0;
+
+    if (prev_can_end_expr && (curr_eq_to || curr_eq_until || curr_eq_by)) {
+      // Parsed expression is in a for loop generator, end the expression when
+      // hitting a "to" | "until" | "by"
+      return PREC_DELIM;
+    }
+
     if (parser->next_token.type == TOKEN_OPEN_PAR) {
       return PREC_FUNC;
     }
+
     return PREC_OPERAND;
+  }
   case TOKEN_INT:
   case TOKEN_DOUBLE:
   case TOKEN_STRING:
@@ -2224,6 +2239,29 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
   return true;
 }
 
+/**
+ * @brief Function that determines whether there's an if statement in the expr
+ * input
+ * @param parser Pointer to the parser struct
+ * @param prev_terminal The previously parsed Terminal from the input
+ * @return true if the function caught a valid beginning of an if statement,
+ * otherwise false
+ */
+static bool starts_if_statement(Parser *parser, PrecTerminal prev_terminal) {
+  /* Three possible options:
+  1) IF statement is at the beginning of the expr,
+  2) IF statement is in parentheses and will get reduced to E -> (E),
+  3) IF statement is in a function call separated by commas
+  */
+  if (parser->current_token.type == TOKEN_KW_IF &&
+      (prev_terminal == PREC_DELIM || prev_terminal == PREC_COMMA ||
+       prev_terminal == PREC_LPAREN)) {
+    return true;
+  }
+
+  return false;
+}
+
 static bool parse_expr(Parser *parser, ASTNode **out) {
   PrecStack *ps = prec_stack_init();
 
@@ -2238,13 +2276,39 @@ static bool parse_expr(Parser *parser, ASTNode **out) {
   PrecTerminal prev_terminal = PREC_DELIM; // The stack always starts with a '$'
   ReturnCodes ret;
   while (true) {
+    if (starts_if_statement(parser, prev_terminal)) {
+      // CONTROL extension - if statement evaluates into an OPERAND
+      ASTNode *if_node = NULL;
+      bool correct = parse_if_req_else(parser, &if_node);
+
+      if (!correct) {
+        prec_stack_free(ps);
+        return false;
+      }
+
+      ret = prec_stack_push(ps, (PrecItem){.type = PREC_EXPR, .expr = if_node});
+
+      if (ret != RETURN_SUCCESS) {
+        parser->rc = ERR_INTERNAL;
+        prec_stack_free(ps);
+        return false;
+      }
+
+      prev_terminal = PREC_OPERAND;
+      continue;
+    }
+
     PrecTerminal input_terminal =
         terminal_from_token(parser, prev_terminal); // The token from the input
     PrecTerminal top_terminal =
         prec_stack_top_terminal(ps); // The topmost terminal on the stack
 
-    if (top_terminal == PREC_DELIM && input_terminal == PREC_DELIM) {
-      // The input is empty or the expression is successfully parsed
+    if (top_terminal == PREC_DELIM &&
+        (input_terminal == PREC_DELIM || input_terminal == PREC_COMMA ||
+         input_terminal == PREC_RPAREN)) {
+      // The input is empty, the expression is successfully parsed or the next
+      // terminal which would lead to a syntax error belongs to an outer
+      // expression
       break;
     }
 
