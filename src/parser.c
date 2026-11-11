@@ -689,6 +689,98 @@ static bool parse_after_req_block(Parser *parser, ASTNode **else_out);
 static bool parse_while(Parser *parser, ASTNode **out);
 
 /**
+ * @brief Parses for loop
+ *
+ * RULE 52: FOR -> KW_FOR FOR_SET KW_DO AFTER_DO
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to store the whole for
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_for(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses the generator and guards of a for loop
+ *
+ * RULE 53: FOR_SET -> EOL INDENT ID ARROW <expr> UN_TO EOL GUARDS DEDENT
+ * RULE 54: FOR_SET -> ID ARROW <expr> UN_TO
+ *
+ * @param parser Parser's current state
+ * @param gen_name Where to store the name of the generator variable
+ * @param range_start Where to store the start of the range
+ * @param range_end Where to store the end of the range
+ * @param range_step Where to store the step of the range
+ * @param guards Where to store the guards
+ * @param is_to Set to true if to, false if until
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_for_set(
+    Parser *parser, char **gen_name,
+    ASTNode **range_start, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **range_end,
+    ASTNode **range_step, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **guards, bool *is_to);
+
+/**
+ * @brief Parses the end of the range after until or to
+ *
+ * RULE 55: UN_TO -> until <expr>
+ * RULE 56: UN_TO -> to <expr> OPT_BY
+ *
+ * @param parser Parser's current state
+ * @param range_end Where to store the end of the range
+ * @param range_step Where to store the step of the range
+ * @param is_to Set to true if to, false if until
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_un_to(
+    Parser *parser,
+    ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **range_step, bool *is_to);
+
+/**
+ * @brief Parses optional step of the range after to
+ *
+ * RULE 57: OPT_BY -> by <expr>
+ * RULE 58: OPT_BY -> eps
+ *
+ * @param parser Parser's current state
+ * @param range_step Where to store the step, stays NULL if there's no by
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_opt_by(Parser *parser, ASTNode **range_step);
+
+/**
+ * @brief Parses guards of a for loop
+ *
+ * RULE 60: GUARDS -> KW_IF <expr> EOL GUARDS
+ * RULE 61: GUARDS -> eps
+ *
+ * @param parser Parser's current state
+ * @param guards List to add the guards to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_guards(Parser *parser, ASTNode **guards);
+
+/**
+ * @brief Parses body of a for loop after do
+ *
+ * RULE 62: AFTER_DO -> EOL BLOCK
+ * RULE 63: AFTER_DO -> ECC
+ *
+ * @param parser Parser's current state
+ * @param body Where to store the body of the for
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_after_do(Parser *parser, ASTNode **body);
+
+/**
  * @brief Parses return statement
  *
  * RULE 64: RETURN -> KW_RETURN OPT_ECC
@@ -1614,6 +1706,273 @@ static bool parse_while(Parser *parser, ASTNode **out) {
   return correct;
 }
 
+static bool parse_for(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  char *gen_name = NULL;
+  bool is_to = false;
+  ASTNode *range_start = NULL;
+  ASTNode *range_end = NULL;
+  ASTNode *range_step = NULL;
+  ASTNode *guards = NULL;
+  ASTNode *body = NULL;
+  const unsigned int line = parser->current_token.line;
+  *out = NULL;
+
+  if (!expect(parser, TOKEN_KW_FOR)) {
+    syntax_error(parser, "Syntactic error: Missing for.");
+    return false;
+  }
+  // KW_FOR
+
+  // KW_FOR FOR_SET
+  // RULES 53, 54
+  correct = parse_for_set(parser, &gen_name, &range_start, &range_end,
+                          &range_step, &guards, &is_to);
+  if (!correct) {
+    free(gen_name);
+    ast_free(range_start);
+    ast_free(range_end);
+    ast_free(range_step);
+    ast_free(guards);
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_KW_DO)) {
+    syntax_error(parser, "Syntactic error: Missing do after for.");
+    free(gen_name);
+    ast_free(range_start);
+    ast_free(range_end);
+    ast_free(range_step);
+    ast_free(guards);
+    return false;
+  }
+  // KW_FOR FOR_SET KW_DO
+
+  // KW_FOR FOR_SET KW_DO AFTER_DO
+  // RULES 62, 63
+  correct = parse_after_do(parser, &body);
+  if (!correct) {
+    free(gen_name);
+    ast_free(range_start);
+    ast_free(range_end);
+    ast_free(range_step);
+    ast_free(guards);
+    ast_free(body);
+    return false;
+  }
+
+  *out = ast_init_for(gen_name, range_start, range_end, range_step, body, is_to,
+                      line);
+  if (*out == NULL) {
+    parser->rc = ERR_INTERNAL;
+    ast_free(guards);
+    return false;
+  }
+
+  (*out)->data.for_node.guards = guards;
+
+  return correct;
+}
+
+static bool parse_for_set(
+    Parser *parser, char **gen_name,
+    ASTNode **range_start, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **range_end,
+    ASTNode **range_step, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **guards, bool *is_to) {
+  bool correct = false;
+  if (expect(parser, TOKEN_EOL)) {
+    // EOL
+
+    if (!expect(parser, TOKEN_INDENT)) {
+      syntax_error(parser, "Syntactic error: Missing indent.");
+      return false;
+    }
+    // EOL INDENT
+
+    if (parser->current_token.type != TOKEN_ID) {
+      syntax_error(parser, "Syntactic error: Missing identifier.");
+      return false;
+    }
+    *gen_name = parser->current_token.content.string;
+    parser->current_token.content.string = NULL;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    // EOL INDENT ID
+
+    if (!expect(parser, TOKEN_GENERATOR)) {
+      syntax_error(parser, "Syntactic error: Missing generator symbol <-.");
+      return false;
+    }
+    // EOL INDENT ID ARROW
+
+    correct = parse_expr(parser, range_start);
+    if (!correct) {
+      return false;
+    }
+    // EOL INDENT ID ARROW <expr>
+
+    // EOL INDENT ID ARROW <expr> UN_TO
+    // RULES 55, 56
+    correct = parse_un_to(parser, range_end, range_step, is_to);
+    if (!correct) {
+      return false;
+    }
+
+    if (!expect(parser, TOKEN_EOL)) {
+      syntax_error(parser,
+                   "Syntactic error: Missing end of line after for setup.");
+      return false;
+    }
+    // EOL INDENT ID ARROW <expr> UN_TO EOL
+
+    // EOL INDENT ID ARROW <expr> UN_TO EOL GUARDS
+    // RULES 60, 61
+    correct = parse_guards(parser, guards);
+    if (!correct) {
+      return false;
+    }
+
+    if (!expect(parser, TOKEN_DEDENT)) {
+      syntax_error(
+          parser, "Syntactic error: Missing dedent after guards or for setup.");
+      return false;
+    }
+    // EOL INDENT ID ARROW <expr> UN_TO EOL GUARDS DEDENT
+  } else if (parser->current_token.type == TOKEN_ID) {
+    // ID
+
+    *gen_name = parser->current_token.content.string;
+    parser->current_token.content.string = NULL;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    if (!expect(parser, TOKEN_GENERATOR)) {
+      syntax_error(parser, "Syntactic error: Missing generator symbol <-.");
+      return false;
+    }
+    // ID ARROW
+
+    correct = parse_expr(parser, range_start);
+    if (!correct) {
+      return false;
+    }
+    // ID ARROW <expr>
+
+    // ID ARROW <expr> UN_TO
+    // RULES 55, 56
+    correct = parse_un_to(parser, range_end, range_step, is_to);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid symbol in for setup.");
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_un_to(
+    Parser *parser,
+    ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
+    ASTNode **range_step, bool *is_to) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_ID &&
+      strcmp(parser->current_token.content.string, "until") == 0) {
+    // until <expr>
+    *is_to = false;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = parse_expr(parser, range_end);
+  } else if (parser->current_token.type == TOKEN_ID &&
+             strcmp(parser->current_token.content.string, "to") == 0) {
+    // to <expr> OPT_BY
+    *is_to = true;
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = parse_expr(parser, range_end);
+    if (!correct) {
+      return false;
+    }
+    // RULES 57, 58
+    correct = parse_opt_by(parser, range_step);
+  } else {
+    syntax_error(parser, "Syntactic error: Missing until or to in for setup.");
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_opt_by(Parser *parser, ASTNode **range_step) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_ID &&
+      strcmp(parser->current_token.content.string, "by") == 0) {
+    // by <expr>
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = parse_expr(parser, range_step);
+  } else if (parser->current_token.type == TOKEN_EOL ||
+             parser->current_token.type == TOKEN_KW_DO) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid syntax after to.");
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_guards(Parser *parser, ASTNode **guards) {
+  bool correct = false;
+  ASTNode *guard = NULL;
+  if (expect(parser, TOKEN_KW_IF)) {
+    // KW_IF <expr> EOL GUARDS
+    correct = parse_expr(parser, &guard);
+    if (!correct) {
+      return false;
+    }
+    ast_ll_append(guards, guard);
+    if (!expect(parser, TOKEN_EOL)) {
+      syntax_error(parser,
+                   "Syntactic error: Missing end of line after a guard.");
+      return false;
+    }
+    // RULES 60, 61
+    correct = parse_guards(parser, guards);
+    if (!correct) {
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_DEDENT) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid guard definition.");
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_after_do(Parser *parser, ASTNode **body) {
+  bool correct = false;
+  if (expect(parser, TOKEN_EOL)) {
+    // EOL BLOCK
+    // RULE 67
+    correct = parse_block(parser, body);
+  } else if (is_expr_ext_first(parser->current_token.type) ||
+             parser->current_token.type == TOKEN_KW_IF) {
+    // ECC
+    // RULES 29, 30
+    correct = parse_ecc(parser, body);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid body of a for loop.");
+    return false;
+  }
+  return correct;
+}
+
 static bool parse_return(Parser *parser, ASTNode **out) {
   bool correct = false;
   ASTNode *ret = NULL;
@@ -1766,10 +2125,11 @@ static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
   } else if (parser->current_token.type == TOKEN_KW_FOR) {
     // FOR
     // RULE 52
-    // TODO: FOR BRANCH
-    parser->rc = ERR_INTERNAL;
-    print_error("Not implemented for yet", 0);
-    return false;
+    correct = parse_for(parser, &statement);
+    if (!correct) {
+      ast_free(statement);
+      return false;
+    }
   } else if (parser->current_token.type == TOKEN_ID &&
              parser->next_token.type == TOKEN_ASSIGN) {
     // ASSIGN
