@@ -32,7 +32,9 @@ typedef struct Scanner {
   int parenth_depth;   // Current parenthesis depth
   bool at_line_start;  // A flag to determine, whether the scanner is
                        // on a new line and should mind the indentation
-  unsigned int line;   // Line the scanner is currently on
+  bool emit_eol_eof; // A flag that determines whether to emit an EOL before an
+                     // EOF
+  unsigned int line; // Line the scanner is currently on
 } Scanner;
 
 /**

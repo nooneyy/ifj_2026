@@ -380,6 +380,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         sc->dedents_pending--;
         return RETURN_SUCCESS;
       }
+
+      if (c != EOF && c != '/' && !isspace(c)) {
+        // We have to emit an EOL before an EOF (and dedents) for statements to
+        // be parsed properly
+        sc->emit_eol_eof = true;
+      }
+
       if (isalpha(c)) {
         rc = dynstr_init(&str);
         if (rc != RETURN_SUCCESS) {
@@ -440,6 +447,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           token_to_fill->type = TOKEN_EOL;
           token_to_fill->line = sc->line - 1;
           sc->at_line_start = true;
+          sc->emit_eol_eof = false;
           return RETURN_SUCCESS;
         }
         token_to_fill->lf_before = true;
@@ -488,7 +496,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == EOF) {
-        if (sc->indent_depth > 0) {
+        if (sc->emit_eol_eof) {
+          token_to_fill->type = TOKEN_EOL;
+          sc->emit_eol_eof = false;
+        } else if (sc->indent_depth > 0) {
           sc->indent_depth--;
           token_to_fill->type = TOKEN_DEDENT;
         } else {
@@ -581,6 +592,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isdigit(c)) {
         APPEND_OR_ERROR(str, c);
         state = STATE_INT;
+      } else if (c == '_') {
+        // do nothing, the amount of '_' is not limited to 1
       } else {
         dynstr_free(&str);
         print_error("Unexpected identifier after '_' in integer.", sc->line);
@@ -634,6 +647,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isdigit(c)) {
         APPEND_OR_ERROR(str, c);
         state = STATE_DOUBLE;
+      } else if (c == '_') {
+        // do nothing, the amount of '_' is not limited to 1
       } else {
         dynstr_free(&str);
         print_error("Unexpected character after '_' in a number.", sc->line);
@@ -698,6 +713,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isdigit(c)) {
         APPEND_OR_ERROR(str, c);
         state = STATE_EXP;
+      } else if (c == '_') {
+        // do nothing, the amount of '_' is not limited to 1
       } else {
         dynstr_free(&str);
         print_error("Unexpected character after '_' in a number.", sc->line);
@@ -1083,9 +1100,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (tab_appeared) {
         print_error("Tab in indentation.", sc->line);
         return ERR_LEX_ANA; // tab at the start of a non-empty line
-      }
-      if (c == ')') {
-        break; // only ) can be on a lower indent level
       }
       if (indent_cnt <= sc->indent_levels[sc->indent_depth]) {
         print_error("Not enough indentation inside parentheses.", sc->line);

@@ -234,6 +234,22 @@ static bool expect(Parser *parser, const TokenType type) {
 }
 
 /**
+ * @brief Prints a type error and sets the parser's return code
+ *
+ * Does nothing if an error was already set, so a scanner error
+ * isn't overwritten.
+ *
+ * @param parser Parser's current state
+ */
+static void type_error(Parser *parser) {
+  if (parser->rc == RETURN_SUCCESS) {
+    print_error("Semantic error: usage of undefined type",
+                parser->current_token.line);
+    parser->rc = ERR_SEM_UNDEF;
+  }
+}
+
+/**
  * @brief Prints a syntax error and sets the parser's return code
  *
  * Does nothing if an error was already set, so a scanner error
@@ -584,7 +600,8 @@ static bool parse_then_one(
 /**
  * @brief Parses whether else branch exists
  *
- * RULE 37: ONLY_IF -> END
+ * RULE 37: ONLY_IF -> ;
+ * RULE 77: ONLY_IF -> EOL AFTER_BLOCK
  * RULE 38: ONLY_IF -> kw_else ELIF
  *
  * @param parser Parser's current state
@@ -736,10 +753,10 @@ static bool parse_for_set(
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_un_to(
-    Parser *parser,
-    ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **range_step, bool *is_to);
+static bool
+parse_un_to(Parser *parser,
+            ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
+            ASTNode **range_step, bool *is_to);
 
 /**
  * @brief Parses optional step of the range after to
@@ -1105,8 +1122,12 @@ static bool parse_params(Parser *parser, ASTNode *func) {
   // ID :
 
   if (!is_type_first(parser->current_token.type)) {
-    syntax_error(parser, "Syntactic error: Missing or invalid data type of a "
-                         "parameter in function declaration.");
+    if (parser->current_token.type == TOKEN_ID) {
+      type_error(parser);
+    } else {
+      syntax_error(parser, "Syntactic error: Missing or invalid data type of a "
+                           "parameter in function declaration.");
+    }
     free(name);
     return false;
   }
@@ -1270,9 +1291,13 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
       // RULES 24, 25, 26, 27, 28
       correct = parse_type(parser, type);
     } else {
-      syntax_error(
-          parser,
-          "Syntactic error: Invalid syntax after ':' in type declaration.");
+      if (parser->current_token.type == TOKEN_ID) {
+        type_error(parser);
+      } else {
+        syntax_error(
+            parser,
+            "Syntactic error: Invalid syntax after ':' in type declaration.");
+      }
       return false;
     }
   } else if (parser->current_token.type == TOKEN_ASSIGN) {
@@ -1485,11 +1510,18 @@ static bool parse_then_one(
 static bool parse_only_if(Parser *parser, ASTNode **else_out) {
   bool correct = false;
   *else_out = NULL;
-  if (parser->current_token.type == TOKEN_SEMICOLON ||
-      parser->current_token.type == TOKEN_EOL) {
-    // END
-    // RULES 31, 32
+
+  if (parser->current_token.type == TOKEN_SEMICOLON) {
+    // ;
+    // no deeper RULE
     correct = parse_end(parser);
+  } else if (parser->current_token.type == TOKEN_EOL) {
+    // EOL AFTER_BLOCK
+    // RULES 39, 40
+    if (!expect(parser, TOKEN_EOL)) {
+      return false;
+    }
+    correct = parse_after_block(parser, else_out);
   } else if (expect(parser, TOKEN_KW_ELSE)) {
     // kw_else ELIF
     // RULES 41-43
@@ -1498,6 +1530,7 @@ static bool parse_only_if(Parser *parser, ASTNode **else_out) {
     syntax_error(parser,
                  "Syntactic error: Invalid syntax after then statement(s).");
   }
+
   return correct;
 }
 
@@ -1870,10 +1903,10 @@ static bool parse_for_set(
   return correct;
 }
 
-static bool parse_un_to(
-    Parser *parser,
-    ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **range_step, bool *is_to) {
+static bool
+parse_un_to(Parser *parser,
+            ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
+            ASTNode **range_step, bool *is_to) {
   bool correct = false;
   if (parser->current_token.type == TOKEN_ID &&
       strcmp(parser->current_token.content.string, "until") == 0) {

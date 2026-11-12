@@ -19,7 +19,6 @@
  * and the demo slides as a black box)
  */
 // forum: several underscores between digits are allowed -> 0
-// fails until the deferred scanner fix lands
 import ifj26.*
 @main def main(): Unit =
   val a = 1___2
