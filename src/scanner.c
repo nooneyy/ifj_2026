@@ -592,6 +592,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isdigit(c)) {
         APPEND_OR_ERROR(str, c);
         state = STATE_INT;
+      } else if (c == '_') {
+        // do nothing, the amount of '_' is not limited to 1
       } else {
         dynstr_free(&str);
         print_error("Unexpected identifier after '_' in integer.", sc->line);
@@ -645,6 +647,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isdigit(c)) {
         APPEND_OR_ERROR(str, c);
         state = STATE_DOUBLE;
+      } else if (c == '_') {
+        // do nothing, the amount of '_' is not limited to 1
       } else {
         dynstr_free(&str);
         print_error("Unexpected character after '_' in a number.", sc->line);
@@ -709,6 +713,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isdigit(c)) {
         APPEND_OR_ERROR(str, c);
         state = STATE_EXP;
+      } else if (c == '_') {
+        // do nothing, the amount of '_' is not limited to 1
       } else {
         dynstr_free(&str);
         print_error("Unexpected character after '_' in a number.", sc->line);
