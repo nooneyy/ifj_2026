@@ -1,0 +1,42 @@
+/**
+ * @file for.ifj
+ * @brief For loop (CONTROL) and generator token testing input
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 10.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model in Claude Code
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you please make a for loop test with the same AI guidelines like the
+ * rest of the tests? Thx"
+ * (context: scanner test for the new GENERATOR token "<-" of the CONTROL
+ * extension's for loop)
+ */
+// For test: for i <- 0 until 10 in a comment must be ignored
+import ifj26.*
+@main def main(): Unit =
+  for i <- 1 to 10 by 2 do
+    print(i)
+  val limit = 10
+  for
+    i <- 0 until limit
+    if i != 3
+    if i < 8
+  do
+    print(i)
+  for j<-1 to 3 do print(j)
+  // "to", "until" and "by" are identifiers, not keywords
+  val until = 5; val by = 2; val to = 0
+  for k <- to to until by by do
+    print(k)
+  val a = 0 - 3
+  val neg = a < -1
+  val le = a <=-1
+  val s = "x <- y"
+  if neg && le then
+    print(s)

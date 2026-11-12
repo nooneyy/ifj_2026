@@ -18,17 +18,22 @@ typedef enum TokenType {
   TOKEN_INT,          // Int literal - token->content.int_val has its value
   TOKEN_DOUBLE,       // Double literal - token->content.dbl_val has its value
   TOKEN_STRING,       // String - token->content.string has its value
+  TOKEN_BOOL,         // Boolean - token->content.boolean has its value
   TOKEN_ASSIGN,       // "="
   TOKEN_IS_EQ,        // "=="
   TOKEN_NOT_EQ,       // "!="
+  TOKEN_EXCL_MARK,    // "!"
   TOKEN_MINUS,        // "-"
   TOKEN_PLUS,         // "+"
   TOKEN_MUL,          // "*"
   TOKEN_DIV,          // "/"
   TOKEN_LOW,          // "<"
   TOKEN_LOWEQ,        // "<="
+  TOKEN_GENERATOR,    // "<-"
   TOKEN_GRE,          // ">"
   TOKEN_GREEQ,        // ">="
+  TOKEN_AND,          // "&&"
+  TOKEN_OR,           // "||"
   TOKEN_OPEN_PAR,     // "("
   TOKEN_CLOSE_PAR,    // ")"
   TOKEN_COMMA,        // ","
@@ -75,6 +80,7 @@ typedef union TokenContent {
   char *string;      // if type == TOKEN_STRING or TOKEN_ID
   long long int_val; // if type == TOKEN_INT
   double dbl_val;    // if type == TOKEN_DOUBLE
+  bool boolean;      // if type == TOKEN_BOOL
 } TokenContent;
 
 /**
