@@ -1,0 +1,33 @@
+/**
+ * @file expr_unary.ifj
+ * @brief Unary minus
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// unary minus binds tighter than binary operators, binary minus after ) -> 0
+import ifj26.*
+@main def main(): Unit =
+  val a = 1
+  val b = 2
+  val u1 = -a
+  val u2 = a - -b
+  val u3 = - -a
+  val u4 = -a * b
+  val u5 = -(a + b)
+  val u6 = 2 * -3
+  val u7 = readInt() - 1
+  val u8 = (a) - b

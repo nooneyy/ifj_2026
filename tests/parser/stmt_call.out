@@ -1,0 +1,15 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      CALL print
+        LITERAL Int 1
+      CALL print
+        LITERAL Int 2
+      CALL print
+        LITERAL Int 3
+      CALL print
+        CALL subStr
+          LITERAL String "abc"
+          LITERAL Int 0
+          LITERAL Int 1
+      CALL readInt

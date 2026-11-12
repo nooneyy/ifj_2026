@@ -1,0 +1,35 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          LITERAL Int 5
+        body:
+          CALL print
+            VAR_REF i
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          LITERAL Int 5
+        body:
+          CALL print
+            VAR_REF i
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          LITERAL Int 3
+        body:
+          CALL print
+            IF expr
+              cond:
+                BINARY_OP <
+                  VAR_REF i
+                  LITERAL Int 2
+              then:
+                LITERAL String "a"
+              else:
+                LITERAL String "b"

@@ -1,0 +1,16 @@
+PROGRAM
+  FUNC_DEF none () : Unit
+    LITERAL Unit
+  FUNC_DEF take (u: Unit) : Unit
+    VAR_REF u
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      CALL none
+      CALL take
+        LITERAL Unit
+      VAR_DEF val a : ?
+        LITERAL Unit
+      VAR_DEF val b : ?
+        LITERAL Unit
+      CALL print
+        LITERAL Unit

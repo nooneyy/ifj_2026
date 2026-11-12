@@ -1,0 +1,25 @@
+PROGRAM
+  FUNC_DEF isSmall (n: Int) : Boolean
+    BINARY_OP <
+      VAR_REF n
+      LITERAL Int 10
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF var done : ?
+        LITERAL Boolean false
+      WHILE
+        cond:
+          UNARY_OP !
+            VAR_REF done
+        body:
+          BLOCK
+            ASSIGN done
+              CALL isSmall
+                CALL readInt
+      IF stmt
+        cond:
+          VAR_REF done
+        then:
+          BLOCK
+            CALL print
+              VAR_REF done

@@ -1,0 +1,27 @@
+/**
+ * @file ctrl_if_layouts.ifj
+ * @brief Else on its own line after a one-line then (demo slide 55)
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// the exact layout from demo slide 55 (Konce radku v rozsireni) -> 0
+import ifj26.*
+@main def main(): Unit =
+  val x = readInt()
+  if x < 0 then print(x)
+  else if x == 0 then print(0)
+  else print(x)

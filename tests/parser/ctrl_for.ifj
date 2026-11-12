@@ -1,0 +1,32 @@
+/**
+ * @file ctrl_for.ifj
+ * @brief For loops over ranges (CONTROL)
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// to, until, by, expressions as bounds and step -> 0
+import ifj26.*
+@main def main(): Unit =
+  val n = 10
+  for i <- 1 to 10 by 2 do
+    print(i)
+  for i <- 0 until n do
+    print(i)
+  for i <- n - 1 to readInt() + 1 by -1 do
+    print(i)
+  for i<-1 to 3 do
+    print(i)

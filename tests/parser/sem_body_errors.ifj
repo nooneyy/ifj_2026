@@ -1,0 +1,31 @@
+/**
+ * @file sem_body_errors.ifj
+ * @brief Semantic errors inside a body
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// syntactically valid: write to val, undefined names, bad types, zero step -> 0
+import ifj26.*
+@main def main(): Unit =
+  val a = 1
+  a = 2
+  print(undefinedVar)
+  undefinedFunc(1, 2)
+  if 1 + 2 then
+    print("a" + 1)
+  for i <- 1 to 3 by 0 do
+    print(i)

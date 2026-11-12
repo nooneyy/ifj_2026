@@ -1,0 +1,5 @@
+PROGRAM
+  FUNC_DEF first @main () : Unit
+    LITERAL Unit
+  FUNC_DEF second @main () : Unit
+    LITERAL Unit

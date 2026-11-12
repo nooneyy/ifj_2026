@@ -1,0 +1,14 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val x : ?
+        LITERAL Int 1
+      VAR_REF x
+      BINARY_OP +
+        VAR_REF x
+        LITERAL Int 1
+      BINARY_OP *
+        VAR_REF x
+        LITERAL Int 2
+      LITERAL String "text"
+      LITERAL Unit

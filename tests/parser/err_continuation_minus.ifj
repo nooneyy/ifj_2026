@@ -1,0 +1,25 @@
+/**
+ * @file err_continuation_minus.ifj
+ * @brief Expression continued by an indented line starting with -
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// an expression can't continue on the next logical line -> 2
+import ifj26.*
+@main def main(): Unit =
+  val a = 1
+    - 2

@@ -1,0 +1,3 @@
+PROGRAM
+  FUNC_DEF main @main (a: Int) : Int
+    VAR_REF a

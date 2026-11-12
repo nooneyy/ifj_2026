@@ -1,0 +1,13 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF var a : ?
+        LITERAL Int 1
+      VAR_DEF var b : ?
+        LITERAL Int 2
+      ASSIGN a
+        VAR_REF b
+      ASSIGN b
+        VAR_REF a
+      CALL print
+        VAR_REF a

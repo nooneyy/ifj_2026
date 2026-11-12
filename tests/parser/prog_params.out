@@ -1,0 +1,11 @@
+PROGRAM
+  FUNC_DEF none () : Unit
+    LITERAL Unit
+  FUNC_DEF one (a: Int) : Int
+    VAR_REF a
+  FUNC_DEF three (a: Int, b: Double, c: String) : String
+    VAR_REF c
+  FUNC_DEF split (a: Int, b: Boolean) : Boolean
+    VAR_REF b
+  FUNC_DEF main @main () : Unit
+    LITERAL Unit

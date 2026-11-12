@@ -1,0 +1,4 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    CALL print
+      LITERAL Int 1

@@ -1,0 +1,30 @@
+/**
+ * @file prog_functions.ifj
+ * @brief One-line and block bodies, call before definition
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// functions can be called before their definition, return type is optional -> 0
+import ifj26.*
+@main def main(): Unit =
+  print(twice(2))
+
+def twice(n: Int): Int = n * 2
+
+def greet(name: String) =
+  print("hi ")
+  print(name)

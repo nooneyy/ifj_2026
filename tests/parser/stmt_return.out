@@ -1,0 +1,17 @@
+PROGRAM
+  FUNC_DEF value () : Int
+    BLOCK
+      RETURN
+        BINARY_OP +
+          LITERAL Int 1
+          LITERAL Int 2
+  FUNC_DEF called () : Int
+    BLOCK
+      RETURN
+        CALL value
+  FUNC_DEF early () : Unit
+    BLOCK
+      RETURN
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      CALL early

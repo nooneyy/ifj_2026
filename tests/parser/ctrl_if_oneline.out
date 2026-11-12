@@ -1,0 +1,60 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val x : ?
+        CALL readInt
+      IF stmt
+        cond:
+          BINARY_OP <
+            VAR_REF x
+            LITERAL Int 0
+        then:
+          CALL print
+            LITERAL Int 1
+        else:
+          CALL print
+            LITERAL Int 2
+      IF stmt
+        cond:
+          BINARY_OP <
+            VAR_REF x
+            LITERAL Int 0
+        then:
+          CALL print
+            LITERAL Int 1
+        else:
+          IF stmt
+            cond:
+              BINARY_OP ==
+                VAR_REF x
+                LITERAL Int 0
+            then:
+              CALL print
+                LITERAL Int 2
+            else:
+              CALL print
+                LITERAL Int 3
+      IF stmt
+        cond:
+          BINARY_OP <
+            VAR_REF x
+            LITERAL Int 0
+        then:
+          CALL print
+            LITERAL Int 1
+        else:
+          BLOCK
+            CALL print
+              LITERAL Int 2
+      IF stmt
+        cond:
+          BINARY_OP <
+            VAR_REF x
+            LITERAL Int 0
+        then:
+          BLOCK
+            CALL print
+              LITERAL Int 1
+        else:
+          CALL print
+            LITERAL Int 2

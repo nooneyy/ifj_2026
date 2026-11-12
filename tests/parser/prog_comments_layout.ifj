@@ -1,0 +1,37 @@
+/**
+ * @file prog_comments_layout.ifj
+ * @brief Comments at the end of block headers
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// a comment counts as an end of line, also right after a block header -> 0
+import ifj26.*
+@main def main(): Unit = // after =
+  var x = 1 /* block comment
+  with a line break */
+  if x < 2 then // after then
+    x = 2
+  else // after else
+    x = 3
+  while x < 5 do // after do
+    x = x + 1
+  for // after for
+    i <- 0 until 3 // after the generator
+    // on its own line inside the header
+    if i != 1 // after the guard
+  do // after do
+    print(i)

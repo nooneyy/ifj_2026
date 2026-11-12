@@ -1,0 +1,9 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        LITERAL Int 12
+      VAR_DEF val b : ?
+        LITERAL Double 1.55
+      VAR_DEF val c : ?
+        LITERAL Double 1e+10

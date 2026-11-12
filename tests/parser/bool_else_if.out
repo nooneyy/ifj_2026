@@ -1,0 +1,47 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val x : ?
+        CALL readInt
+      IF stmt
+        cond:
+          BINARY_OP <
+            VAR_REF x
+            LITERAL Int 0
+        then:
+          BLOCK
+            CALL print
+              LITERAL String "negative"
+        else:
+          IF stmt
+            cond:
+              BINARY_OP ==
+                VAR_REF x
+                LITERAL Int 0
+            then:
+              BLOCK
+                CALL print
+                  LITERAL String "zero"
+            else:
+              BLOCK
+                CALL print
+                  LITERAL String "positive"
+      IF stmt
+        cond:
+          BINARY_OP <
+            VAR_REF x
+            LITERAL Int 10
+        then:
+          BLOCK
+            CALL print
+              LITERAL String "small"
+        else:
+          IF stmt
+            cond:
+              BINARY_OP <
+                VAR_REF x
+                LITERAL Int 100
+            then:
+              BLOCK
+                CALL print
+                  LITERAL String "medium"
