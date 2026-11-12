@@ -4,3 +4,4 @@ vgcore.*
 /ifj26
 scanner_main
 .cache
+parser_main

@@ -29,6 +29,23 @@ scanner_test: $(SCANNER_TEST)
 $(SCANNER_TEST): tests/scanner_main.o src/scanner.o src/dynstr.o src/tokens.o src/return.o
 	$(CC) $(CFLAGS) -o $@ $^
 
+# Disclaimer! The parser_test and test targets were made by Claude Opus 5.5
+# Prompt: "Since AI can be used freely to make tests, could you make them for
+# me? Let's collaborate on the design, the test contents and then i'll let u
+# implement it"
+
+# Parser's testing main - prints the AST, has its own main
+PARSER_TEST := tests/parser_main
+
+parser_test: $(PARSER_TEST)
+
+$(PARSER_TEST): tests/parser_main.o src/parser.o src/prec_stack.o src/ast.o src/symbol.o src/scanner.o src/dynstr.o src/tokens.o src/return.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+# Runs every test suite (tests/<suite>/ with its tests/<suite>_main)
+test:
+	tests/run_tests.sh scanner parser
+
 ##
 # ADD NEW DEPENDENCIES BELOW - example for new symtable.c and symtable.h files:
 # src/main.o: src/symtable.h
@@ -46,6 +63,7 @@ src/symbol.o: src/symbol.h
 src/symtable.o: src/symtable.h src/symbol.h
 src/return.o: src/return.h
 tests/scanner_main.o: src/return.h src/scanner.h src/tokens.h
+tests/parser_main.o: src/ast.h src/parser.h src/return.h src/scanner.h src/symbol.h src/tokens.h
 
 # Auto-compile .c source files into .o object files
 src/%.o: src/%.c
@@ -53,7 +71,7 @@ src/%.o: src/%.c
 
 # Cleans the final executable, testing executables and all object files
 clean:
-	rm -f $(TARGET) $(SCANNER_TEST) src/*.o tests/*.o
+	rm -f $(TARGET) $(SCANNER_TEST) $(PARSER_TEST) src/*.o tests/*.o
 
 # Format all source code files in the repo
 # Wildcard is there for not throwing errors on non-existent header files
@@ -69,6 +87,6 @@ compile_commands.json:
 	bear -- $(MAKE) clean all
 
 # Commands that are not build targets
-.PHONY: all clean format tidy scanner_test
+.PHONY: all clean format tidy scanner_test parser_test test
 
 # TODO: tidy and format commands, zip commands, test commands,....
