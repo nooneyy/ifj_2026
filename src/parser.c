@@ -600,7 +600,8 @@ static bool parse_then_one(
 /**
  * @brief Parses whether else branch exists
  *
- * RULE 37: ONLY_IF -> END
+ * RULE 37: ONLY_IF -> ;
+ * RULE 77: ONLY_IF -> EOL AFTER_BLOCK
  * RULE 38: ONLY_IF -> kw_else ELIF
  *
  * @param parser Parser's current state
@@ -1509,11 +1510,18 @@ static bool parse_then_one(
 static bool parse_only_if(Parser *parser, ASTNode **else_out) {
   bool correct = false;
   *else_out = NULL;
-  if (parser->current_token.type == TOKEN_SEMICOLON ||
-      parser->current_token.type == TOKEN_EOL) {
-    // END
-    // RULES 31, 32
+
+  if (parser->current_token.type == TOKEN_SEMICOLON) {
+    // ;
+    // no deeper RULE
     correct = parse_end(parser);
+  } else if (parser->current_token.type == TOKEN_EOL) {
+    // EOL AFTER_BLOCK
+    // RULES 39, 40
+    if (!expect(parser, TOKEN_EOL)) {
+      return false;
+    }
+    correct = parse_after_block(parser, else_out);
   } else if (expect(parser, TOKEN_KW_ELSE)) {
     // kw_else ELIF
     // RULES 41-43
@@ -1522,6 +1530,7 @@ static bool parse_only_if(Parser *parser, ASTNode **else_out) {
     syntax_error(parser,
                  "Syntactic error: Invalid syntax after then statement(s).");
   }
+
   return correct;
 }
 
