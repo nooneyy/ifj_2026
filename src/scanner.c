@@ -1095,9 +1095,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         print_error("Tab in indentation.", sc->line);
         return ERR_LEX_ANA; // tab at the start of a non-empty line
       }
-      if (c == ')') {
-        break; // only ) can be on a lower indent level
-      }
       if (indent_cnt <= sc->indent_levels[sc->indent_depth]) {
         print_error("Not enough indentation inside parentheses.", sc->line);
         return ERR_LEX_ANA;

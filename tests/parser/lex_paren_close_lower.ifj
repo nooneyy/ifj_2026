@@ -19,7 +19,6 @@
  * and the demo slides as a black box)
  */
 // no exception for ')', it must be indented more than the logical line -> 1
-// fails until the deferred scanner fix lands
 import ifj26.*
 @main def main(): Unit =
   print(1,
