@@ -234,6 +234,22 @@ static bool expect(Parser *parser, const TokenType type) {
 }
 
 /**
+ * @brief Prints a type error and sets the parser's return code
+ *
+ * Does nothing if an error was already set, so a scanner error
+ * isn't overwritten.
+ *
+ * @param parser Parser's current state
+ */
+static void type_error(Parser *parser) {
+  if (parser->rc == RETURN_SUCCESS) {
+    print_error("Semantic error: usage of undefined type",
+                parser->current_token.line);
+    parser->rc = ERR_SEM_UNDEF;
+  }
+}
+
+/**
  * @brief Prints a syntax error and sets the parser's return code
  *
  * Does nothing if an error was already set, so a scanner error
@@ -736,10 +752,10 @@ static bool parse_for_set(
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_un_to(
-    Parser *parser,
-    ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **range_step, bool *is_to);
+static bool
+parse_un_to(Parser *parser,
+            ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
+            ASTNode **range_step, bool *is_to);
 
 /**
  * @brief Parses optional step of the range after to
@@ -1105,8 +1121,12 @@ static bool parse_params(Parser *parser, ASTNode *func) {
   // ID :
 
   if (!is_type_first(parser->current_token.type)) {
-    syntax_error(parser, "Syntactic error: Missing or invalid data type of a "
-                         "parameter in function declaration.");
+    if (parser->current_token.type == TOKEN_ID) {
+      type_error(parser);
+    } else {
+      syntax_error(parser, "Syntactic error: Missing or invalid data type of a "
+                           "parameter in function declaration.");
+    }
     free(name);
     return false;
   }
@@ -1270,9 +1290,13 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
       // RULES 24, 25, 26, 27, 28
       correct = parse_type(parser, type);
     } else {
-      syntax_error(
-          parser,
-          "Syntactic error: Invalid syntax after ':' in type declaration.");
+      if (parser->current_token.type == TOKEN_ID) {
+        type_error(parser);
+      } else {
+        syntax_error(
+            parser,
+            "Syntactic error: Invalid syntax after ':' in type declaration.");
+      }
       return false;
     }
   } else if (parser->current_token.type == TOKEN_ASSIGN) {
@@ -1870,10 +1894,10 @@ static bool parse_for_set(
   return correct;
 }
 
-static bool parse_un_to(
-    Parser *parser,
-    ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **range_step, bool *is_to) {
+static bool
+parse_un_to(Parser *parser,
+            ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
+            ASTNode **range_step, bool *is_to) {
   bool correct = false;
   if (parser->current_token.type == TOKEN_ID &&
       strcmp(parser->current_token.content.string, "until") == 0) {
