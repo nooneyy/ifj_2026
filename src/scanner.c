@@ -380,6 +380,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         sc->dedents_pending--;
         return RETURN_SUCCESS;
       }
+
+      if (c != EOF && c != '/' && !isspace(c)) {
+        // We have to emit an EOL before an EOF (and dedents) for statements to
+        // be parsed properly
+        sc->emit_eol_eof = true;
+      }
+
       if (isalpha(c)) {
         rc = dynstr_init(&str);
         if (rc != RETURN_SUCCESS) {
@@ -440,6 +447,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           token_to_fill->type = TOKEN_EOL;
           token_to_fill->line = sc->line - 1;
           sc->at_line_start = true;
+          sc->emit_eol_eof = false;
           return RETURN_SUCCESS;
         }
         token_to_fill->lf_before = true;
@@ -488,7 +496,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == EOF) {
-        if (sc->indent_depth > 0) {
+        if (sc->emit_eol_eof) {
+          token_to_fill->type = TOKEN_EOL;
+          sc->emit_eol_eof = false;
+        } else if (sc->indent_depth > 0) {
           sc->indent_depth--;
           token_to_fill->type = TOKEN_DEDENT;
         } else {
