@@ -1,0 +1,31 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        LITERAL Int 1
+      VAR_DEF val b : ?
+        LITERAL Int 2
+      VAR_DEF val c : ?
+        LITERAL Int 3
+      VAR_DEF val r1 : ?
+        VAR_REF a
+      VAR_DEF val r2 : ?
+        BINARY_OP *
+          BINARY_OP +
+            VAR_REF a
+            VAR_REF b
+          VAR_REF c
+      VAR_DEF val r3 : ?
+        BINARY_OP *
+          VAR_REF a
+          BINARY_OP +
+            VAR_REF b
+            VAR_REF c
+      VAR_DEF val r4 : ?
+        BINARY_OP *
+          BINARY_OP +
+            VAR_REF a
+            VAR_REF b
+          BINARY_OP -
+            VAR_REF c
+            VAR_REF a

@@ -1,0 +1,50 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val n : ?
+        LITERAL Int 10
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          LITERAL Int 10
+        step:
+          LITERAL Int 2
+        body:
+          BLOCK
+            CALL print
+              VAR_REF i
+      FOR i until
+        start:
+          LITERAL Int 0
+        end:
+          VAR_REF n
+        body:
+          BLOCK
+            CALL print
+              VAR_REF i
+      FOR i to
+        start:
+          BINARY_OP -
+            VAR_REF n
+            LITERAL Int 1
+        end:
+          BINARY_OP +
+            CALL readInt
+            LITERAL Int 1
+        step:
+          UNARY_OP -
+            LITERAL Int 1
+        body:
+          BLOCK
+            CALL print
+              VAR_REF i
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          LITERAL Int 3
+        body:
+          BLOCK
+            CALL print
+              VAR_REF i

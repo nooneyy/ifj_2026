@@ -1,0 +1,29 @@
+/**
+ * @file stmt_while.ifj
+ * @brief Nested while loops
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// while with a nested while, condition in parentheses -> 0
+import ifj26.*
+@main def main(): Unit =
+  var i = 0
+  while i < 3 do
+    var j = 0
+    while (j < i) do
+      j = j + 1
+    i = i + 1

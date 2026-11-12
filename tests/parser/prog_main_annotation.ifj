@@ -1,0 +1,28 @@
+/**
+ * @file prog_main_annotation.ifj
+ * @brief @main on its own line
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// @main may stand on its own line, empty and comment lines may follow -> 0
+import ifj26.*
+def f(): Unit = ()
+
+@main
+
+// comment between the annotation and def
+def main(): Unit = ()

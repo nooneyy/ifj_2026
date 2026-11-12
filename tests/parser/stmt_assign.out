@@ -1,0 +1,13 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF var a : ?
+        LITERAL Int 1
+      ASSIGN a
+        LITERAL Int 2
+      ASSIGN a
+        BINARY_OP +
+          VAR_REF a
+          LITERAL Int 1
+      ASSIGN a
+        CALL readInt

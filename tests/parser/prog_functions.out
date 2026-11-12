@@ -1,0 +1,16 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      CALL print
+        CALL twice
+          LITERAL Int 2
+  FUNC_DEF twice (n: Int) : Int
+    BINARY_OP *
+      VAR_REF n
+      LITERAL Int 2
+  FUNC_DEF greet (name: String) : ?
+    BLOCK
+      CALL print
+        LITERAL String "hi "
+      CALL print
+        VAR_REF name

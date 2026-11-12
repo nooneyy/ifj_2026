@@ -1,0 +1,3 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    LITERAL Unit

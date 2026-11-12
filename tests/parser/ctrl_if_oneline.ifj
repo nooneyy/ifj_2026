@@ -1,0 +1,31 @@
+/**
+ * @file ctrl_if_oneline.ifj
+ * @brief One-line branches of an if statement (CONTROL)
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+// one-line bodies instead of blocks, mixed with blocks -> 0
+import ifj26.*
+@main def main(): Unit =
+  val x = readInt()
+  if x < 0 then print(1) else print(2)
+  if x < 0 then print(1) else if x == 0 then print(2) else print(3)
+  if x < 0 then print(1) else
+    print(2)
+  if x < 0 then
+    print(1)
+  else print(2)

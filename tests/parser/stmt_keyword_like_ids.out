@@ -1,0 +1,26 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val to : ?
+        LITERAL Int 3
+      VAR_DEF val until : ?
+        LITERAL Int 1
+      VAR_DEF val by : ?
+        LITERAL Int 2
+      VAR_DEF val main : ?
+        LITERAL Int 0
+      CALL print
+        BINARY_OP +
+          BINARY_OP +
+            VAR_REF until
+            VAR_REF by
+          VAR_REF main
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          VAR_REF to
+        body:
+          BLOCK
+            CALL print
+              VAR_REF i

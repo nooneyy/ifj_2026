@@ -1,0 +1,56 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        LITERAL Boolean true
+      VAR_DEF val b : ?
+        LITERAL Boolean false
+      VAR_DEF val c : ?
+        LITERAL Boolean true
+      VAR_DEF val o1 : ?
+        BINARY_OP ||
+          BINARY_OP &&
+            UNARY_OP !
+              VAR_REF a
+            VAR_REF b
+          VAR_REF c
+      VAR_DEF val o2 : ?
+        BINARY_OP ||
+          VAR_REF a
+          BINARY_OP &&
+            VAR_REF b
+            VAR_REF c
+      VAR_DEF val o3 : ?
+        UNARY_OP !
+          BINARY_OP <
+            LITERAL Int 1
+            LITERAL Int 2
+      VAR_DEF val o4 : ?
+        BINARY_OP &&
+          BINARY_OP ==
+            VAR_REF a
+            VAR_REF b
+          BINARY_OP !=
+            VAR_REF b
+            VAR_REF c
+      VAR_DEF val o5 : ?
+        BINARY_OP ||
+          BINARY_OP ||
+            VAR_REF a
+            VAR_REF b
+          VAR_REF c
+      VAR_DEF val o6 : ?
+        UNARY_OP !
+          UNARY_OP !
+            VAR_REF a
+      VAR_DEF val o7 : ?
+        BINARY_OP &&
+          BINARY_OP <
+            LITERAL Int 1
+            LITERAL Int 2
+          VAR_REF a
+      VAR_DEF val o8 : ?
+        BINARY_OP ==
+          UNARY_OP !
+            VAR_REF a
+          VAR_REF b

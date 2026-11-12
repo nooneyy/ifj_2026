@@ -1,0 +1,27 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        LITERAL Int 42
+      VAR_DEF val b : ?
+        LITERAL Int 1000
+      VAR_DEF val c : ?
+        LITERAL Double 1.5
+      VAR_DEF val d : ?
+        LITERAL Double 1e+10
+      VAR_DEF val e : ?
+        LITERAL Double 0.0025
+      VAR_DEF val f : ?
+        LITERAL Double 3.0
+      VAR_DEF val g : ?
+        LITERAL Double 0.5
+      VAR_DEF val h : ?
+        LITERAL String "tab\tquote\"backslash\\newline\n"
+      VAR_DEF val i : ?
+        LITERAL String "line1\nline2"
+      VAR_DEF val j : ?
+        LITERAL Boolean true
+      VAR_DEF val k : ?
+        LITERAL Boolean false
+      VAR_DEF val l : ?
+        LITERAL Unit

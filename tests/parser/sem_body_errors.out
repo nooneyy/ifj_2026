@@ -1,0 +1,34 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        LITERAL Int 1
+      ASSIGN a
+        LITERAL Int 2
+      CALL print
+        VAR_REF undefinedVar
+      CALL undefinedFunc
+        LITERAL Int 1
+        LITERAL Int 2
+      IF stmt
+        cond:
+          BINARY_OP +
+            LITERAL Int 1
+            LITERAL Int 2
+        then:
+          BLOCK
+            CALL print
+              BINARY_OP +
+                LITERAL String "a"
+                LITERAL Int 1
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          LITERAL Int 3
+        step:
+          LITERAL Int 0
+        body:
+          BLOCK
+            CALL print
+              VAR_REF i

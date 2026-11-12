@@ -1,0 +1,23 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF var i : ?
+        LITERAL Int 0
+      IF stmt
+        cond:
+          BINARY_OP <
+            VAR_REF i
+            LITERAL Int 1
+        then:
+          BLOCK
+            WHILE
+              cond:
+                BINARY_OP <
+                  VAR_REF i
+                  LITERAL Int 1
+              body:
+                BLOCK
+                  ASSIGN i
+                    BINARY_OP +
+                      VAR_REF i
+                      LITERAL Int 1

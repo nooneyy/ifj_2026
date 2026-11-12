@@ -1,0 +1,86 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF var x : ?
+        UNARY_OP -
+          LITERAL Int 5
+      VAR_DEF val absolute : ?
+        IF expr
+          cond:
+            BINARY_OP <
+              VAR_REF x
+              LITERAL Int 0
+          then:
+            BINARY_OP -
+              LITERAL Int 0
+              VAR_REF x
+          else:
+            VAR_REF x
+      VAR_DEF val abs2 : ?
+        IF expr
+          cond:
+            BINARY_OP <
+              VAR_REF x
+              LITERAL Int 0
+          then:
+            BLOCK
+              BINARY_OP -
+                LITERAL Int 0
+                VAR_REF x
+          else:
+            BLOCK
+              VAR_REF x
+      VAR_DEF val abs3 : ?
+        IF expr
+          cond:
+            BINARY_OP <
+              VAR_REF x
+              LITERAL Int 0
+          then:
+            BINARY_OP -
+              LITERAL Int 0
+              VAR_REF x
+          else:
+            BLOCK
+              VAR_REF x
+      VAR_DEF val sign : ?
+        IF expr
+          cond:
+            BINARY_OP <
+              VAR_REF x
+              LITERAL Int 0
+          then:
+            UNARY_OP -
+              LITERAL Int 1
+          else:
+            IF expr
+              cond:
+                BINARY_OP ==
+                  VAR_REF x
+                  LITERAL Int 0
+              then:
+                LITERAL Int 0
+              else:
+                LITERAL Int 1
+      CALL print
+        IF expr
+          cond:
+            BINARY_OP <
+              VAR_REF x
+              LITERAL Int 0
+          then:
+            LITERAL String "neg"
+          else:
+            LITERAL String "pos"
+      VAR_DEF val y : ?
+        BINARY_OP +
+          LITERAL Int 1
+          IF expr
+            cond:
+              BINARY_OP <
+                VAR_REF x
+                LITERAL Int 0
+            then:
+              LITERAL Int 1
+            else:
+              LITERAL Int 2

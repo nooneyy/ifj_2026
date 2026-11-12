@@ -1,0 +1,24 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val x : ?
+        CALL readInt
+      IF stmt
+        cond:
+          BINARY_OP <
+            VAR_REF x
+            LITERAL Int 0
+        then:
+          BLOCK
+            CALL print
+              LITERAL String "negative"
+      CALL print
+        LITERAL String "done"
+      IF stmt
+        cond:
+          BINARY_OP >
+            VAR_REF x
+            LITERAL Int 0
+        then:
+          CALL print
+            LITERAL String "positive"
