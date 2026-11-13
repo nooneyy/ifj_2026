@@ -1,0 +1,23 @@
+/**
+ * @file func_main_return_int.ifj
+ * @brief Main function returning Int
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 13.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok you can start!"
+ * (context: semantic analysis tests from the agreed list, derived from
+ * the IFJ26 spec as a black box, first the function table and @main checks)
+ */
+// the result type of main must be Unit (spec 2) -> 6
+import ifj26.*
+
+@main def main(): Int =
+  1

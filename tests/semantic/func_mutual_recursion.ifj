@@ -1,0 +1,36 @@
+/**
+ * @file func_mutual_recursion.ifj
+ * @brief Mutually recursive functions
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 13.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok you can start!"
+ * (context: semantic analysis tests from the agreed list, derived from
+ * the IFJ26 spec as a black box, first the function table and @main checks)
+ */
+// mutual recursion with written return types is allowed (spec 2.3) -> 0
+import ifj26.*
+
+def ping(n: Int): Int =
+  if n <= 0 then
+    return 0
+  else
+    return pong(n - 1)
+
+def pong(n: Int): Int =
+  if n <= 0 then
+    return 0
+  else
+    return ping(n - 1)
+
+@main def main(): Unit =
+  val r = ping(5)
+  print(r)

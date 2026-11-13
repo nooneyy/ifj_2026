@@ -1,0 +1,27 @@
+/**
+ * @file func_dup.ifj
+ * @brief Function defined twice
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 13.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok you can start!"
+ * (context: semantic analysis tests from the agreed list, derived from
+ * the IFJ26 spec as a black box, first the function table and @main checks)
+ */
+// two definitions of the same name (spec 2.3) -> 4
+import ifj26.*
+
+def f(): Int = 1
+
+def f(): Int = 2
+
+@main def main(): Unit =
+  print(1)

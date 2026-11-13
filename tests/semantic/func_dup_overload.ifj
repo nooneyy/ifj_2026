@@ -1,0 +1,27 @@
+/**
+ * @file func_dup_overload.ifj
+ * @brief Overloaded function
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 13.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok you can start!"
+ * (context: semantic analysis tests from the agreed list, derived from
+ * the IFJ26 spec as a black box, first the function table and @main checks)
+ */
+// no overloading, different parameters don't matter (spec 2.3) -> 4
+import ifj26.*
+
+def f(a: Int): Int = a
+
+def f(a: String): String = a
+
+@main def main(): Unit =
+  print(1)

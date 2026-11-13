@@ -42,9 +42,22 @@ parser_test: $(PARSER_TEST)
 $(PARSER_TEST): tests/parser_main.o src/parser.o src/prec_stack.o src/ast.o src/symbol.o src/scanner.o src/dynstr.o src/tokens.o src/return.o
 	$(CC) $(CFLAGS) -o $@ $^
 
+# Disclaimer! The semantic_test target was made by Claude Opus 5.5
+# Prompt: "Ok you can start!" (context: a tests/semantic/ suite like the
+# parser tests, its main parses, runs the semantic analysis and returns the code)
+
+# Semantic analysis' testing main - prints nothing, returns the code, has its
+# own main
+SEMANTIC_TEST := tests/semantic_main
+
+semantic_test: $(SEMANTIC_TEST)
+
+$(SEMANTIC_TEST): tests/semantic_main.o src/semantic.o src/parser.o src/prec_stack.o src/ast.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o src/return.o
+	$(CC) $(CFLAGS) -o $@ $^
+
 # Runs every test suite (tests/<suite>/ with its tests/<suite>_main)
 test:
-	tests/run_tests.sh scanner parser
+	tests/run_tests.sh scanner parser semantic
 
 ##
 # ADD NEW DEPENDENCIES BELOW - example for new symtable.c and symtable.h files:
@@ -65,6 +78,7 @@ src/symtable.o: src/symtable.h src/symbol.h
 src/return.o: src/return.h
 tests/scanner_main.o: src/return.h src/scanner.h src/tokens.h
 tests/parser_main.o: src/ast.h src/parser.h src/return.h src/scanner.h src/symbol.h src/tokens.h
+tests/semantic_main.o: src/ast.h src/parser.h src/return.h src/scanner.h src/semantic.h src/symbol.h src/tokens.h
 
 # Auto-compile .c source files into .o object files
 src/%.o: src/%.c
@@ -72,7 +86,7 @@ src/%.o: src/%.c
 
 # Cleans the final executable, testing executables and all object files
 clean:
-	rm -f $(TARGET) $(SCANNER_TEST) $(PARSER_TEST) src/*.o tests/*.o
+	rm -f $(TARGET) $(SCANNER_TEST) $(PARSER_TEST) $(SEMANTIC_TEST) src/*.o tests/*.o
 
 # Format all source code files in the repo
 # Wildcard is there for not throwing errors on non-existent header files
@@ -88,6 +102,6 @@ compile_commands.json:
 	bear -- $(MAKE) clean all
 
 # Commands that are not build targets
-.PHONY: all clean format tidy scanner_test parser_test test
+.PHONY: all clean format tidy scanner_test parser_test semantic_test test
 
 # TODO: tidy and format commands, zip commands, test commands,....

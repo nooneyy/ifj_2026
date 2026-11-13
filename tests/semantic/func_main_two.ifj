@@ -1,0 +1,26 @@
+/**
+ * @file func_main_two.ifj
+ * @brief Two functions annotated with @main
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 13.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok you can start!"
+ * (context: semantic analysis tests from the agreed list, derived from
+ * the IFJ26 spec as a black box, first the function table and @main checks)
+ */
+// exactly one function must be annotated (spec 2) -> 4
+import ifj26.*
+
+@main def first(): Unit =
+  print(1)
+
+@main def second(): Unit =
+  print(2)
