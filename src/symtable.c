@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO: Auto-registering of builtins and other custom ops
-
 #define INITIAL_S_TABLE_CAPACITY 16 // The initial capacity of the symtable
 
 Symtable *symtable_init(void) {
