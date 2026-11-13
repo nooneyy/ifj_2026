@@ -169,13 +169,9 @@ ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol) {
   if (possible_match) {
     // Another item already has the same key
     if (possible_match->symbol != symbol) {
-      // The symbol pointers are different => replace the old Symbol with the
-      // new Symbol
-      free_symbol(possible_match->symbol);
-      possible_match->symbol = symbol;
+      free_symbol(symbol);
     }
-    // Do nothing if the pointers are the same
-    return RETURN_SUCCESS;
+    return ERR_SEM_RED;
   }
 
   if (symtable->size * 4 >= symtable->capacity * 3) {
@@ -183,6 +179,7 @@ ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol) {
     ReturnCodes enlarge_result = symtable_enlarge(symtable);
 
     if (enlarge_result != RETURN_SUCCESS) {
+      free_symbol(symbol);
       return enlarge_result;
     }
   }
@@ -232,5 +229,6 @@ ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol) {
   // There was no slot to insert into, which should be impossible because we
   // enlarge the symtable when it is 75% full
   print_error("No symtable item to insert into even after enlarging!", 0);
+  free_symbol(symbol);
   return ERR_INTERNAL;
 }
