@@ -10,6 +10,7 @@
 #include "return.h"
 #include "symbol.h"
 #include "symtable.h"
+#include <stddef.h>
 
 // The max amount of params a builtin function has
 #define MAX_BUILTIN_PARAM_COUNT 3
@@ -85,22 +86,114 @@ static ReturnCodes register_builtins(Symtable *symtable) {
   return RETURN_SUCCESS;
 }
 
+/**
+ * @brief The first pass of the semantic analysis - registers functions to the
+ * symtable, checks for @main definition(s)
+ * @param symtable Pointer to the symtable struct
+ * @param program Pointer to the root node of the AST (program node)
+ * @return RETURN_SUCCESS on success
+ */
+static ReturnCodes semantic_function_pass(Symtable *symtable,
+                                          ASTNode *program) {
+  int main_count = 0;
+  ASTNode *function = program->data.program.functions;
+
+  while (function != NULL) {
+    // Iterating through the program functions...
+    ASTFunctionDefNodeData *function_data = &function->data.function_def;
+
+    if (function_data->is_main) {
+      main_count++;
+
+      if (main_count > 1) {
+        print_error(
+            "Semantic error: more than 1 function annotated with @main!",
+            function->line);
+        return ERR_SEM_RED;
+      }
+
+      if (function_data->param_count > 0) {
+        print_error(
+            "Semantic error: function annotated with @main cannot have params!",
+            function->line);
+        return ERR_SEM_ARG;
+      }
+
+      if (function_data->return_type != UNKNOWN &&
+          function_data->return_type != UNIT) {
+        print_error("Semantic error: function annotated with @main has other "
+                    "return type than UNIT!",
+                    function->line);
+        return ERR_SEM_TYPE;
+      }
+    }
+
+    Symbol *func_sym = init_function_symbol(
+        function_data->name, function_data->return_type,
+        function_data->return_type != UNKNOWN, false, function_data->is_main);
+
+    if (func_sym == NULL) {
+      return ERR_INTERNAL;
+    }
+
+    for (size_t param_idx = 0; param_idx < function_data->param_count;
+         param_idx++) {
+      // Iterating through the function params...
+      FunctionParam *param = &function_data->params[param_idx];
+      ReturnCodes ret =
+          add_function_param(func_sym, param->name, param->data_type);
+
+      if (ret != RETURN_SUCCESS) {
+        free_symbol(func_sym);
+        return ret;
+      }
+    }
+
+    ReturnCodes ret = symtable_insert(symtable, func_sym);
+
+    if (ret == ERR_SEM_RED) {
+      print_error("Semantic error: redefinition of function with the "
+                  "same name!",
+                  function->line);
+    }
+
+    if (ret != RETURN_SUCCESS) {
+      return ret;
+    }
+
+    function = function->next;
+  }
+
+  if (main_count == 0) {
+    print_error("Semantic error: no function annotated with "
+                "@main!",
+                1); // we don't have a line number here...
+    return ERR_SEM_UNDEF;
+  }
+
+  return RETURN_SUCCESS;
+}
+
 ReturnCodes semantic_analysis(ASTNode *program) {
+  ReturnCodes ret = RETURN_SUCCESS;
   Symtable *symtable = symtable_init();
 
   if (symtable == NULL) {
     return ERR_INTERNAL;
   }
 
-  ReturnCodes ret = register_builtins(symtable);
+  ret = register_builtins(symtable);
   if (ret != RETURN_SUCCESS) {
     symtable_free(symtable);
     return ret;
   }
 
-  // TODO
-  (void)program;
+  ret = semantic_function_pass(symtable, program);
+  if (ret != RETURN_SUCCESS) {
+    symtable_free(symtable);
+    return ret;
+  }
 
   symtable_free(symtable);
-  return RETURN_SUCCESS;
+  return ret;
 }
