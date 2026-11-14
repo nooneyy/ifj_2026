@@ -1,0 +1,46 @@
+/**
+ * @file ret_explicit_valid.ifj
+ * @brief Bodies matching the written return type
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// one-line body, block ending in an expression or call, Int for Double (spec 2.3) -> 0
+import ifj26.*
+
+def one(): Int = 1
+
+def half(): Double = 1
+
+def name(): String =
+  val s = "a"
+  s + "b"
+
+def last_call(): Int =
+  print(1)
+  readInt()
+
+def ret_double(): Double =
+  return 1
+
+@main def main(): Unit =
+  val a: Int = one()
+  val b: Double = half()
+  val c: String = name()
+  val d: Int = last_call()
+  val e: Double = ret_double()
+  print(a + d)
+  print(b + e)
+  print(c)

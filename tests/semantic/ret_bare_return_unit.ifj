@@ -1,0 +1,29 @@
+/**
+ * @file ret_bare_return_unit.ifj
+ * @brief Bare return in a Unit function
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// a bare return is allowed with explicit Unit (spec 2.3 rule 1) -> 0
+import ifj26.*
+
+def early(n: Int): Unit =
+  if n < 0 then
+    return
+  print(n)
+
+@main def main(): Unit =
+  early(1)
