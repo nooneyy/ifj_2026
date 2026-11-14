@@ -487,9 +487,32 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     break;
   }
   case NODE_ASSIGN: {
-    // ASSIGNMENT - check the expression on the right side of the assignment
+    // ASSIGNMENT - check the expression on the right side of the assignment and
+    // check the left side for definition within scope and mutability
     ASTAssignNodeData *assign_data = &statement->data.assign;
     ret = check_expr(global_sym, assign_data->right, stack, &expr_type);
+
+    if (ret != RETURN_SUCCESS) {
+      break;
+    }
+
+    Symbol *left_sym = symtable_stack_get(&stack, assign_data->left);
+
+    if (left_sym == NULL) {
+      print_error("Semantic error: assigning to undefined variable!",
+                  statement->line);
+      // Could also be ERR_SEM_UNDEF, but this fits as well and is a higher
+      // priority return
+      return ERR_SEM_NONMODIFIABLE;
+    }
+
+    if (left_sym->data.variable.variable_type != VAR) {
+      print_error("Semantic error: assigning to unmodifiable variable "
+                  "(function param/val)!",
+                  statement->line);
+      return ERR_SEM_NONMODIFIABLE;
+    }
+
     break;
   }
   case NODE_WHILE: {
