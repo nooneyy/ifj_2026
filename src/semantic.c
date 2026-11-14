@@ -243,6 +243,168 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
                                    SymtableStack stack);
 
 /**
+ * @brief Decides whether the data type is a number type
+ * @param operand The data type of the operand
+ * @return true for Int || Double, otherwise false
+ */
+static bool is_number(DataType operand) {
+  return (operand == INT || operand == DOUBLE) != 0;
+}
+
+/**
+ * @brief Decides whether the unary operator matches the operand type and is
+ * therefore allowed (also sets *out to the resulting data type)
+ * @param op The unary operator (ASTOperator struct)
+ * @param operand_data_type the DataType of the operand
+ * @param out The pointer to the resulting data type to be set by this function
+ * @return true if allowed, false if this should throw an error with *out set to
+ * UNKNOWN
+ */
+static bool is_correct_unary(ASTOperator op, DataType operand_data_type,
+                             DataType *out) {
+  *out = UNKNOWN;
+
+  // Until rest of semantic analysis is done
+  if (operand_data_type == UNKNOWN) {
+    if (op == OP_NOT) {
+      *out = BOOLEAN;
+    }
+    return true;
+  }
+
+  if (op == OP_NOT && operand_data_type == BOOLEAN) {
+    *out = operand_data_type;
+    return true;
+  }
+
+  if (op == OP_NEG && is_number(operand_data_type)) {
+    *out = operand_data_type;
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Decides whether a combination of data types and an operator is a valid
+ * binary combination or not. Sets the resulting data type to *out
+ * @param op An ASTOperator enum
+ * @param left The data type of the left expression
+ * @param right The data type of the right expression
+ * @param out The pointer to the resulting data type to be set by this function
+ * @return true if the combination is a correct binary operation, false
+ * otherwise and *out is set to UNKNOWN
+ */
+static bool is_correct_binary(ASTOperator op, DataType left, DataType right,
+                              DataType *out) {
+  *out = UNKNOWN;
+
+  // Until rest of semantic analysis is done
+  if (left == UNKNOWN || right == UNKNOWN) {
+    if (op == OP_LT || op == OP_LTE || op == OP_GT || op == OP_GTE ||
+        op == OP_EQ || op == OP_NEQ || op == OP_AND || op == OP_OR) {
+      *out = BOOLEAN;
+    }
+    return true;
+  }
+
+  switch (op) {
+  case OP_ADD:
+    // Numbers
+    if (is_number(left) && is_number(right)) {
+      *out = left;
+
+      if (right == DOUBLE) {
+        *out = DOUBLE;
+      }
+      return true;
+    }
+
+    // String, String
+    if (left == right && left == STRING) {
+      *out = STRING;
+      return true;
+    }
+    break;
+  case OP_SUB:
+  case OP_MUL:
+  case OP_DIV:
+    // Numbers
+    if (is_number(left) && is_number(right)) {
+      *out = left;
+
+      if (right == DOUBLE) {
+        *out = DOUBLE;
+      }
+
+      return true;
+    }
+    break;
+  case OP_EQ:
+  case OP_NEQ:
+    // LEFT == RIGHT or numbers
+    if ((left == right) || (is_number(left) && is_number(right))) {
+      *out = BOOLEAN;
+      return true;
+    }
+    break;
+  case OP_LT:
+  case OP_GT:
+  case OP_LTE:
+  case OP_GTE:
+    // String, String or numbers
+    if ((is_number(left) && is_number(right)) ||
+        (left == STRING && right == STRING)) {
+      *out = BOOLEAN;
+      return true;
+    }
+    break;
+  case OP_AND:
+  case OP_OR:
+    // Bool, Bool
+    if (left == BOOLEAN && right == BOOLEAN) {
+      *out = BOOLEAN;
+      return true;
+    }
+    break;
+  default:
+    break;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Decides whether the 'from' DataType can be assigned to the 'to'
+ * DataType
+ * @param from The source DataType enum
+ * @param to The destination DataType enum
+ * @return true if it can, otherwise false
+ */
+static bool is_assignable(DataType from, DataType to) {
+  if (to == ANY) {
+    // Any takes any data type
+    return true;
+  }
+
+  if (from == INT && to == DOUBLE) {
+    // INT -> DOUBLE
+    return true;
+  }
+
+  if (from == to) {
+    // FROM == TO
+    return true;
+  }
+
+  if (from == UNKNOWN || to == UNKNOWN) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * @brief Checks an expression ASTNode for semantic errors
  * @param global_sym A pointer to the global Symtable struct
  * @param expr A pointer to the expr's AST node (what's an expr? see func impl)
@@ -260,7 +422,8 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
 
   switch (expr->node_type) {
   case NODE_LITERAL:
-    // todo
+    // LITERAL - return its data type
+    *out = expr->data_type;
     break;
   case NODE_VARIABLE_REF: {
     // VARIABLE REF - read from all reachable scopes
@@ -276,26 +439,56 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
     break;
   }
   case NODE_UNARY_OP: {
-    // UNARY OP - check expr of operand
+    // UNARY OP - check expr of operand, check if valid unary op
     ASTUnaryOpNodeData *unary_op_data = &expr->data.unary_op;
-    ret = check_expr(global_sym, unary_op_data->operand, stack, out);
-    break;
-  }
-  case NODE_BINARY_OP: {
-    // BINARY op - check expr of left and right operands
-    ASTBinaryOpNodeData *binary_op_data = &expr->data.binary_op;
-    ret = check_expr(global_sym, binary_op_data->left, stack, out);
+
+    DataType operand_out = UNKNOWN;
+
+    ret = check_expr(global_sym, unary_op_data->operand, stack, &operand_out);
 
     if (ret != RETURN_SUCCESS) {
       break;
     }
 
-    ret = check_expr(global_sym, binary_op_data->right, stack, out);
+    if (!is_correct_unary(unary_op_data->op, operand_out, out)) {
+      print_error("Semantic error: unary operator not allowed on this operand",
+                  expr->line);
+      return ERR_SEM_TYPE;
+    }
+
+    break;
+  }
+  case NODE_BINARY_OP: {
+    // BINARY op - check expr of left and right operands, check if valid binary
+    // op
+    ASTBinaryOpNodeData *binary_op_data = &expr->data.binary_op;
+    DataType out_left = UNKNOWN;
+    DataType out_right = UNKNOWN;
+
+    ret = check_expr(global_sym, binary_op_data->left, stack, &out_left);
+
+    if (ret != RETURN_SUCCESS) {
+      break;
+    }
+
+    ret = check_expr(global_sym, binary_op_data->right, stack, &out_right);
+
+    if (ret != RETURN_SUCCESS) {
+      break;
+    }
+
+    if (!is_correct_binary(binary_op_data->op, out_left, out_right, out)) {
+      print_error(
+          "Semantic error: binary operator not allowed with these operands",
+          expr->line);
+      return ERR_SEM_TYPE;
+    }
+
     break;
   }
   case NODE_FUNCTION_CALL: {
-    // FUNCTION CALL - check for function definition in global symtable and
-    // check parameter expressions
+    // FUNCTION CALL - check for function definition in global symtable, check
+    // parameter expressions, match parameters to function arguments
 
     // Not a pointer because the LL advancing needs a copy
     ASTFunctionCallNodeData fun_call_data = expr->data.function_call;
@@ -307,25 +500,63 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
       return ERR_SEM_UNDEF;
     }
 
-    // todo: param checking and type checking here
+    *out = fun_sym->data.function.return_type;
+
+    FunctionSymbol *func_data = &fun_sym->data.function;
+    size_t arg_idx = 0;
 
     while (fun_call_data.args != NULL) {
-      ret = check_expr(global_sym, fun_call_data.args, stack, out);
+      DataType arg_out = UNKNOWN;
+      ret = check_expr(global_sym, fun_call_data.args, stack, &arg_out);
+
       if (ret != RETURN_SUCCESS) {
-        break;
+        return ret;
       }
+
+      if (arg_idx >= func_data->param_count) {
+        print_error("Semantic error: too many arguments supplied to function!",
+                    expr->line);
+        return ERR_SEM_ARG;
+      }
+
+      FunctionParam param = func_data->params[arg_idx];
+
+      if (!is_assignable(arg_out, param.data_type)) {
+        print_error("Semantic error: mismatch between function argument types!",
+                    expr->line);
+        return ERR_SEM_ARG;
+      }
+
       fun_call_data.args = fun_call_data.args->next;
+      arg_idx++;
+    }
+
+    if (arg_idx != func_data->param_count) {
+      print_error("Semantic error: too little arguments supplied to function!",
+                  expr->line);
+      return ERR_SEM_ARG;
     }
 
     break;
   }
   case NODE_IF: {
-    // IF - check conditions, then branch and else branch (if it exists)
+    // IF - check condition (including type), then branch and else branch (if it
+    // exists)
     ASTIfNodeData *if_data = &expr->data.if_node;
-    ret = check_expr(global_sym, if_data->condition, stack, out);
+
+    DataType condition_out = UNKNOWN;
+
+    ret = check_expr(global_sym, if_data->condition, stack, &condition_out);
 
     if (ret != RETURN_SUCCESS) {
       break;
+    }
+
+    // The IF condition expression must evaluate to BOOLEAN if not UNKNOWN
+    if (condition_out != BOOLEAN && condition_out != UNKNOWN) {
+      print_error("Semantic error: if condition doesn't evaluate to boolean!",
+                  expr->line);
+      return ERR_SEM_TYPE;
     }
 
     ret = check_statement(global_sym, if_data->then_branch, stack);
@@ -484,7 +715,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
   }
   case NODE_VARIABLE_DEF: {
     // VARIABLE DEF - check the expression on the right side of the assignment,
-    // insert variable into scope
+    // verify if type matches, insert variable into scope
     ASTVarDefNodeData *var_def_data = &statement->data.variable_def;
     ret = check_expr(global_sym, var_def_data->expr, stack, &expr_type);
 
@@ -492,15 +723,26 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
       break;
     }
 
-    ret = symtable_stack_new_var(&stack, var_def_data->name,
-                                 var_def_data->specified_type,
+    if (!is_assignable(expr_type, var_def_data->specified_type)) {
+      print_error("Semantic error: type mismatch between variable and its "
+                  "initial value!",
+                  statement->line);
+      return ERR_SEM_TYPE;
+    }
+
+    DataType result_type = var_def_data->specified_type != UNKNOWN
+                               ? var_def_data->specified_type
+                               : expr_type;
+
+    ret = symtable_stack_new_var(&stack, var_def_data->name, result_type,
                                  var_def_data->variable_type, statement->line);
 
     break;
   }
   case NODE_ASSIGN: {
     // ASSIGNMENT - check the expression on the right side of the assignment and
-    // check the left side for definition within scope and mutability
+    // check the left side for definition within scope and mutability, then
+    // check if right is assignable to left
     ASTAssignNodeData *assign_data = &statement->data.assign;
     ret = check_expr(global_sym, assign_data->right, stack, &expr_type);
 
@@ -523,6 +765,15 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
                   "(function param/val)!",
                   statement->line);
       return ERR_SEM_NONMODIFIABLE;
+    }
+
+    VariableSymbol var_data = left_sym->data.variable;
+
+    if (!is_assignable(expr_type, var_data.data_type)) {
+      print_error("Semantic error: type mismatch between variable type and "
+                  "right side of assignment!",
+                  statement->line);
+      return ERR_SEM_TYPE;
     }
 
     break;
