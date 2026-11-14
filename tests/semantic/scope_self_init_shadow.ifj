@@ -1,0 +1,35 @@
+/**
+ * @file scope_self_init_shadow.ifj
+ * @brief Shadowing variable initialized from the outer one
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// the initializer still sees the outer x, the new x is visible only after
+// its definition (spec 2.2, team decision) -> 0
+import ifj26.*
+
+@main def main(): Unit =
+  val x = 1
+  val n = readInt()
+  if n > 0 then
+    val x = x + 1
+    print(x)
+  else
+    val x = toStr(x)
+    val s: String = x
+    print(s)
+  val back: Int = x
+  print(back)

@@ -1,0 +1,29 @@
+/**
+ * @file scope_other_function.ifj
+ * @brief Use of another function's variable
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// local variables aren't visible in other functions (spec 2.2) -> 3
+import ifj26.*
+
+def f(): Unit =
+  val secret = 1
+  print(secret)
+
+@main def main(): Unit =
+  f()
+  print(secret)

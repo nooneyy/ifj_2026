@@ -1,0 +1,32 @@
+/**
+ * @file scope_assign_shadowing_val.ifj
+ * @brief Assignment to a val that shadows a var
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// the inner val hides the outer var, so x = 3 writes to the val (spec 2.2) -> 7
+import ifj26.*
+
+@main def main(): Unit =
+  var x = 1
+  val n = readInt()
+  if n > 0 then
+    val x = 2
+    x = 3
+    print(x)
+  else
+    x = 4
+  print(x)

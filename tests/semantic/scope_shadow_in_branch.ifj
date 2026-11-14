@@ -1,0 +1,35 @@
+/**
+ * @file scope_shadow_in_branch.ifj
+ * @brief Shadowing in both branches of an if
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// sub-blocks may shadow, the outer x is Int again after the if (spec 2.2) -> 0
+import ifj26.*
+
+@main def main(): Unit =
+  val x = 1
+  val n = readInt()
+  if n > 0 then
+    val x = "inner"
+    val s: String = x
+    print(s)
+  else
+    val x = 2.5
+    val d: Double = x
+    print(d)
+  val back: Int = x
+  print(back)
