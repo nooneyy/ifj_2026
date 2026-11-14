@@ -592,10 +592,8 @@ static bool parse_if(Parser *parser, ASTNode **out);
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_then_one(
-    Parser *parser,
-    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **else_out);
+static bool parse_then_one(Parser *parser, ASTNode **then_out,
+                           ASTNode **else_out);
 
 /**
  * @brief Parses whether else branch exists
@@ -662,10 +660,8 @@ static bool parse_if_req_else(Parser *parser, ASTNode **out);
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_then_req_else(
-    Parser *parser,
-    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **else_out);
+static bool parse_then_req_else(Parser *parser, ASTNode **then_out,
+                                ASTNode **else_out);
 
 /**
  * @brief Parses whether there's else if or just else
@@ -733,12 +729,9 @@ static bool parse_for(Parser *parser, ASTNode **out);
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_for_set(
-    Parser *parser, char **gen_name,
-    ASTNode **range_start, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **range_end,
-    ASTNode **range_step, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **guards, bool *is_to);
+static bool parse_for_set(Parser *parser, char **gen_name,
+                          ASTNode **range_start, ASTNode **range_end,
+                          ASTNode **range_step, ASTNode **guards, bool *is_to);
 
 /**
  * @brief Parses the end of the range after until or to
@@ -753,10 +746,8 @@ static bool parse_for_set(
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool
-parse_un_to(Parser *parser,
-            ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
-            ASTNode **range_step, bool *is_to);
+static bool parse_un_to(Parser *parser, ASTNode **range_end,
+                        ASTNode **range_step, bool *is_to);
 
 /**
  * @brief Parses optional step of the range after to
@@ -1476,10 +1467,8 @@ static bool parse_if(Parser *parser, ASTNode **out) {
   return correct;
 }
 
-static bool parse_then_one(
-    Parser *parser,
-    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **else_out) {
+static bool parse_then_one(Parser *parser, ASTNode **then_out,
+                           ASTNode **else_out) {
   bool correct = false;
   *then_out = NULL;
   *else_out = NULL;
@@ -1619,10 +1608,8 @@ static bool parse_if_req_else(Parser *parser, ASTNode **out) {
   return correct;
 }
 
-static bool parse_then_req_else(
-    Parser *parser,
-    ASTNode **then_out, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **else_out) {
+static bool parse_then_req_else(Parser *parser, ASTNode **then_out,
+                                ASTNode **else_out) {
   bool correct = false;
   *then_out = NULL;
   *else_out = NULL;
@@ -1807,12 +1794,9 @@ static bool parse_for(Parser *parser, ASTNode **out) {
   return correct;
 }
 
-static bool parse_for_set(
-    Parser *parser, char **gen_name,
-    ASTNode **range_start, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **range_end,
-    ASTNode **range_step, // NOLINT(bugprone-easily-swappable-parameters)
-    ASTNode **guards, bool *is_to) {
+static bool parse_for_set(Parser *parser, char **gen_name,
+                          ASTNode **range_start, ASTNode **range_end,
+                          ASTNode **range_step, ASTNode **guards, bool *is_to) {
   bool correct = false;
   if (expect(parser, TOKEN_EOL)) {
     // EOL
@@ -1903,10 +1887,8 @@ static bool parse_for_set(
   return correct;
 }
 
-static bool
-parse_un_to(Parser *parser,
-            ASTNode **range_end, // NOLINT(bugprone-easily-swappable-parameters)
-            ASTNode **range_step, bool *is_to) {
+static bool parse_un_to(Parser *parser, ASTNode **range_end,
+                        ASTNode **range_step, bool *is_to) {
   bool correct = false;
   if (parser->current_token.type == TOKEN_ID &&
       strcmp(parser->current_token.content.string, "until") == 0) {
