@@ -1,0 +1,37 @@
+/**
+ * @file ctrl_for_valid.ifj
+ * @brief Valid for loops
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// Int bounds and step, Boolean guards, the variable is Int (spec 5.3) -> 0
+import ifj26.*
+
+@main def main(): Unit =
+  val limit = readInt()
+  for i <- 0 to limit by 2 do
+    val n: Int = i
+    val d: Double = i
+    print(n)
+    print(d)
+  for i <- 0 until limit do
+    print(i)
+  for
+    j <- limit to 0 by -1
+    if j != 3
+    if j < limit
+  do
+    print(j)
