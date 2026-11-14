@@ -260,9 +260,21 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
 
   switch (expr->node_type) {
   case NODE_LITERAL:
-  case NODE_VARIABLE_REF:
     // todo
     break;
+  case NODE_VARIABLE_REF: {
+    // VARIABLE REF - read from all reachable scopes
+    ASTVarRefNodeData var_ref_data = expr->data.variable_ref;
+    Symbol *var_sym = symtable_stack_get(&stack, var_ref_data.name);
+
+    if (var_sym == NULL) {
+      print_error("Semantic error: undefined variable!", expr->line);
+      return ERR_SEM_UNDEF;
+    }
+
+    *out = var_sym->data.variable.data_type;
+    break;
+  }
   case NODE_UNARY_OP: {
     // UNARY OP - check expr of operand
     ASTUnaryOpNodeData *unary_op_data = &expr->data.unary_op;
@@ -566,8 +578,6 @@ static ReturnCodes check_function(Symtable *global_sym, ASTNode *function) {
       break;
     }
   }
-
-  (void)symtable_stack_get;
 
   if (ret == RETURN_SUCCESS) {
     if (function_data.body->node_type == NODE_BLOCK) {
