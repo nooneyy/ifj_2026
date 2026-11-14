@@ -1,0 +1,27 @@
+/**
+ * @file call_in_expr.ifj
+ * @brief Calls inside expressions and arguments
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// calls can be part of expressions and arguments (spec 5.1) -> 0
+import ifj26.*
+
+def add(a: Int, b: Int): Int = a + b
+
+@main def main(): Unit =
+  val r: Int = 2 * add(readInt() + 1, add(1, 2))
+  print(r)

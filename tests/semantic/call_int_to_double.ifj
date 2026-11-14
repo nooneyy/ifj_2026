@@ -1,0 +1,27 @@
+/**
+ * @file call_int_to_double.ifj
+ * @brief Int argument for a Double parameter
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// Int to Double is the one implicit conversion (spec 1.3) -> 0
+import ifj26.*
+
+def half(x: Double): Double = x / 2
+
+@main def main(): Unit =
+  val h: Double = half(3)
+  print(h)
