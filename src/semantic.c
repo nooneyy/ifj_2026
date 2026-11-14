@@ -112,6 +112,36 @@ static Symbol *symtable_stack_get(SymtableStack *stack, char *key) {
 }
 
 /**
+ * @brief Inserts a new variable into the topmost symtable on the scope stack
+ * @param stack Pointer to the top of the symtable stack
+ * @param name The name of the variable to be inserted
+ * @param data_type The data type of the variable to be inserted
+ * @param var_type The mutability of the variable to be inserted
+ * @param line The input line number the variable was scanned on
+ * @return RETURN_SUCCESS on success, ERR_INTERNAL on memory allocation failure,
+ * ERR_SEM_RED on variable redefinition
+ */
+static ReturnCodes symtable_stack_new_var(SymtableStack *stack, char *name,
+                                          DataType data_type,
+                                          VariableType var_type,
+                                          unsigned int line) {
+  Symbol *var_sym = init_variable_symbol(name, data_type, var_type);
+
+  if (var_sym == NULL) {
+    return ERR_INTERNAL;
+  }
+
+  ReturnCodes ret = symtable_insert(stack->sym, var_sym);
+
+  if (ret == ERR_SEM_RED) {
+    print_error(
+        "Semantic error: redefinition of variable within the same scope", line);
+  }
+
+  return ret;
+}
+
+/**
  * @brief The first pass of the semantic analysis - registers functions to the
  * symtable, checks for @main definition(s)
  * @param symtable Pointer to the symtable struct
@@ -447,21 +477,8 @@ static ReturnCodes check_function(Symtable *global_sym, ASTNode *function) {
   for (size_t param_idx = 0; param_idx < function_data.param_count;
        param_idx++) {
     FunctionParam *param = &function_data.params[param_idx];
-    Symbol *param_var_sym =
-        init_variable_symbol(param->name, param->data_type, FUNC_PARAM);
-
-    if (param_var_sym == NULL) {
-      ret = ERR_INTERNAL;
-      break;
-    }
-
-    ret = symtable_insert(stack.sym, param_var_sym);
-
-    if (ret == ERR_SEM_RED) {
-      print_error(
-          "Semantic error: multiple function variables with the same name",
-          function->line);
-    }
+    ret = symtable_stack_new_var(&stack, param->name, param->data_type,
+                                 FUNC_PARAM, function->line);
 
     if (ret != RETURN_SUCCESS) {
       break;
