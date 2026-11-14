@@ -294,9 +294,20 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
     break;
   }
   case NODE_FUNCTION_CALL: {
-    // FUNCTION CALL - check parameter expressions
+    // FUNCTION CALL - check for function definition in global symtable and
+    // check parameter expressions
+
     // Not a pointer because the LL advancing needs a copy
     ASTFunctionCallNodeData fun_call_data = expr->data.function_call;
+
+    Symbol *fun_sym = symtable_get(global_sym, fun_call_data.name);
+
+    if (fun_sym == NULL) {
+      print_error("Semantic error: calling undefined function", expr->line);
+      return ERR_SEM_UNDEF;
+    }
+
+    // todo: param checking and type checking here
 
     while (fun_call_data.args != NULL) {
       ret = check_expr(global_sym, fun_call_data.args, stack, out);
@@ -305,6 +316,7 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
       }
       fun_call_data.args = fun_call_data.args->next;
     }
+
     break;
   }
   case NODE_IF: {
