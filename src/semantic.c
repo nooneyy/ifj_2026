@@ -368,6 +368,85 @@ static ReturnCodes check_block(Symtable *global_sym, ASTNode *block,
   return ret;
 }
 
+/**
+ * @brief Checks the for loop node for semantic errors. Initiates a new inner
+ * scope with the for loop generator variable in it
+ * @param global_sym A pointer to the global Symtable struct
+ * @param for_node A pointer to the for ASTNode
+ * @param stack The stack of local(scoped) Symtables - the first item is the
+ * topmost scope, the last is the function scope
+ * @return RETURN_SUCCESS on success, else one of the many possible semantic
+ * errors or ERR_INTERNAL on memory allocation failure
+ */
+static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
+                             SymtableStack stack) {
+  // FOR - Check range start, range end, optionally range step,
+  // then push new scope, then check guards and body
+
+  ReturnCodes ret = RETURN_SUCCESS;
+  ASTForNodeData for_data = for_node->data.for_node;
+  DataType expr_type = UNKNOWN;
+
+  ret = check_expr(global_sym, for_data.range_start, stack, &expr_type);
+
+  if (ret != RETURN_SUCCESS) {
+    return ret;
+  }
+
+  ret = check_expr(global_sym, for_data.range_end, stack, &expr_type);
+
+  if (ret != RETURN_SUCCESS) {
+    return ret;
+  }
+
+  if (for_data.range_step != NULL) {
+    ret = check_expr(global_sym, for_data.range_step, stack, &expr_type);
+    if (ret != RETURN_SUCCESS) {
+      return ret;
+    }
+  }
+
+  Symtable *for_sym = symtable_init();
+
+  if (for_sym == NULL) {
+    return ERR_INTERNAL;
+  }
+
+  SymtableStack for_stack = {.sym = for_sym, .next = &stack};
+
+  // Add generator to new scope
+  ret = symtable_stack_new_var(&for_stack, for_data.generator_name, INT, VAL,
+                               for_node->line);
+
+  if (ret != RETURN_SUCCESS) {
+    symtable_free(for_sym);
+    return ret;
+  }
+
+  // Generator is now defined, use the inner scope
+
+  while (for_data.guards != NULL) {
+    ret = check_expr(global_sym, for_data.guards, for_stack, &expr_type);
+    if (ret != RETURN_SUCCESS) {
+      symtable_free(for_sym);
+      return ret;
+    }
+    for_data.guards = for_data.guards->next;
+  }
+
+  if (for_data.body->node_type == NODE_BLOCK) {
+    // Cannot use check_block because it adds another scope
+    ret = check_statement_list(global_sym, for_data.body->data.block.statements,
+                               for_stack);
+  } else {
+    // One-line body without BLOCK
+    ret = check_statement(global_sym, for_data.body, for_stack);
+  }
+
+  symtable_free(for_sym);
+  return ret;
+}
+
 static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
                                    SymtableStack stack) {
   DataType expr_type = UNKNOWN;
@@ -380,9 +459,19 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     break;
   }
   case NODE_VARIABLE_DEF: {
-    // VARIABLE DEF - check the expression on the right side of the assignment
+    // VARIABLE DEF - check the expression on the right side of the assignment,
+    // insert variable into scope
     ASTVarDefNodeData *var_def_data = &statement->data.variable_def;
     ret = check_expr(global_sym, var_def_data->expr, stack, &expr_type);
+
+    if (ret != RETURN_SUCCESS) {
+      break;
+    }
+
+    ret = symtable_stack_new_var(&stack, var_def_data->name,
+                                 var_def_data->specified_type,
+                                 var_def_data->variable_type, statement->line);
+
     break;
   }
   case NODE_ASSIGN: {
@@ -405,44 +494,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     break;
   }
   case NODE_FOR: {
-    // FOR - check generator start expr, generator end expr, generator step expr
-    // (if it exists), all guard exprs, body statement
-
-    //  Not a pointer because the LL advancing needs a copy
-    ASTForNodeData for_data = statement->data.for_node;
-
-    ret = check_expr(global_sym, for_data.range_start, stack, &expr_type);
-
-    if (ret != RETURN_SUCCESS) {
-      break;
-    }
-
-    ret = check_expr(global_sym, for_data.range_end, stack, &expr_type);
-
-    if (ret != RETURN_SUCCESS) {
-      break;
-    }
-
-    if (for_data.range_step != NULL) {
-      ret = check_expr(global_sym, for_data.range_step, stack, &expr_type);
-      if (ret != RETURN_SUCCESS) {
-        break;
-      }
-    }
-
-    while (for_data.guards != NULL) {
-      ret = check_expr(global_sym, for_data.guards, stack, &expr_type);
-      if (ret != RETURN_SUCCESS) {
-        break;
-      }
-      for_data.guards = for_data.guards->next;
-    }
-
-    if (ret != RETURN_SUCCESS) {
-      break;
-    }
-
-    ret = check_statement(global_sym, for_data.body, stack);
+    ret = check_for(global_sym, statement, stack);
     break;
   }
   case NODE_RETURN: {
