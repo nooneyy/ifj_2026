@@ -337,6 +337,37 @@ static ReturnCodes check_statement_list(Symtable *global_sym,
                                         ASTNode *statement_ll,
                                         SymtableStack stack);
 
+/**
+ * @brief Initiates a new symtable scope and calls check_statement_list() on
+ * the block statements
+ * @param global_sym A pointer to the global Symtable struct
+ * @param block A pointer to the block ASTNode
+ * @param stack The stack of local(scoped) Symtables - the first item is the
+ * topmost scope, the last is the function scope
+ * @return RETURN_SUCCESS on success, else one of the many possible semantic
+ * errors or ERR_INTERNAL on memory allocation failure
+ */
+static ReturnCodes check_block(Symtable *global_sym, ASTNode *block,
+                               SymtableStack stack) {
+  // BLOCK - Push new scope, check statement list
+
+  Symtable *block_sym = symtable_init();
+
+  if (block_sym == NULL) {
+    return ERR_INTERNAL;
+  }
+
+  SymtableStack block_stack = {.sym = block_sym, .next = &stack};
+
+  ASTBlockNodeData *block_data = &block->data.block;
+
+  ReturnCodes ret =
+      check_statement_list(global_sym, block_data->statements, block_stack);
+
+  symtable_free(block_sym);
+  return ret;
+}
+
 static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
                                    SymtableStack stack) {
   DataType expr_type = UNKNOWN;
@@ -344,9 +375,8 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
 
   switch (statement->node_type) {
   case NODE_BLOCK: {
-    // BLOCK NODE - parse the statement list inside
-    ASTBlockNodeData *block_data = &statement->data.block;
-    ret = check_statement_list(global_sym, block_data->statements, stack);
+    // BLOCK NODE - call check_block()
+    ret = check_block(global_sym, statement, stack);
     break;
   }
   case NODE_VARIABLE_DEF: {
