@@ -648,16 +648,39 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
     return ret;
   }
 
+  if (expr_type != INT && expr_type != UNKNOWN) {
+    print_error("Semantic error: for range start doesn't evaluate to integer!",
+                for_data.range_start->line);
+    return ERR_SEM_TYPE;
+  }
+
   ret = check_expr(global_sym, for_data.range_end, stack, &expr_type);
 
   if (ret != RETURN_SUCCESS) {
     return ret;
   }
 
+  if (expr_type != INT && expr_type != UNKNOWN) {
+    print_error("Semantic error: for range end doesn't evaluate to integer!",
+                for_data.range_end->line);
+    return ERR_SEM_TYPE;
+  }
+
   if (for_data.range_step != NULL) {
     ret = check_expr(global_sym, for_data.range_step, stack, &expr_type);
     if (ret != RETURN_SUCCESS) {
       return ret;
+    }
+    if (expr_type != INT && expr_type != UNKNOWN) {
+      print_error("Semantic error: for range step doesn't evaluate to integer!",
+                  for_data.range_step->line);
+      return ERR_SEM_TYPE;
+    }
+    if (for_data.range_step->node_type == NODE_LITERAL && expr_type == INT &&
+        for_data.range_step->data.literal.int_val == 0) {
+      print_error("Semantic error: for range step equals to 0!",
+                  for_data.range_step->line);
+      return ERR_SEM_OTHER;
     }
   }
 
@@ -685,6 +708,12 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
     if (ret != RETURN_SUCCESS) {
       symtable_free(for_sym);
       return ret;
+    }
+    if (expr_type != BOOLEAN && expr_type != UNKNOWN) {
+      print_error("Semantic error: for guards don't evaluate to boolean!",
+                  for_data.guards->line);
+      symtable_free(for_sym);
+      return ERR_SEM_TYPE;
     }
     for_data.guards = for_data.guards->next;
   }
