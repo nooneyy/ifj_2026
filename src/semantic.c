@@ -788,6 +788,13 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
       break;
     }
 
+    if (expr_type != BOOLEAN && expr_type != UNKNOWN) {
+      print_error(
+          "Semantic error: while condition doesn't evaluate to boolean!",
+          statement->line);
+      return ERR_SEM_TYPE;
+    }
+
     ret = check_statement(global_sym, while_data->body, stack);
     break;
   }
