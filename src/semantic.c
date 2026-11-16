@@ -10,6 +10,7 @@
 #include "return.h"
 #include "symbol.h"
 #include "symtable.h"
+#include <stdbool.h>
 #include <stddef.h>
 
 // The max amount of params a builtin function has
@@ -408,6 +409,37 @@ static bool is_assignable(DataType from, DataType to) {
 }
 
 /**
+ * @brief Checks if the data types of the 'then' and 'else' branches are
+ * compatible. Sets the resulting data type to *out
+ * @param then_type The data type of the 'then' branch
+ * @param else_type The data type of the 'else' branch
+ * @param out The pointer to the resulting data type to be set by this function
+ * @return true if types are compatible, false otherwise and *out is set to
+ * UNKNOWN
+ */
+static bool unify_types(DataType then_type, DataType else_type, DataType *out) {
+  *out = UNKNOWN;
+
+  if (then_type == else_type) {
+    *out = then_type;
+    return true;
+  }
+
+  if (then_type == UNKNOWN || else_type == UNKNOWN) {
+    *out = UNKNOWN;
+    return true;
+  }
+
+  if ((then_type == INT && else_type == DOUBLE) ||
+      (then_type == DOUBLE && else_type == INT)) {
+    *out = DOUBLE;
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * @brief Checks an expression ASTNode for semantic errors
  * @param global_sym A pointer to the global Symtable struct
  * @param expr A pointer to the expr's AST node (what's an expr? see func impl)
@@ -572,6 +604,26 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
       ret =
           check_statement(global_sym, if_data->else_branch, stack, &else_type);
     }
+
+    if (ret != RETURN_SUCCESS) {
+      break;
+    }
+
+    if (if_data->else_branch == NULL) {
+      *out = UNIT;
+    } else if (!unify_types(then_type, else_type, out)) {
+      if (if_data->is_expr) {
+        print_error(
+            "Semantic error: if expression branches have incompatible types!",
+            expr->line);
+        return ERR_SEM_TYPE;
+      }
+      // if is statement
+      *out = UNIT;
+    }
+    // There is no need for checking if unify_types is true
+    // the result is already in *out
+
     break;
   }
   default:
