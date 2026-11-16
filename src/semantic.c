@@ -96,6 +96,14 @@ typedef struct SymtableStack {
 } SymtableStack;
 
 /**
+ * @brief Shared state of the body pass, passed to every check_* function
+ */
+typedef struct {
+  Symtable *global_sym;     // global symtable (functions incl. builtins)
+  Symbol *current_function; // the function whose body is being checked
+} SemanticContext;
+
+/**
  * @brief Returns a symbol reachable from the current scope in the function
  * @param stack Pointer to the top of the symtable stack
  * @param key The key of the symbol to be found
@@ -232,7 +240,8 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
 
 /**
  * @brief Checks a statement ASTNode for semantic errors
- * @param global_sym A pointer to the global Symtable struct
+ * @param context Pointer to the semantic context (global symtable, current
+ * function)
  * @param statement A pointer to the statement's AST node (what's a statement?
  * see func impl)
  * @param stack The stack of local(scoped) Symtables - the first item is the
@@ -243,7 +252,7 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
  * @return RETURN_SUCCESS on success, else one of the many possible semantic
  * errors or ERR_INTERNAL on memory allocation failure
  */
-static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
+static ReturnCodes check_statement(SemanticContext *context, ASTNode *statement,
                                    SymtableStack stack, DataType *out);
 
 /**
@@ -441,7 +450,8 @@ static bool unify_types(DataType then_type, DataType else_type, DataType *out) {
 
 /**
  * @brief Checks an expression ASTNode for semantic errors
- * @param global_sym A pointer to the global Symtable struct
+ * @param context Pointer to the semantic context (global symtable, current
+ * function)
  * @param expr A pointer to the expr's AST node (what's an expr? see func impl)
  * @param stack The stack of local(scoped) Symtables - the first item is the
  * topmost scope, the last is the function scope
@@ -450,7 +460,7 @@ static bool unify_types(DataType then_type, DataType else_type, DataType *out) {
  * @return RETURN_SUCCESS on success, else one of the many possible semantic
  * errors or ERR_INTERNAL on memory allocation failure with *out set to UNKNOWN
  */
-static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
+static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
                               SymtableStack stack, DataType *out) {
   ReturnCodes ret = RETURN_SUCCESS;
   *out = UNKNOWN;
@@ -479,7 +489,7 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
 
     DataType operand_out = UNKNOWN;
 
-    ret = check_expr(global_sym, unary_op_data->operand, stack, &operand_out);
+    ret = check_expr(context, unary_op_data->operand, stack, &operand_out);
 
     if (ret != RETURN_SUCCESS) {
       break;
@@ -500,13 +510,13 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
     DataType out_left = UNKNOWN;
     DataType out_right = UNKNOWN;
 
-    ret = check_expr(global_sym, binary_op_data->left, stack, &out_left);
+    ret = check_expr(context, binary_op_data->left, stack, &out_left);
 
     if (ret != RETURN_SUCCESS) {
       break;
     }
 
-    ret = check_expr(global_sym, binary_op_data->right, stack, &out_right);
+    ret = check_expr(context, binary_op_data->right, stack, &out_right);
 
     if (ret != RETURN_SUCCESS) {
       break;
@@ -528,7 +538,7 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
     // Not a pointer because the LL advancing needs a copy
     ASTFunctionCallNodeData fun_call_data = expr->data.function_call;
 
-    Symbol *fun_sym = symtable_get(global_sym, fun_call_data.name);
+    Symbol *fun_sym = symtable_get(context->global_sym, fun_call_data.name);
 
     if (fun_sym == NULL) {
       print_error("Semantic error: calling undefined function", expr->line);
@@ -542,7 +552,7 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
 
     while (fun_call_data.args != NULL) {
       DataType arg_out = UNKNOWN;
-      ret = check_expr(global_sym, fun_call_data.args, stack, &arg_out);
+      ret = check_expr(context, fun_call_data.args, stack, &arg_out);
 
       if (ret != RETURN_SUCCESS) {
         return ret;
@@ -582,7 +592,7 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
     DataType then_type = UNKNOWN;
     DataType else_type = UNKNOWN;
 
-    ret = check_expr(global_sym, if_data->condition, stack, &condition_out);
+    ret = check_expr(context, if_data->condition, stack, &condition_out);
 
     if (ret != RETURN_SUCCESS) {
       break;
@@ -594,15 +604,14 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
                   expr->line);
       return ERR_SEM_TYPE;
     }
-    ret = check_statement(global_sym, if_data->then_branch, stack, &then_type);
+    ret = check_statement(context, if_data->then_branch, stack, &then_type);
 
     if (ret != RETURN_SUCCESS) {
       break;
     }
 
     if (if_data->else_branch != NULL) {
-      ret =
-          check_statement(global_sym, if_data->else_branch, stack, &else_type);
+      ret = check_statement(context, if_data->else_branch, stack, &else_type);
     }
 
     if (ret != RETURN_SUCCESS) {
@@ -636,7 +645,8 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
 /**
  * @brief Iterates through a list of statement nodes and calls check_statement
  * for all of them
- * @param global_sym A pointer to the global Symtable struct
+ * @param context Pointer to the semantic context (global symtable, current
+ * function)
  * @param statement_ll The starting element of the linked list of statement
  * nodes
  * @param stack The stack of local(scoped) Symtables - the first item is the
@@ -646,14 +656,15 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
  * @return RETURN_SUCCESS on success, else one of the many possible semantic
  * errors or ERR_INTERNAL on memory allocation failure
  */
-static ReturnCodes check_statement_list(Symtable *global_sym,
+static ReturnCodes check_statement_list(SemanticContext *context,
                                         ASTNode *statement_ll,
                                         SymtableStack stack, DataType *out);
 
 /**
  * @brief Initiates a new symtable scope and calls check_statement_list() on
  * the block statements
- * @param global_sym A pointer to the global Symtable struct
+ * @param context Pointer to the semantic context (global symtable, current
+ * function)
  * @param block A pointer to the block ASTNode
  * @param stack The stack of local(scoped) Symtables - the first item is the
  * topmost scope, the last is the function scope
@@ -662,7 +673,7 @@ static ReturnCodes check_statement_list(Symtable *global_sym,
  * @return RETURN_SUCCESS on success, else one of the many possible semantic
  * errors or ERR_INTERNAL on memory allocation failure
  */
-static ReturnCodes check_block(Symtable *global_sym, ASTNode *block,
+static ReturnCodes check_block(SemanticContext *context, ASTNode *block,
                                SymtableStack stack, DataType *out) {
   // BLOCK - Push new scope, check statement list
 
@@ -677,8 +688,8 @@ static ReturnCodes check_block(Symtable *global_sym, ASTNode *block,
 
   ASTBlockNodeData *block_data = &block->data.block;
 
-  ReturnCodes ret = check_statement_list(global_sym, block_data->statements,
-                                         block_stack, out);
+  ReturnCodes ret =
+      check_statement_list(context, block_data->statements, block_stack, out);
 
   symtable_free(block_sym);
   return ret;
@@ -687,14 +698,15 @@ static ReturnCodes check_block(Symtable *global_sym, ASTNode *block,
 /**
  * @brief Checks the for loop node for semantic errors. Initiates a new inner
  * scope with the for loop generator variable in it
- * @param global_sym A pointer to the global Symtable struct
+ * @param context Pointer to the semantic context (global symtable, current
+ * function)
  * @param for_node A pointer to the for ASTNode
  * @param stack The stack of local(scoped) Symtables - the first item is the
  * topmost scope, the last is the function scope
  * @return RETURN_SUCCESS on success, else one of the many possible semantic
  * errors or ERR_INTERNAL on memory allocation failure
  */
-static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
+static ReturnCodes check_for(SemanticContext *context, ASTNode *for_node,
                              SymtableStack stack) {
   // FOR - Check range start, range end, optionally range step,
   // then push new scope, then check guards and body
@@ -703,7 +715,7 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
   ASTForNodeData for_data = for_node->data.for_node;
   DataType expr_type = UNKNOWN;
 
-  ret = check_expr(global_sym, for_data.range_start, stack, &expr_type);
+  ret = check_expr(context, for_data.range_start, stack, &expr_type);
 
   if (ret != RETURN_SUCCESS) {
     return ret;
@@ -715,7 +727,7 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
     return ERR_SEM_TYPE;
   }
 
-  ret = check_expr(global_sym, for_data.range_end, stack, &expr_type);
+  ret = check_expr(context, for_data.range_end, stack, &expr_type);
 
   if (ret != RETURN_SUCCESS) {
     return ret;
@@ -728,7 +740,7 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
   }
 
   if (for_data.range_step != NULL) {
-    ret = check_expr(global_sym, for_data.range_step, stack, &expr_type);
+    ret = check_expr(context, for_data.range_step, stack, &expr_type);
     if (ret != RETURN_SUCCESS) {
       return ret;
     }
@@ -765,7 +777,7 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
   // Generator is now defined, use the inner scope
 
   while (for_data.guards != NULL) {
-    ret = check_expr(global_sym, for_data.guards, for_stack, &expr_type);
+    ret = check_expr(context, for_data.guards, for_stack, &expr_type);
     if (ret != RETURN_SUCCESS) {
       symtable_free(for_sym);
       return ret;
@@ -783,18 +795,18 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
   DataType body_type = UNKNOWN;
   if (for_data.body->node_type == NODE_BLOCK) {
     // Cannot use check_block because it adds another scope
-    ret = check_statement_list(global_sym, for_data.body->data.block.statements,
+    ret = check_statement_list(context, for_data.body->data.block.statements,
                                for_stack, &body_type);
   } else {
     // One-line body without BLOCK
-    ret = check_statement(global_sym, for_data.body, for_stack, &body_type);
+    ret = check_statement(context, for_data.body, for_stack, &body_type);
   }
 
   symtable_free(for_sym);
   return ret;
 }
 
-static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
+static ReturnCodes check_statement(SemanticContext *context, ASTNode *statement,
                                    SymtableStack stack, DataType *out) {
   DataType expr_type = UNKNOWN;
   ReturnCodes ret = RETURN_SUCCESS;
@@ -803,7 +815,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
   switch (statement->node_type) {
   case NODE_BLOCK: {
     // BLOCK NODE - call check_block()
-    ret = check_block(global_sym, statement, stack, out);
+    ret = check_block(context, statement, stack, out);
     break;
   }
   case NODE_VARIABLE_DEF: {
@@ -811,7 +823,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     // verify if type matches, insert variable into scope
     ASTVarDefNodeData *var_def_data = &statement->data.variable_def;
     *out = UNIT;
-    ret = check_expr(global_sym, var_def_data->expr, stack, &expr_type);
+    ret = check_expr(context, var_def_data->expr, stack, &expr_type);
 
     if (ret != RETURN_SUCCESS) {
       break;
@@ -839,7 +851,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     // check if right is assignable to left
     ASTAssignNodeData *assign_data = &statement->data.assign;
     *out = UNIT;
-    ret = check_expr(global_sym, assign_data->right, stack, &expr_type);
+    ret = check_expr(context, assign_data->right, stack, &expr_type);
 
     if (ret != RETURN_SUCCESS) {
       break;
@@ -877,7 +889,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     // WHILE - check condition expr, check body statement
     ASTWhileNodeData *while_data = &statement->data.while_node;
     *out = UNIT;
-    ret = check_expr(global_sym, while_data->condition, stack, &expr_type);
+    ret = check_expr(context, while_data->condition, stack, &expr_type);
 
     if (ret != RETURN_SUCCESS) {
       break;
@@ -891,29 +903,55 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     }
 
     DataType body_type = UNKNOWN;
-    ret = check_statement(global_sym, while_data->body, stack, &body_type);
+    ret = check_statement(context, while_data->body, stack, &body_type);
     break;
   }
   case NODE_FOR: {
-    ret = check_for(global_sym, statement, stack);
+    ret = check_for(context, statement, stack);
     *out = UNIT;
     break;
   }
   case NODE_RETURN: {
     // RETURN node - if it has a value, check its expr
     ASTReturnNodeData *return_data = &statement->data.return_node;
-    *out = UNKNOWN; // TODO
+    FunctionSymbol *func_data = &context->current_function->data.function;
 
     if (return_data->value != NULL) {
-      ret = check_expr(global_sym, return_data->value, stack, &expr_type);
+      ret = check_expr(context, return_data->value, stack, &expr_type);
     }
 
+    if (ret != RETURN_SUCCESS) {
+      break;
+    }
+
+    if (!func_data->return_type_defined) {
+      print_error("Semantic error: return used in a function without an "
+                  "explicit return type!",
+                  statement->line);
+      return ERR_SEM_TYPE;
+    }
+
+    if (func_data->return_type != UNIT) {
+      if (return_data->value == NULL) {
+        print_error("Semantic error: return doesn't have value!",
+                    statement->line);
+        return ERR_SEM_TYPE;
+      }
+
+      if (!is_assignable(expr_type, func_data->return_type)) {
+        print_error("Semantic error: return type isn't assignable!",
+                    statement->line);
+        return ERR_SEM_TYPE;
+      }
+    }
+
+    *out = func_data->return_type;
     break;
   }
   default:
     // Could be an expression that is meant to be thrown away, if not, it will
     // error in check_expr anyways
-    ret = check_expr(global_sym, statement, stack, &expr_type);
+    ret = check_expr(context, statement, stack, &expr_type);
     *out = expr_type;
     break;
   }
@@ -921,7 +959,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
   return ret;
 }
 
-static ReturnCodes check_statement_list(Symtable *global_sym,
+static ReturnCodes check_statement_list(SemanticContext *context,
                                         ASTNode *statement_ll,
                                         SymtableStack stack, DataType *out) {
   ReturnCodes ret = RETURN_SUCCESS;
@@ -930,7 +968,7 @@ static ReturnCodes check_statement_list(Symtable *global_sym,
 
   while (statement_ll != NULL) {
     // Iterate through all statements, check every statement
-    ret = check_statement(global_sym, statement_ll, stack, out);
+    ret = check_statement(context, statement_ll, stack, out);
 
     if (ret != RETURN_SUCCESS) {
       break;
@@ -945,12 +983,13 @@ static ReturnCodes check_statement_list(Symtable *global_sym,
 /**
  * @brief Checks a single program function for semantic errors (initiates a
  * scope with its params, then checks every statement inside the function)
- * @param global_sym A pointer to the global Symtable struct
+ * @param context Pointer to the semantic context (global symtable, current
+ * function)
  * @param function A pointer to the function ASTNode struct
  * @return RETURN_SUCCESS on success, or one of the semantic errors or
  * ERR_INTERNAL on memory allocation failure
  */
-static ReturnCodes check_function(Symtable *global_sym, ASTNode *function) {
+static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
   ReturnCodes ret = RETURN_SUCCESS;
   Symtable *function_symtable = symtable_init();
 
@@ -961,6 +1000,9 @@ static ReturnCodes check_function(Symtable *global_sym, ASTNode *function) {
   SymtableStack stack = {.sym = function_symtable};
 
   ASTFunctionDefNodeData function_data = function->data.function_def;
+
+  context->current_function =
+      symtable_get(context->global_sym, function_data.name);
 
   for (size_t param_idx = 0; param_idx < function_data.param_count;
        param_idx++) {
@@ -977,12 +1019,12 @@ static ReturnCodes check_function(Symtable *global_sym, ASTNode *function) {
 
   if (ret == RETURN_SUCCESS) {
     if (function_data.body->node_type == NODE_BLOCK) {
-      ret = check_statement_list(global_sym,
+      ret = check_statement_list(context,
                                  function_data.body->data.block.statements,
                                  stack, &body_type);
     } else {
       // Could be an expr or an if statement used as an expr
-      ret = check_expr(global_sym, function_data.body, stack, &body_type);
+      ret = check_expr(context, function_data.body, stack, &body_type);
     }
   }
 
@@ -1012,10 +1054,12 @@ static ReturnCodes check_function(Symtable *global_sym, ASTNode *function) {
  */
 static ReturnCodes semantic_body_pass(Symtable *global_sym, ASTNode *program) {
   ReturnCodes ret = RETURN_SUCCESS;
+  SemanticContext context = {.global_sym = global_sym,
+                             .current_function = NULL};
   ASTNode *function = program->data.program.functions;
 
   while (function != NULL) {
-    ret = check_function(global_sym, function);
+    ret = check_function(&context, function);
 
     if (ret != RETURN_SUCCESS) {
       break;
