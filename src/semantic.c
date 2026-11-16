@@ -986,6 +986,18 @@ static ReturnCodes check_function(Symtable *global_sym, ASTNode *function) {
     }
   }
 
+  if (ret == RETURN_SUCCESS) {
+    if (function_data.return_type != UNKNOWN &&
+        function_data.return_type != UNIT) {
+      if (!is_assignable(body_type, function_data.return_type)) {
+        print_error("Semantic error: function body value doesn't match the "
+                    "function's return type!",
+                    function->line);
+        ret = ERR_SEM_TYPE;
+      }
+    }
+  }
+
   symtable_free(stack.sym);
   return ret;
 }
