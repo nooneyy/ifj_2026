@@ -10,6 +10,7 @@
 #include "return.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define MAX_TMP_VARS 16
 
@@ -38,10 +39,186 @@ static const char *unop_instr_table[] = {
 
 static void generate_prolog(CodeGenContext *ctx) {
     fprintf(ctx->out, ".IFJcode26\n");
-    fprintf(ctx->out, "CREATEFRAME\n");
-    fprintf(ctx->out, "PUSHFRAME\n");
     fprintf(ctx->out, "CALL @main\n");
     fprintf(ctx->out, "EXIT int@0\n\n");
+}
+
+static void generate_builtin_library(CodeGenContext *ctx) {
+    fprintf(ctx->out, "\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_print\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@val\n");
+    fprintf(ctx->out, "POPS LF@val\n");
+    fprintf(ctx->out, "WRITE LF@val\n");
+    fprintf(ctx->out, "PUSHS nil@nil\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_readLine\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "READ LF@res string\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_readInt\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "READ LF@res int\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_readDouble\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "READ LF@res float\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_strLength\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@s\n");
+    fprintf(ctx->out, "POPS LF@s\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "STRLEN LF@res LF@s\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_toStr\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@val\n");
+    fprintf(ctx->out, "POPS LF@val\n");
+    fprintf(ctx->out, "DEFVAR LF@type\n");
+    fprintf(ctx->out, "TYPE LF@type LF@val\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "DEFVAR LF@cond\n");
+    fprintf(ctx->out, "EQ LF@cond LF@type string@int\n");
+    fprintf(ctx->out, "JUMPIFEQ $toStr_int LF@cond bool@true\n");
+    fprintf(ctx->out, "EQ LF@cond LF@type string@float\n");
+    fprintf(ctx->out, "JUMPIFEQ $toStr_float LF@cond bool@true\n");
+    fprintf(ctx->out, "MOVE LF@res LF@val\n");
+    fprintf(ctx->out, "JUMP $toStr_end\n");
+    fprintf(ctx->out, "LABEL $toStr_int\n");
+    fprintf(ctx->out, "INT2STR LF@res LF@val\n");
+    fprintf(ctx->out, "JUMP $toStr_end\n");
+    fprintf(ctx->out, "LABEL $toStr_float\n");
+    fprintf(ctx->out, "FLOAT2STR LF@res LF@val\n");
+    fprintf(ctx->out, "LABEL $toStr_end\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_toInt\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@val\n");
+    fprintf(ctx->out, "POPS LF@val\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "FLOAT2INT LF@res LF@val\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_subStr\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@j\n");
+    fprintf(ctx->out, "POPS LF@j\n");
+    fprintf(ctx->out, "DEFVAR LF@i\n");
+    fprintf(ctx->out, "POPS LF@i\n");
+    fprintf(ctx->out, "DEFVAR LF@s\n");
+    fprintf(ctx->out, "POPS LF@s\n");
+    fprintf(ctx->out, "DEFVAR LF@len\n");
+    fprintf(ctx->out, "STRLEN LF@len LF@s\n");
+    fprintf(ctx->out, "DEFVAR LF@cond\n");
+    fprintf(ctx->out, "LT LF@cond LF@i int@0\n");
+    fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+    fprintf(ctx->out, "LT LF@cond LF@j int@0\n");
+    fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+    fprintf(ctx->out, "GT LF@cond LF@i LF@j\n");
+    fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+    fprintf(ctx->out, "LT LF@cond LF@i LF@len\n");
+    fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+    fprintf(ctx->out, "GT LF@cond LF@j LF@len\n");
+    fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "MOVE LF@res string@\n");
+    fprintf(ctx->out, "DEFVAR LF@k\n");
+    fprintf(ctx->out, "MOVE LF@k LF@i\n");
+    fprintf(ctx->out, "DEFVAR LF@char\n");
+    fprintf(ctx->out, "LABEL $substr_loop\n");
+    fprintf(ctx->out, "EQ LF@cond LF@k LF@j\n");
+    fprintf(ctx->out, "JUMPIFEQ $substr_done LF@cond bool@true\n");
+    fprintf(ctx->out, "GETCHAR LF@char LF@s LF@k\n");
+    fprintf(ctx->out, "CONCAT LF@res LF@res LF@char\n");
+    fprintf(ctx->out, "ADD LF@k LF@k int@1\n");
+    fprintf(ctx->out, "JUMP $substr_loop\n");
+    fprintf(ctx->out, "LABEL $substr_err\n");
+    fprintf(ctx->out, "EXIT int@40\n");
+    fprintf(ctx->out, "LABEL $substr_done\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_ord\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@i\n");
+    fprintf(ctx->out, "POPS LF@i\n");
+    fprintf(ctx->out, "DEFVAR LF@s\n");
+    fprintf(ctx->out, "POPS LF@s\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "DEFVAR LF@len\n");
+    fprintf(ctx->out, "STRLEN LF@len LF@s\n");
+    fprintf(ctx->out, "DEFVAR LF@cond\n");
+    fprintf(ctx->out, "LT LF@cond LF@i int@0\n");
+    fprintf(ctx->out, "JUMPIFEQ $ord_invalid LF@cond bool@true\n");
+    fprintf(ctx->out, "LT LF@cond LF@i LF@len\n");
+    fprintf(ctx->out, "JUMPIFEQ $ord_valid LF@cond bool@true\n");
+    fprintf(ctx->out, "LABEL $ord_invalid\n");
+    fprintf(ctx->out, "MOVE LF@res int@-1\n");
+    fprintf(ctx->out, "JUMP $ord_end\n");
+    fprintf(ctx->out, "LABEL $ord_valid\n");
+    fprintf(ctx->out, "STRI2INT LF@res LF@s LF@i\n");
+    fprintf(ctx->out, "LABEL $ord_end\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+
+    fprintf(ctx->out, "LABEL $ifj_chr\n");
+    fprintf(ctx->out, "CREATEFRAME\n");
+    fprintf(ctx->out, "PUSHFRAME\n");
+    fprintf(ctx->out, "DEFVAR LF@i\n");
+    fprintf(ctx->out, "POPS LF@i\n");
+    fprintf(ctx->out, "DEFVAR LF@res\n");
+    fprintf(ctx->out, "INT2CHAR LF@res LF@i\n");
+    fprintf(ctx->out, "PUSHS LF@res\n");
+    fprintf(ctx->out, "POPFRAME\n");
+    fprintf(ctx->out, "RETURN\n\n");
+}
+
+static bool is_builtin_func(const char *name) {
+    static const char *builtins[] = {
+        "print", "readLine", "readInt", "readDouble", "toStr", "toInt", "strLength", "subStr", "ord", "chr", NULL,
+    };
+
+    for (int i = 0; builtins[i] != NULL; i++) {
+        if (strcmp(name, builtins[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static void print_escaped_string(CodeGenContext *ctx, const char *str) {
@@ -55,6 +232,7 @@ static void print_escaped_string(CodeGenContext *ctx, const char *str) {
         } else {
             fputc(c, ctx->out);
         }
+        fprintf(ctx->out, "\n")
     }
 }
 static char *new_tmp_var(CodeGenContext *ctx) {
@@ -106,7 +284,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
                     fprintf(ctx->out, "MOVE LF@%s float@%a\n", dest_var, expr->data.literal.dbl_val);
                     break;
                 case STRING:
-                    fprintf(ctx->out, "MOVE LF@%s", dest_var);
+                    fprintf(ctx->out, "MOVE LF@%s ", dest_var);
                     print_escaped_string(ctx, expr->data.literal.string);
                     fprintf(ctx->out, "\n");
                     break;
@@ -176,10 +354,26 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
                         inst = (expr->data_type == STRING) ? "CONCAT" : "ADD";
                         fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, dest_var, left_tmp, right_tmp);
                         break;
-                    case OP_DIV:
-                        inst = (expr->data_type == INT) ? "IDIV" : "DIV";
-                        fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, dest_var, left_tmp, right_tmp);
+                    case OP_DIV: {
+                        int ok_label = ctx->label_counter++;
+                        char *cond_tmp = new_tmp_var(ctx);
+
+                        if (expr->data_type == INT) {
+                            fprintf(ctx->out, "EQ LF@%s LF@%s into@0\n", cond_tmp, right_tmp);
+                            fprintf(ctx->out, "JUMPIFNEQ $div_ok_%d LF@%s bool@true\n", ok_label, cond_tmp);
+                            fprintf(ctx->out, "EXIT int@57\n");
+                            fprintf(ctx->out, "LABEL $div_ok_%d\n", ok_label);
+                            fprintf(ctx->out, "IDIV LF@%s LF@%s LF@%s\n", dest_var, left_tmp, right_tmp);
+                        } else if (expr->data_type == DOUBLE) {
+                            fprintf(ctx->out, "EQ LF@%s LF@%s float@0x0p+0\n", cond_tmp, right_tmp);
+                            fprintf(ctx->out, "JUMPIFNEQ $div_ok_%d LF@%s bool@true\n", ok_label, cond_tmp);
+                            fprintf(ctx->out, "EXIT int@57\n");
+                            fprintf(ctx->out, "LABEL $div_ok_%d\n", ok_label);
+                            fprintf(ctx->out, "DIV LF@%s LF@%s LF@%s\n", dest_var, left_tmp, right_tmp);
+                        }
+                        free(cond_tmp);
                         break;
+                    }
                     case OP_NEQ:
                         fprintf(ctx->out, "EQ LF@%s LF@%s LF@%s\n", dest_var, left_tmp, right_tmp);
                         fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, dest_var);
@@ -214,7 +408,15 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
                 free(arg_tmp);
                 arg = arg->next;
             }
-            fprintf(ctx->out, "CALL $%s\n", expr->data.function_call.name);
+
+            const char *name = expr->data.function_call.name;
+            if (strncmp(name, "ifj.", 4) == 0) {
+                fprintf(ctx->out, "CALL $ifj_%s\n", name + 4);
+            } else if (is_builtin_func(name)) {
+                fprintf(ctx->out, "CALL $ifj_%s\n", name);
+            } else {
+                fprintf(ctx->out, "CALL @%s\n", name);
+            }
 
             if (dest_var != NULL) {
                 fprintf(ctx->out, "POPS LF@%s\n", dest_var);
@@ -313,7 +515,7 @@ Note: wow I'm stupid, this was staring me in the face
 
             fprintf(ctx->out, "LABEL $else_%d\n", id);
             if (statement->data.if_node.else_branch != NULL) {
-                generate_statemen(ctx, statement->data.if_node.else_branch);
+                generate_statement(ctx, statement->data.if_node.else_branch);
             }
 
             fprintf(ctx->out, "LABEL $if_end_%d\n", id);
@@ -332,7 +534,7 @@ Note: wow I'm stupid, this was staring me in the face
             free(cond_tmp);
 
             generate_statement(ctx, statement->data.while_node.body);
-            fprintf(ctx->out, "JUMP #while_start_%d\n", id);
+            fprintf(ctx->out, "JUMP $while_start_%d\n", id);
 
             fprintf(ctx->out, "LABEL $while_end_%d\n", id);
             break;
@@ -351,12 +553,14 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
     ASTFunctionDefNodeData *fn = &fn_node->data.function_def;
 
     if (fn->is_main) {
-        fprintf(ctx->out, "LAVEL @main\n");
+        fprintf(ctx->out, "LABEL @main\n");
     } else {
         fprintf(ctx->out, "LABEL $%s\n", fn->name);
     }
 
+    fprintf(ctx->out, "CREATEFRAME\n");
     fprintf(ctx->out, "PUSHFRAME\n");
+    
 
     if (fn->param_count > 0) {
         for (size_t i = fn->param_count; i > 0; i--) {
@@ -402,6 +606,8 @@ ReturnCodes generate_code(ASTNode *program, FILE *out) {
         generate_function(&ctx, function);
         function = function->next;
     }
+
+    generate_builtin_library(&ctx);
     
     return RETURN_SUCCESS;
 }
