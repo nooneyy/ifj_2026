@@ -236,11 +236,14 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
  * see func impl)
  * @param stack The stack of local(scoped) Symtables - the first item is the
  * topmost scope, the last is the function scope
+ * @param out Pointer to the out DataType enum - the function sets this to the
+ * value of the statement (the type of an expression, UNIT for definitions,
+ * assignments and loops)
  * @return RETURN_SUCCESS on success, else one of the many possible semantic
  * errors or ERR_INTERNAL on memory allocation failure
  */
 static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
-                                   SymtableStack stack);
+                                   SymtableStack stack, DataType *out);
 
 /**
  * @brief Decides whether the data type is a number type
@@ -543,8 +546,9 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
     // IF - check condition (including type), then branch and else branch (if it
     // exists)
     ASTIfNodeData *if_data = &expr->data.if_node;
-
     DataType condition_out = UNKNOWN;
+    DataType then_type = UNKNOWN;
+    DataType else_type = UNKNOWN;
 
     ret = check_expr(global_sym, if_data->condition, stack, &condition_out);
 
@@ -558,15 +562,15 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
                   expr->line);
       return ERR_SEM_TYPE;
     }
-
-    ret = check_statement(global_sym, if_data->then_branch, stack);
+    ret = check_statement(global_sym, if_data->then_branch, stack, &then_type);
 
     if (ret != RETURN_SUCCESS) {
       break;
     }
 
     if (if_data->else_branch != NULL) {
-      ret = check_statement(global_sym, if_data->else_branch, stack);
+      ret =
+          check_statement(global_sym, if_data->else_branch, stack, &else_type);
     }
     break;
   }
@@ -585,12 +589,14 @@ static ReturnCodes check_expr(Symtable *global_sym, ASTNode *expr,
  * nodes
  * @param stack The stack of local(scoped) Symtables - the first item is the
  * topmost scope, the last is the function scope
+ * @param out Pointer to the out DataType enum - the function sets this to the
+ * value of the last statement in the list
  * @return RETURN_SUCCESS on success, else one of the many possible semantic
  * errors or ERR_INTERNAL on memory allocation failure
  */
 static ReturnCodes check_statement_list(Symtable *global_sym,
                                         ASTNode *statement_ll,
-                                        SymtableStack stack);
+                                        SymtableStack stack, DataType *out);
 
 /**
  * @brief Initiates a new symtable scope and calls check_statement_list() on
@@ -599,13 +605,16 @@ static ReturnCodes check_statement_list(Symtable *global_sym,
  * @param block A pointer to the block ASTNode
  * @param stack The stack of local(scoped) Symtables - the first item is the
  * topmost scope, the last is the function scope
+ * @param out Pointer to the out DataType enum - the function sets this to the
+ * value of the block (its last statement)
  * @return RETURN_SUCCESS on success, else one of the many possible semantic
  * errors or ERR_INTERNAL on memory allocation failure
  */
 static ReturnCodes check_block(Symtable *global_sym, ASTNode *block,
-                               SymtableStack stack) {
+                               SymtableStack stack, DataType *out) {
   // BLOCK - Push new scope, check statement list
 
+  *out = UNKNOWN;
   Symtable *block_sym = symtable_init();
 
   if (block_sym == NULL) {
@@ -616,8 +625,8 @@ static ReturnCodes check_block(Symtable *global_sym, ASTNode *block,
 
   ASTBlockNodeData *block_data = &block->data.block;
 
-  ReturnCodes ret =
-      check_statement_list(global_sym, block_data->statements, block_stack);
+  ReturnCodes ret = check_statement_list(global_sym, block_data->statements,
+                                         block_stack, out);
 
   symtable_free(block_sym);
   return ret;
@@ -718,13 +727,15 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
     for_data.guards = for_data.guards->next;
   }
 
+  //  Loop body value is discarded (spec 2.3 rule 2)
+  DataType body_type = UNKNOWN;
   if (for_data.body->node_type == NODE_BLOCK) {
     // Cannot use check_block because it adds another scope
     ret = check_statement_list(global_sym, for_data.body->data.block.statements,
-                               for_stack);
+                               for_stack, &body_type);
   } else {
     // One-line body without BLOCK
-    ret = check_statement(global_sym, for_data.body, for_stack);
+    ret = check_statement(global_sym, for_data.body, for_stack, &body_type);
   }
 
   symtable_free(for_sym);
@@ -732,20 +743,22 @@ static ReturnCodes check_for(Symtable *global_sym, ASTNode *for_node,
 }
 
 static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
-                                   SymtableStack stack) {
+                                   SymtableStack stack, DataType *out) {
   DataType expr_type = UNKNOWN;
   ReturnCodes ret = RETURN_SUCCESS;
+  *out = UNKNOWN;
 
   switch (statement->node_type) {
   case NODE_BLOCK: {
     // BLOCK NODE - call check_block()
-    ret = check_block(global_sym, statement, stack);
+    ret = check_block(global_sym, statement, stack, out);
     break;
   }
   case NODE_VARIABLE_DEF: {
     // VARIABLE DEF - check the expression on the right side of the assignment,
     // verify if type matches, insert variable into scope
     ASTVarDefNodeData *var_def_data = &statement->data.variable_def;
+    *out = UNIT;
     ret = check_expr(global_sym, var_def_data->expr, stack, &expr_type);
 
     if (ret != RETURN_SUCCESS) {
@@ -773,6 +786,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     // check the left side for definition within scope and mutability, then
     // check if right is assignable to left
     ASTAssignNodeData *assign_data = &statement->data.assign;
+    *out = UNIT;
     ret = check_expr(global_sym, assign_data->right, stack, &expr_type);
 
     if (ret != RETURN_SUCCESS) {
@@ -810,7 +824,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
   case NODE_WHILE: {
     // WHILE - check condition expr, check body statement
     ASTWhileNodeData *while_data = &statement->data.while_node;
-
+    *out = UNIT;
     ret = check_expr(global_sym, while_data->condition, stack, &expr_type);
 
     if (ret != RETURN_SUCCESS) {
@@ -824,16 +838,19 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
       return ERR_SEM_TYPE;
     }
 
-    ret = check_statement(global_sym, while_data->body, stack);
+    DataType body_type = UNKNOWN;
+    ret = check_statement(global_sym, while_data->body, stack, &body_type);
     break;
   }
   case NODE_FOR: {
     ret = check_for(global_sym, statement, stack);
+    *out = UNIT;
     break;
   }
   case NODE_RETURN: {
     // RETURN node - if it has a value, check its expr
     ASTReturnNodeData *return_data = &statement->data.return_node;
+    *out = UNKNOWN; // TODO
 
     if (return_data->value != NULL) {
       ret = check_expr(global_sym, return_data->value, stack, &expr_type);
@@ -845,6 +862,7 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
     // Could be an expression that is meant to be thrown away, if not, it will
     // error in check_expr anyways
     ret = check_expr(global_sym, statement, stack, &expr_type);
+    *out = expr_type;
     break;
   }
 
@@ -853,12 +871,14 @@ static ReturnCodes check_statement(Symtable *global_sym, ASTNode *statement,
 
 static ReturnCodes check_statement_list(Symtable *global_sym,
                                         ASTNode *statement_ll,
-                                        SymtableStack stack) {
+                                        SymtableStack stack, DataType *out) {
   ReturnCodes ret = RETURN_SUCCESS;
+
+  *out = UNKNOWN;
 
   while (statement_ll != NULL) {
     // Iterate through all statements, check every statement
-    ret = check_statement(global_sym, statement_ll, stack);
+    ret = check_statement(global_sym, statement_ll, stack, out);
 
     if (ret != RETURN_SUCCESS) {
       break;
@@ -901,14 +921,16 @@ static ReturnCodes check_function(Symtable *global_sym, ASTNode *function) {
     }
   }
 
+  DataType body_type = UNKNOWN;
+
   if (ret == RETURN_SUCCESS) {
     if (function_data.body->node_type == NODE_BLOCK) {
-      ret = check_statement_list(
-          global_sym, function_data.body->data.block.statements, stack);
+      ret = check_statement_list(global_sym,
+                                 function_data.body->data.block.statements,
+                                 stack, &body_type);
     } else {
       // Could be an expr or an if statement used as an expr
-      DataType return_type = UNKNOWN;
-      ret = check_expr(global_sym, function_data.body, stack, &return_type);
+      ret = check_expr(global_sym, function_data.body, stack, &body_type);
     }
   }
 
