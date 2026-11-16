@@ -1040,6 +1040,22 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
     }
   }
 
+  if (ret == RETURN_SUCCESS) {
+    FunctionSymbol *func_data = &context->current_function->data.function;
+
+    if (!func_data->return_type_defined) {
+      func_data->return_type = body_type;
+
+      if (func_data->is_main && body_type != UNIT && body_type != UNKNOWN) {
+        print_error(
+            "Semantic error: function annotated with @main has an inferred "
+            "return type other than UNIT!",
+            function->line);
+        ret = ERR_SEM_TYPE;
+      }
+    }
+  }
+
   symtable_free(stack.sym);
   return ret;
 }
