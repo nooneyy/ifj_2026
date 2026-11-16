@@ -22,6 +22,6 @@
  * @return ReturnCodes RETURN_SUCCESS or ERR_INTERNAL (99)
  */
 
-ReturnCodes generate_code(ASTProgramNodeData *program, FILE *out);
+ReturnCodes generate_code(ASTNode *program, FILE *out);
 
 #endif // CODEGEN_H
