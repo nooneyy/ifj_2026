@@ -18,6 +18,7 @@ typedef struct {
     FILE *out;
     int label_counter;
     int tmp_counter; //todo: this doesn't work with FUNEXP
+    ASTNode *program;
 } CodeGenContext;
 
 static const char *binop_instr_table[] = {
@@ -41,6 +42,8 @@ static void generate_prolog(CodeGenContext *ctx) {
     fprintf(ctx->out, ".IFJcode26\n");
     fprintf(ctx->out, "CALL @main\n");
     fprintf(ctx->out, "EXIT int@0\n\n");
+
+    return;
 }
 
 static void generate_builtin_library(CodeGenContext *ctx) {
@@ -206,6 +209,8 @@ static void generate_builtin_library(CodeGenContext *ctx) {
     fprintf(ctx->out, "PUSHS LF@res\n");
     fprintf(ctx->out, "POPFRAME\n");
     fprintf(ctx->out, "RETURN\n\n");
+
+    return;
 }
 
 static bool is_expression_node(const ASTNode *node) {
@@ -252,14 +257,27 @@ static void print_escaped_string(CodeGenContext *ctx, const char *str) {
             fputc(c, ctx->out);
         }
     }
+
+    return;
 }
-static char *new_tmp_var(CodeGenContext *ctx) {
-    char *buf = malloc(32);
-    if (buf == NULL) return NULL; //todo: add return errors
+static void new_tmp_var(CodeGenContext *ctx, char buf[32]) {
     int id = ctx->tmp_counter % MAX_TMP_VARS;
-    ctx->tmp_counter++;
     snprintf(buf, 32, "$tmp_%d", id);
-    return buf;
+    ctx->tmp_counter++;
+
+    return;
+}
+
+static ASTFunctionDefNodeData *find_function_def(ASTNode *program, const char *name) {
+    ASTNode *fn = program->data.program.functions;
+    while (fn != NULL) {
+        if (fn->node_type == NODE_FUNCTION_DEF && strcmp(fn->data.function_def.name, name) == 0) {
+            return &fn->data.function_def;
+        }
+        fn=fn->next;
+    }
+
+    return NULL;
 }
 
 static void emit_var_defs(CodeGenContext *ctx, ASTNode *node) {
@@ -286,6 +304,8 @@ static void emit_var_defs(CodeGenContext *ctx, ASTNode *node) {
         }
         node = node->next;
     }
+
+    return;
 }
 
 static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *dest_var) {
@@ -324,7 +344,9 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
             break;
 
         case NODE_UNARY_OP: {
-            char *op_tmp = new_tmp_var(ctx);
+            char op_tmp[32]; 
+            new_tmp_var(ctx, op_tmp);
+
             generate_expression(ctx, expr->data.unary_op.operand, op_tmp);
             
             if (dest_var != NULL) {
@@ -336,30 +358,25 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
                     fprintf(ctx->out, "%s LF@%s LF@%s\n", unop_instr_table[op], dest_var, op_tmp);
                 }
             }
-            free(op_tmp);
             break;
         }
 
         case NODE_BINARY_OP: {
-            char *left_tmp = new_tmp_var(ctx);
-            char *right_tmp = new_tmp_var(ctx);
+            char left_tmp[32];
+            new_tmp_var(ctx, left_tmp);
+            char right_tmp[32];
+            new_tmp_var(ctx, right_tmp);
             
             generate_expression(ctx, expr->data.binary_op.left, left_tmp);
             generate_expression(ctx, expr->data.binary_op.right, right_tmp);
 
             if (expr->data.binary_op.left->data_type != expr->data.binary_op.right->data_type) {
                     if (expr->data.binary_op.left->data_type == INT) {
-                        char *conv_tmp = new_tmp_var(ctx);
-                        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", conv_tmp, left_tmp);
-                        free(left_tmp);
-                        left_tmp = conv_tmp;
+                        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", left_tmp, left_tmp);
                     }
                 
                     if (expr->data.binary_op.right->data_type == INT) {
-                        char *conv_tmp = new_tmp_var(ctx);
-                        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", conv_tmp, right_tmp);
-                        free(right_tmp);
-                        right_tmp = conv_tmp;
+                        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", right_tmp, right_tmp);
                     }
             }
 
@@ -397,19 +414,25 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
                 }
             }
 
-            free(left_tmp);
-            free(right_tmp);
             break;
         }
 
         case NODE_FUNCTION_CALL: {
+            ASTFunctionDefNodeData *callee = find_function_def(ctx->program, expr->data.function_call.name);
             ASTNode *arg = expr->data.function_call.args;
+            size_t arg_idx = 0;
+
             while (arg != NULL) {
-                char *arg_tmp = new_tmp_var(ctx);
+                char arg_tmp[32];
+                new_tmp_var(ctx, arg_tmp);
+                
                 generate_expression(ctx, arg, arg_tmp);
+                if (callee != NULL && arg_idx < callee->param_count && callee->params[arg_idx].data_type == DOUBLE && arg->data_type == INT) {
+                    fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", arg_tmp, arg_tmp);
+                }
                 fprintf(ctx->out, "PUSHS LF@%s\n", arg_tmp);
-                free(arg_tmp);
                 arg = arg->next;
+                arg_idx++;
             }
 
             const char *name = expr->data.function_call.name;
@@ -424,9 +447,10 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
             if (dest_var != NULL) {
                 fprintf(ctx->out, "POPS LF@%s\n", dest_var);
             } else {
-                char *dummy = new_tmp_var(ctx);
+                char dummy[32];
+                new_tmp_var(ctx, dummy);
+
                 fprintf(ctx->out, "POPS LF@%s\n", dummy);
-                free(dummy);
             }
             break;
         }
@@ -435,6 +459,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
             break;
         
     }
+    return;
 }
 
 static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr, DataType expected_ret_type) {
@@ -446,7 +471,9 @@ static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr, DataType expect
         return;
     }
 
-    char *ret_tmp = new_tmp_var(ctx);
+    char ret_tmp[32];
+    new_tmp_var(ctx, ret_tmp);
+
     generate_expression(ctx, expr, ret_tmp);
 
     if (expected_ret_type == DOUBLE && expr->data_type == INT) {
@@ -454,7 +481,8 @@ static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr, DataType expect
     }
 
     fprintf(ctx->out, "PUSHS LF@%s\n", ret_tmp);
-    free(ret_tmp);
+
+    return;
 }
 
 static void generate_statement(CodeGenContext *ctx, ASTNode *statement, DataType func_ret_type) {
@@ -462,10 +490,15 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement, DataType
     ctx->tmp_counter = 0;
 
     switch (statement->node_type) {
-        case NODE_VARIABLE_DEF:
+        case NODE_VARIABLE_DEF: {
+            ASTVarDefNodeData *def = &statement->data.variable_def;
             generate_expression(ctx, statement->data.variable_def.expr, statement->data.variable_def.name);
+            if (def->specified_type == DOUBLE && def->expr != NULL && def->expr->data_type == INT) {
+                fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", def->name, def->name);
+            }
             break;
-        
+        }
+
         case NODE_ASSIGN:
             generate_expression(ctx, statement->data.assign.right, statement->data.assign.left);
             break;
@@ -509,7 +542,8 @@ C
         }
 Alternatively, place an empty statement (;) right after case NODE_BLOCK:, though adding {} is cleaner and prevents variable scope bleed across cases.
 
-Note: wow I'm stupid, this was staring me in the face
+Note:   wow I'm stupid, this was staring me in the face
+        code has been edited a lot more after prompt
 */
 
 
@@ -529,12 +563,12 @@ Note: wow I'm stupid, this was staring me in the face
 
         case NODE_IF: {
             int id = ctx->label_counter++;
-            char *cond_tmp = new_tmp_var(ctx);
+            char cond_tmp[32];
+            new_tmp_var(ctx, cond_tmp);
 
             generate_expression(ctx, statement->data.if_node.condition, cond_tmp);
 
             fprintf(ctx->out, "JUMPIFEQ $else_%d LF@%s bool@false\n", id, cond_tmp);
-            free(cond_tmp);
 
             generate_statement(ctx, statement->data.if_node.then_branch, func_ret_type);
             fprintf(ctx->out, "JUMP $if_end_%d\n", id);
@@ -550,14 +584,14 @@ Note: wow I'm stupid, this was staring me in the face
 
         case NODE_WHILE: {
             int id = ctx->label_counter++;
-            char *cond_tmp = new_tmp_var(ctx);
+            char cond_tmp[32];
+            new_tmp_var(ctx, cond_tmp);
 
             fprintf(ctx->out, "LABEL $while_start_%d\n", id);
 
             generate_expression(ctx, statement->data.while_node.condition, cond_tmp);
 
             fprintf(ctx->out, "JUMPIFEQ $while_end_%d LF@%s bool@false\n", id, cond_tmp);
-            free(cond_tmp);
 
             generate_statement(ctx, statement->data.while_node.body, func_ret_type);
             fprintf(ctx->out, "JUMP $while_start_%d\n", id);
@@ -569,6 +603,8 @@ Note: wow I'm stupid, this was staring me in the face
         default:
             break;
     }
+
+    return;
 }
 
 static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
@@ -625,6 +661,8 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
 
     fprintf(ctx->out, "POPFRAME\n");
     fprintf(ctx->out, "RETURN\n\n");
+
+    return;
 }
 
 ReturnCodes generate_code(ASTNode *program, FILE *out) {
@@ -636,6 +674,7 @@ ReturnCodes generate_code(ASTNode *program, FILE *out) {
         .out = out,
         .label_counter = 0,
         .tmp_counter = 0,
+        .program = program,
     };
 
     generate_prolog(&ctx);
