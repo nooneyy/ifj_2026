@@ -82,7 +82,12 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "PUSHFRAME\n");
   fprintf(ctx->out, "DEFVAR LF@val\n");
   fprintf(ctx->out, "POPS LF@val\n");
+  fprintf(ctx->out, "JUMPIFEQ $input_is_nil LF@val nil@nil\n");
   fprintf(ctx->out, "WRITE LF@val\n");
+  fprintf(ctx->out, "JUMP $print_jump_end\n");
+  fprintf(ctx->out, "LABEL $input_is_nil\n");
+  fprintf(ctx->out, "WRITE string@()\n");
+  fprintf(ctx->out, "LABEL $print_jump_end\n");
   fprintf(ctx->out, "PUSHS nil@nil\n");
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
