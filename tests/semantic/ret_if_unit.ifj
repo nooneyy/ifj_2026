@@ -1,0 +1,36 @@
+/**
+ * @file ret_if_unit.ifj
+ * @brief Unit functions ending with if
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// explicit Unit, or no type with all branches Unit (spec 2.3 rule 3) -> 0
+import ifj26.*
+
+def show(n: Int): Unit =
+  if n < 0 then
+    print("neg")
+
+def show2(n: Int) =
+  if n < 0 then
+    print("neg")
+  else
+    print("pos")
+
+@main def main(): Unit =
+  show(1)
+  val u: Unit = show2(1)
+  print(u)

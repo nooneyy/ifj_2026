@@ -1,0 +1,30 @@
+/**
+ * @file func_main_between.ifj
+ * @brief Main function between other functions
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 13.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok you can start!"
+ * (context: semantic analysis tests from the agreed list, derived from
+ * the IFJ26 spec as a black box, first the function table and @main checks)
+ */
+// @main doesn't have to be the first or the last function -> 0
+import ifj26.*
+
+def one(): Int = 1
+
+@main def main(): Unit =
+  val a = one()
+  val b = two()
+  print(a)
+  print(b)
+
+def two(): Int = 2

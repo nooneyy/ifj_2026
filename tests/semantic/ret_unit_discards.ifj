@@ -1,0 +1,32 @@
+/**
+ * @file ret_unit_discards.ifj
+ * @brief Explicit Unit discards the result
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// with explicit Unit the value is thrown away, even with return (spec 2.3 rule 4) -> 0
+import ifj26.*
+
+def body_value(): Unit = 5
+
+def return_value(): Unit =
+  return 5
+
+@main def main(): Unit =
+  val u: Unit = body_value()
+  val v: Unit = return_value()
+  print(u)
+  print(v)

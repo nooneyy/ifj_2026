@@ -52,11 +52,12 @@ typedef struct {
 Symtable *symtable_init(void);
 
 /**
-    @brief Function that inserts (or possibly replaces) a Symbol
+    @brief Function that inserts a Symbol
     @param symtable A pointer to the Symtable struct
     @param symbol A pointer to an already instantiated Symbol
-    @return RETURN_SUCCESS if the insertion was successful, otherwise
-   ERR_INTERNAL if the symtable could not be enlarged
+    @return RETURN_SUCCESS if the insertion was successful, ERR_SEM_RED if key
+   already is in symtable, otherwise ERR_INTERNAL if the symtable could not be
+   enlarged, the symbol-to-insert is freed in both cases
  */
 ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol);
 

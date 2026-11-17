@@ -1,0 +1,22 @@
+/**
+ * @file func_main_inferred_unit.ifj
+ * @brief Main function without a written return type
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 13.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok you can start!"
+ * (context: semantic analysis tests from the agreed list, derived from
+ * the IFJ26 spec as a black box, first the function table and @main checks)
+ */
+// the result of main must be Unit, print returns Unit (spec 2, 4) -> 0
+import ifj26.*
+
+@main def main() = print(1)

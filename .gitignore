@@ -5,3 +5,4 @@ vgcore.*
 scanner_main
 .cache
 parser_main
+semantic_main

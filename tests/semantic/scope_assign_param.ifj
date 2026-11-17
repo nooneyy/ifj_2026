@@ -1,0 +1,28 @@
+/**
+ * @file scope_assign_param.ifj
+ * @brief Assignment to a parameter
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// params are immutable local variables (spec 2.3) -> 7
+import ifj26.*
+
+def f(n: Int): Int =
+  n = n + 1
+  n
+
+@main def main(): Unit =
+  print(f(1))

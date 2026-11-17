@@ -12,14 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO: Auto-registering of builtins and other custom ops
-
 #define INITIAL_S_TABLE_CAPACITY 16 // The initial capacity of the symtable
 
 Symtable *symtable_init(void) {
   Symtable *s_table = malloc(sizeof(Symtable));
 
   if (s_table == NULL) {
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -27,6 +26,7 @@ Symtable *symtable_init(void) {
   s_table->items = calloc(INITIAL_S_TABLE_CAPACITY, sizeof(STItem));
 
   if (s_table->items == NULL) {
+    print_error("Allocation failed!", 0);
     free(s_table);
     return NULL;
   }
@@ -82,6 +82,7 @@ static ReturnCodes symtable_enlarge(Symtable *symtable) {
   STItem *tmp_array = calloc(new_capacity, sizeof(STItem));
 
   if (tmp_array == NULL) {
+    print_error("Reallocation failed!", 0);
     return ERR_INTERNAL;
   }
 
@@ -166,13 +167,9 @@ ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol) {
   if (possible_match) {
     // Another item already has the same key
     if (possible_match->symbol != symbol) {
-      // The symbol pointers are different => replace the old Symbol with the
-      // new Symbol
-      free_symbol(possible_match->symbol);
-      possible_match->symbol = symbol;
+      free_symbol(symbol);
     }
-    // Do nothing if the pointers are the same
-    return RETURN_SUCCESS;
+    return ERR_SEM_RED;
   }
 
   if (symtable->size * 4 >= symtable->capacity * 3) {
@@ -180,6 +177,7 @@ ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol) {
     ReturnCodes enlarge_result = symtable_enlarge(symtable);
 
     if (enlarge_result != RETURN_SUCCESS) {
+      free_symbol(symbol);
       return enlarge_result;
     }
   }
@@ -228,5 +226,7 @@ ReturnCodes symtable_insert(Symtable *symtable, Symbol *symbol) {
 
   // There was no slot to insert into, which should be impossible because we
   // enlarge the symtable when it is 75% full
+  print_error("No symtable item to insert into even after enlarging!", 0);
+  free_symbol(symbol);
   return ERR_INTERNAL;
 }

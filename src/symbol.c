@@ -21,6 +21,7 @@ static char *copy_string(char *src) {
   char *dest = malloc((strlen(src) + 1) * sizeof(char));
 
   if (!dest) {
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -34,6 +35,7 @@ Symbol *init_variable_symbol(char *name, DataType data_type,
   Symbol *new_sym = malloc(sizeof(Symbol));
 
   if (!new_sym) {
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -58,6 +60,7 @@ Symbol *init_function_symbol(char *name, DataType return_type,
   Symbol *new_sym = malloc(sizeof(Symbol));
 
   if (!new_sym) {
+    print_error("Allocation failed!", 0);
     return NULL;
   }
 
@@ -85,6 +88,7 @@ Symbol *init_function_symbol(char *name, DataType return_type,
 ReturnCodes add_function_param(Symbol *function_sym, char *param_name,
                                DataType param_data_type) {
   if (function_sym->type != FUNCTION) {
+    print_error("Got wrong symbol type - expected FUNCTION!", 0);
     return ERR_INTERNAL;
   }
 
@@ -101,6 +105,7 @@ ReturnCodes add_function_param(Symbol *function_sym, char *param_name,
       realloc(data->params, sizeof(FunctionParam) * (data->param_count + 1));
 
   if (!temp_ptr) {
+    print_error("Reallocation failed!", 0);
     free(copied_param_name);
     return ERR_INTERNAL;
   }

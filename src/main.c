@@ -10,6 +10,7 @@
 #include "parser.h"
 #include "return.h"
 #include "scanner.h"
+#include "semantic.h"
 #include <stdlib.h>
 
 int main(void) {
@@ -18,6 +19,12 @@ int main(void) {
 
   ReturnCodes rc = parse_input(&sc, &program);
   if (rc != RETURN_SUCCESS) {
+    return rc;
+  }
+
+  rc = semantic_analysis(program);
+  if (rc != RETURN_SUCCESS) {
+    ast_free(program);
     return rc;
   }
 

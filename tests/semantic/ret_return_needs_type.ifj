@@ -1,0 +1,27 @@
+/**
+ * @file ret_return_needs_type.ifj
+ * @brief return without a written return type
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 14.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, make the rest of the semantic analysis tests please"
+ * (context: the remaining semantic test batches - scopes, expressions and
+ * calls, control flow, return types - derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// a return anywhere requires an explicit type (spec 2.3) -> 6
+import ifj26.*
+
+def f() =
+  return 1
+
+@main def main(): Unit =
+  print(f())

@@ -1,0 +1,24 @@
+/**
+ * @file func_main_own_line.ifj
+ * @brief @main on its own line
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 13.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok you can start!"
+ * (context: semantic analysis tests from the agreed list, derived from
+ * the IFJ26 spec as a black box, first the function table and @main checks)
+ */
+// the annotation can be on its own line (spec 2) -> 0
+import ifj26.*
+
+@main
+def main(): Unit =
+  print(1)
