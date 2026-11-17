@@ -161,7 +161,7 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
 
-  fprintf(ctx->out, "LABEL $ifj_substr\n");
+  fprintf(ctx->out, "LABEL $ifj_subStr\n");
   fprintf(ctx->out, "CREATEFRAME\n");
   fprintf(ctx->out, "PUSHFRAME\n");
   fprintf(ctx->out, "DEFVAR LF@j\n");
@@ -174,30 +174,30 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "STRLEN LF@len LF@s\n");
   fprintf(ctx->out, "DEFVAR LF@cond\n");
   fprintf(ctx->out, "LT LF@cond LF@i int@0\n");
-  fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+  fprintf(ctx->out, "JUMPIFEQ $subStr_err LF@cond bool@true\n");
   fprintf(ctx->out, "LT LF@cond LF@j int@0\n");
-  fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+  fprintf(ctx->out, "JUMPIFEQ $subStr_err LF@cond bool@true\n");
   fprintf(ctx->out, "GT LF@cond LF@i LF@j\n");
-  fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+  fprintf(ctx->out, "JUMPIFEQ $subStr_err LF@cond bool@true\n");
   fprintf(ctx->out, "LT LF@cond LF@i LF@len\n");
-  fprintf(ctx->out, "JUMPIFNEQ $substr_err LF@cond bool@true\n");
+  fprintf(ctx->out, "JUMPIFNEQ $subStr_err LF@cond bool@true\n");
   fprintf(ctx->out, "GT LF@cond LF@j LF@len\n");
-  fprintf(ctx->out, "JUMPIFEQ $substr_err LF@cond bool@true\n");
+  fprintf(ctx->out, "JUMPIFEQ $subStr_err LF@cond bool@true\n");
   fprintf(ctx->out, "DEFVAR LF@res\n");
   fprintf(ctx->out, "MOVE LF@res string@\n");
   fprintf(ctx->out, "DEFVAR LF@k\n");
   fprintf(ctx->out, "MOVE LF@k LF@i\n");
   fprintf(ctx->out, "DEFVAR LF@char\n");
-  fprintf(ctx->out, "LABEL $substr_loop\n");
+  fprintf(ctx->out, "LABEL $subStr_loop\n");
   fprintf(ctx->out, "EQ LF@cond LF@k LF@j\n");
-  fprintf(ctx->out, "JUMPIFEQ $substr_done LF@cond bool@true\n");
+  fprintf(ctx->out, "JUMPIFEQ $subStr_done LF@cond bool@true\n");
   fprintf(ctx->out, "GETCHAR LF@char LF@s LF@k\n");
   fprintf(ctx->out, "CONCAT LF@res LF@res LF@char\n");
   fprintf(ctx->out, "ADD LF@k LF@k int@1\n");
-  fprintf(ctx->out, "JUMP $substr_loop\n");
-  fprintf(ctx->out, "LABEL $substr_err\n");
+  fprintf(ctx->out, "JUMP $subStr_loop\n");
+  fprintf(ctx->out, "LABEL $subStr_err\n");
   fprintf(ctx->out, "EXIT int@40\n");
-  fprintf(ctx->out, "LABEL $substr_done\n");
+  fprintf(ctx->out, "LABEL $subStr_done\n");
   fprintf(ctx->out, "PUSHS LF@res\n");
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
@@ -262,7 +262,7 @@ static bool is_expression_node(const ASTNode *node) {
 static bool is_builtin_func(const char *name) {
   static const char *builtins[] = {
       "print",     "readLine", "readInt", "readDouble", "toStr", "toInt",
-      "strLength", "substr",   "ord",     "chr",        NULL,
+      "strLength", "subStr",   "ord",     "chr",        NULL,
   };
 
   for (int i = 0; builtins[i] != NULL; i++) {
