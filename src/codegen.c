@@ -12,13 +12,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_TMP_VARS 64
+typedef struct {
+    const char *name;
+    DataType type;
+    int uid;
+    int scope_depth;
+} LocalVarEntry;
 
 typedef struct {
     FILE *out;
     int label_counter;
-    int tmp_counter; //todo: this doesn't work with FUNEXP
+    int tmp_counter;
     ASTNode *program;
+    LocalVarEntry *vars;
+    size_t var_count;
+    size_t var_cap;
+    int scope_depth;
+    int next_var_uid;
+    bool has_error;
 } CodeGenContext;
 
 static const char *binop_instr_table[] = {
@@ -222,11 +233,9 @@ static bool is_expression_node(const ASTNode *node) {
         case NODE_BINARY_OP:
         case NODE_FUNCTION_CALL:
             return true;
-            break;
         case NODE_IF:
         case NODE_WHILE:
             return false;
-            break;
         default:
             return false;
     }
@@ -260,12 +269,100 @@ static void print_escaped_string(CodeGenContext *ctx, const char *str) {
 
     return;
 }
+
 static void new_tmp_var(CodeGenContext *ctx, char buf[32]) {
-    int id = ctx->tmp_counter % MAX_TMP_VARS;
+    int id = ctx->tmp_counter++;
     snprintf(buf, 32, "$tmp_%d", id);
-    ctx->tmp_counter++;
 
     return;
+}
+
+static void scope_enter(CodeGenContext *ctx) {
+    ctx->scope_depth++;
+}
+
+static void scope_leave(CodeGenContext *ctx) {
+    if (ctx->scope_depth > 0) {
+        ctx->scope_depth--;
+    }
+    while (ctx->var_count > 0 && ctx->vars[ctx->var_count - 1].scope_depth > ctx->scope_depth) {
+        ctx->var_count--;
+    }
+}
+
+static int scope_push_var(CodeGenContext *ctx, const char *name, DataType type) {
+    if (ctx->var_count >= ctx->var_cap) {
+        size_t new_cap = (ctx->var_cap == 0) ? 16 : ctx->var_cap * 2;
+        LocalVarEntry *tmp = realloc(ctx->vars, new_cap * sizeof(LocalVarEntry));
+        if (tmp == NULL) {
+            ctx->has_error = true;
+            return -1;
+        }
+        ctx->vars = tmp;
+        ctx->var_cap = new_cap;
+    }
+    
+    int uid = ctx->next_var_uid++;
+    ctx->vars[ctx->var_count++] = (LocalVarEntry){
+        .name = name,
+        .type = type,
+        .uid = uid,
+        .scope_depth = ctx->scope_depth,
+    };
+    return uid;
+}
+
+static int count_ast_nodes(ASTNode *node) {
+    int count = 0;
+    while (node != NULL) {
+        count += 2;
+        switch (node->node_type) {
+            case NODE_VARIABLE_DEF:
+                count += count_ast_nodes(node->data.variable_def.expr);
+                break;
+            case NODE_ASSIGN:
+                count += count_ast_nodes(node->data.assign.right);
+                break;
+            case NODE_UNARY_OP:
+                count += count_ast_nodes(node->data.unary_op.operand);
+                break;
+            case NODE_BINARY_OP:
+                count += count_ast_nodes(node->data.binary_op.left);
+                count += count_ast_nodes(node->data.binary_op.right);
+                break;
+            case NODE_FUNCTION_CALL:
+                count += count_ast_nodes(node->data.function_call.args);
+                break;
+            case NODE_RETURN:
+                count += count_ast_nodes(node->data.return_node.value);
+                break;
+            case NODE_BLOCK:
+                count += count_ast_nodes(node->data.block.statements);
+                break;
+            case NODE_IF:
+                count += count_ast_nodes(node->data.if_node.condition);
+                count += count_ast_nodes(node->data.if_node.then_branch);
+                count += count_ast_nodes(node->data.if_node.else_branch);
+                break;
+            case NODE_WHILE:
+                count += count_ast_nodes(node->data.while_node.condition);
+                count += count_ast_nodes(node->data.while_node.body);
+                break;
+            default:
+                break;
+        }
+        node = node->next;
+    }
+    return count;
+}
+
+static const LocalVarEntry *scope_lookup(const CodeGenContext *ctx, const char *name) {
+    for (size_t i = ctx->var_count; i > 0; i--) {
+        if (strcmp(ctx->vars[i - 1].name, name) == 0) {
+            return &ctx->vars[i - 1];
+        }
+    }
+    return NULL;
 }
 
 static ASTFunctionDefNodeData *find_function_def(ASTNode *program, const char *name) {
@@ -280,32 +377,30 @@ static ASTFunctionDefNodeData *find_function_def(ASTNode *program, const char *n
     return NULL;
 }
 
-static void emit_var_defs(CodeGenContext *ctx, ASTNode *node) {
+static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node, int *uid_counter) {
     while (node != NULL) {
         switch (node->node_type) {
             case NODE_VARIABLE_DEF:
-                fprintf(ctx->out, "DEFVAR LF@%s\n", node->data.variable_def.name);
+                fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.variable_def.name, (*uid_counter)++);
                 if (node->data.variable_def.expr != NULL) {
-                    emit_var_defs(ctx, node->data.variable_def.expr);
+                    emit_var_defs_walk(ctx, node->data.variable_def.expr, uid_counter);
                 }
                 break;
             case NODE_BLOCK:
-                emit_var_defs(ctx, node->data.block.statements);
+                emit_var_defs_walk(ctx, node->data.block.statements, uid_counter);
                 break;
             case NODE_IF:
-                emit_var_defs(ctx, node->data.if_node.then_branch);
-                emit_var_defs(ctx, node->data.if_node.else_branch);
+                emit_var_defs_walk(ctx, node->data.if_node.then_branch, uid_counter);
+                emit_var_defs_walk(ctx, node->data.if_node.else_branch, uid_counter);
                 break;
             case NODE_WHILE:
-                emit_var_defs(ctx, node->data.while_node.body);
+                emit_var_defs_walk(ctx, node->data.while_node.body, uid_counter);
                 break;
             default:
                 break;
         }
         node = node->next;
     }
-
-    return;
 }
 
 static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *dest_var) {
@@ -339,7 +434,10 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr, const char *
 
         case NODE_VARIABLE_REF:
             if (dest_var != NULL) {
-                fprintf(ctx->out, "MOVE LF@%s LF@%s\n", dest_var, expr->data.variable_ref.name);
+                const LocalVarEntry *entry = scope_lookup(ctx, expr->data.variable_ref.name);
+                if (entry != NULL) {
+                    fprintf(ctx->out, "MOVE LF@%s LF@%s$%d\n", dest_var, entry->name, entry->uid);
+                }
             }
             break;
 
@@ -487,28 +585,44 @@ static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr, DataType expect
 
 static void generate_statement(CodeGenContext *ctx, ASTNode *statement, DataType func_ret_type) {
     if (statement == NULL) return;
-    ctx->tmp_counter = 0;
 
     switch (statement->node_type) {
         case NODE_VARIABLE_DEF: {
             ASTVarDefNodeData *def = &statement->data.variable_def;
-            generate_expression(ctx, statement->data.variable_def.expr, statement->data.variable_def.name);
-            if (def->specified_type == DOUBLE && def->expr != NULL && def->expr->data_type == INT) {
-                fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", def->name, def->name);
+            DataType var_type = (def->specified_type != UNKNOWN) ? def->specified_type : (def->expr != NULL ? def->expr->data_type : UNKNOWN);
+            char ir_name[128];
+            snprintf(ir_name, sizeof(ir_name), "%s$%d", def->name, ctx->next_var_uid);
+
+            generate_expression(ctx, def->expr, ir_name);
+            if (var_type == DOUBLE && def->expr != NULL && def->expr->data_type == INT) {
+                fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ir_name, ir_name);
+            }
+            scope_push_var(ctx, def->name, var_type);
+            break;
+        }
+
+        case NODE_ASSIGN: {
+            ASTAssignNodeData *assign = &statement->data.assign;
+            const LocalVarEntry *entry = scope_lookup(ctx, assign->left);
+            if (entry != NULL) {
+                char ir_name[128];
+                snprintf(ir_name, sizeof(ir_name), "%s$%d", entry->name, entry->uid);
+                generate_expression(ctx, assign->right, ir_name);
+                if (entry->type == DOUBLE && assign->right != NULL && assign->right->data_type == INT) {
+                    fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ir_name, ir_name);
+                }
             }
             break;
         }
 
-        case NODE_ASSIGN:
-            generate_expression(ctx, statement->data.assign.right, statement->data.assign.left);
-            break;
-
         case NODE_BLOCK: {
+            scope_enter(ctx);
             ASTNode *s = statement->data.block.statements;
             while (s != NULL) {
                 generate_statement(ctx, s, func_ret_type);
                 s = s->next;
             }
+            scope_leave(ctx);
             break;
 
 
@@ -623,21 +737,43 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
     fprintf(ctx->out, "CREATEFRAME\n");
     fprintf(ctx->out, "PUSHFRAME\n");
     
+    ctx->tmp_counter = 0;
+    ctx->var_count = 0;
+    ctx->scope_depth = 0;
+    ctx->next_var_uid = 0;
 
     if (fn->param_count > 0) {
+        int *param_uids = malloc(fn->param_count * sizeof(int));
+        if (param_uids == NULL) {
+            ctx->has_error = true;
+            return;
+        }
+
+        for (size_t i = 0; i < fn->param_count; i++) {
+            param_uids[i] = scope_push_var(ctx, fn->params[i].name, fn->params[i].data_type);
+            if (ctx->has_error) {
+                free(param_uids);
+                return;
+            }
+        }
+
         for (size_t i = fn->param_count; i > 0; i--) {
             size_t idx = i - 1;
-            fprintf(ctx->out, "DEFVAR LF@%s\n", fn->params[idx].name);
-            fprintf(ctx->out, "POPS LF@%s\n", fn->params[idx].name);
+            fprintf(ctx->out, "DEFVAR LF@%s$%d\n", fn->params[idx].name, param_uids[idx]);
+            fprintf(ctx->out, "POPS LF@%s$%d\n", fn->params[idx].name, param_uids[idx]);
         }
+        free(param_uids);
     }
 
-    for (int i = 0; i < MAX_TMP_VARS; i++) {
+    int max_tmps = count_ast_nodes(fn->body) + 4;
+    for (int i = 0; i < max_tmps; i++) {
         fprintf(ctx->out, "DEFVAR LF@$tmp_%d\n", i);
     }
 
+    int def_uid = ctx->next_var_uid;
+    emit_var_defs_walk(ctx, fn->body, &def_uid);
+
     if (fn->body != NULL) {
-        emit_var_defs(ctx, fn->body);
 
         if (fn->body->node_type != NODE_BLOCK) {
             emit_return_expr(ctx, fn->body, fn->return_type);
@@ -687,5 +823,6 @@ ReturnCodes generate_code(ASTNode *program, FILE *out) {
 
     generate_builtin_library(&ctx);
     
-    return RETURN_SUCCESS;
+    free(ctx.vars);
+    return ctx.has_error ? ERR_INTERNAL : RETURN_SUCCESS;
 }
