@@ -12,6 +12,7 @@
 #include "symtable.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 // The max amount of params a builtin function has
 #define MAX_BUILTIN_PARAM_COUNT 3
@@ -101,6 +102,8 @@ typedef struct SymtableStack {
 typedef struct {
   Symtable *global_sym;     // global symtable (functions incl. builtins)
   Symbol *current_function; // the function whose body is being checked
+  ASTNode
+      *program; // root of the AST, used to find function definitions by name
 } SemanticContext;
 
 /**
@@ -254,6 +257,17 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
  */
 static ReturnCodes check_statement(SemanticContext *context, ASTNode *statement,
                                    SymtableStack stack, DataType *out);
+
+/**
+ * @brief Checks a single program function for semantic errors (initiates a
+ * scope with its params, then checks every statement inside the function)
+ * @param context Pointer to the semantic context (global symtable, current
+ * function)
+ * @param function A pointer to the function ASTNode struct
+ * @return RETURN_SUCCESS on success, or one of the semantic errors or
+ * ERR_INTERNAL on memory allocation failure
+ */
+static ReturnCodes check_function(SemanticContext *context, ASTNode *function);
 
 /**
  * @brief Decides whether the data type is a number type
@@ -449,6 +463,25 @@ static bool unify_types(DataType then_type, DataType else_type, DataType *out) {
 }
 
 /**
+ * @brief Searches for ASTNode by given name
+ * @param program A pointer to the root node of the AST (the program node)
+ * @param name Name of function we want to find
+ * @return ASTNode of the searched function, or NULL if couldn't be found
+ */
+static ASTNode *find_function_def(ASTNode *program, const char *name) {
+  ASTNode *function = program->data.program.functions;
+
+  while (function != NULL) {
+    if (strcmp(function->data.function_def.name, name) == 0) {
+      return function;
+    }
+    function = function->next;
+  }
+
+  return NULL;
+}
+
+/**
  * @brief Checks an expression ASTNode for semantic errors
  * @param context Pointer to the semantic context (global symtable, current
  * function)
@@ -543,6 +576,31 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
     if (fun_sym == NULL) {
       print_error("Semantic error: calling undefined function", expr->line);
       return ERR_SEM_UNDEF;
+    }
+
+    if (!fun_sym->data.function.is_builtin) {
+      if (fun_sym->data.function.state == UNCHECKED) {
+        ASTNode *fun_node =
+            find_function_def(context->program, fun_call_data.name);
+        if (fun_node == NULL) {
+          print_error(
+              "Internal error: definition of called function not found!", 0);
+          return ERR_INTERNAL;
+        }
+
+        ret = check_function(context, fun_node);
+
+        if (ret != RETURN_SUCCESS) {
+          return ret;
+        }
+      } else if (fun_sym->data.function.state == IN_PROGRESS) {
+        if (!fun_sym->data.function.return_type_defined) {
+          print_error("Semantic error: recursive call of a function without "
+                      "and explicit return type",
+                      expr->line);
+          return ERR_SEM_TYPE;
+        }
+      }
     }
 
     *out = fun_sym->data.function.return_type;
@@ -980,15 +1038,6 @@ static ReturnCodes check_statement_list(SemanticContext *context,
   return ret;
 }
 
-/**
- * @brief Checks a single program function for semantic errors (initiates a
- * scope with its params, then checks every statement inside the function)
- * @param context Pointer to the semantic context (global symtable, current
- * function)
- * @param function A pointer to the function ASTNode struct
- * @return RETURN_SUCCESS on success, or one of the semantic errors or
- * ERR_INTERNAL on memory allocation failure
- */
 static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
   ReturnCodes ret = RETURN_SUCCESS;
   Symtable *function_symtable = symtable_init();
@@ -1001,8 +1050,12 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
 
   ASTFunctionDefNodeData function_data = function->data.function_def;
 
+  Symbol *previous_function = context->current_function;
+
   context->current_function =
       symtable_get(context->global_sym, function_data.name);
+
+  context->current_function->data.function.state = IN_PROGRESS;
 
   for (size_t param_idx = 0; param_idx < function_data.param_count;
        param_idx++) {
@@ -1056,6 +1109,8 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
     }
   }
 
+  context->current_function->data.function.state = CHECKED;
+  context->current_function = previous_function;
   symtable_free(stack.sym);
   return ret;
 }
@@ -1073,10 +1128,14 @@ static ReturnCodes semantic_body_pass(Symtable *global_sym, ASTNode *program) {
   SemanticContext context = {.global_sym = global_sym,
                              .current_function = NULL};
   ASTNode *function = program->data.program.functions;
+  context.program = program;
 
   while (function != NULL) {
-    ret = check_function(&context, function);
-
+    Symbol *function_sym =
+        symtable_get(global_sym, function->data.function_def.name);
+    if (function_sym->data.function.state == UNCHECKED) {
+      ret = check_function(&context, function);
+    }
     if (ret != RETURN_SUCCESS) {
       break;
     }

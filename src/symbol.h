@@ -39,6 +39,12 @@ typedef enum {
 typedef enum { VAL, VAR, FUNC_PARAM } VariableType;
 
 /**
+ * @brief Enum describing the state of a function's body check in the semantic
+ * analysis
+ */
+typedef enum { UNCHECKED, IN_PROGRESS, CHECKED } FunctionState;
+
+/**
  * @brief Struct containing data related to the Variable symbol
  */
 typedef struct {
@@ -65,6 +71,7 @@ typedef struct {
   bool is_builtin;          // True if function is builtin
   size_t param_count;
   FunctionParam *params;
+  FunctionState state; // Body check state (semantic body pass)
 } FunctionSymbol;
 
 /**
