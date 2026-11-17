@@ -1068,9 +1068,10 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
 
   ASTFunctionDefNodeData function_data = function->data.function_def;
 
-  CallStack frame = {.function =
-                         symtable_get(context->global_sym, function_data.name),
-                     .caller = context->top};
+  CallStack frame = {
+      .function = symtable_get(context->global_sym, function_data.name),
+      .caller = context->top,
+  };
 
   context->top = &frame;
 
@@ -1100,16 +1101,13 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
     }
   }
 
-  if (ret == RETURN_SUCCESS) {
-    if (function_data.return_type != UNKNOWN &&
-        function_data.return_type != UNIT) {
-      if (!is_assignable(body_type, function_data.return_type)) {
-        print_error("Semantic error: function body value doesn't match the "
-                    "function's return type!",
-                    function->line);
-        ret = ERR_SEM_TYPE;
-      }
-    }
+  if (ret == RETURN_SUCCESS && function_data.return_type != UNKNOWN &&
+      function_data.return_type != UNIT &&
+      !is_assignable(body_type, function_data.return_type)) {
+    print_error("Semantic error: function body value doesn't match the "
+                "function's return type!",
+                function->line);
+    ret = ERR_SEM_TYPE;
   }
 
   if (ret == RETURN_SUCCESS) {
@@ -1135,8 +1133,8 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
 }
 
 /**
- * @brief Performs the second semantic analysis pass - checks all functions for
- * semantic errors and fills all the ASTNodes with relevant information
+ * @brief Performs the second semantic analysis pass - checks all functions
+ * for semantic errors and fills all the ASTNodes with relevant information
  * @param global_sym A pointer to the global Symtable struct
  * @param program A pointer to the root node of the AST (the program node)
  * @return RETURN_SUCCESS on success, or one of the semantic errors or
