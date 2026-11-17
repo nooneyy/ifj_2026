@@ -144,6 +144,7 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "EQ LF@cond LF@type string@float\n");
   fprintf(ctx->out, "JUMPIFEQ $toStr_float LF@cond bool@true\n");
   fprintf(ctx->out, "JUMPIFEQ $ifj_toStr_unit LF@type string@nil\n");
+  fprintf(ctx->out, "JUMPIFEQ $ifj_toStr_bool LF@type string@bool\n");
   fprintf(ctx->out, "MOVE LF@res LF@val\n");
   fprintf(ctx->out, "JUMP $toStr_end\n");
   fprintf(ctx->out, "LABEL $toStr_int\n");
@@ -154,6 +155,11 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "JUMP $toStr_end\n");
   fprintf(ctx->out, "LABEL $ifj_toStr_unit\n");
   fprintf(ctx->out, "MOVE LF@res string@()\n");
+  fprintf(ctx->out, "JUMP $toStr_end\n");
+  fprintf(ctx->out, "LABEL $ifj_toStr_bool\n");
+  fprintf(ctx->out, "MOVE LF@res string@true\n");
+  fprintf(ctx->out, "JUMPIFEQ $toStr_end LF@val bool@true\n");
+  fprintf(ctx->out, "MOVE LF@res string@false\n");
   fprintf(ctx->out, "LABEL $toStr_end\n");
   fprintf(ctx->out, "PUSHS LF@res\n");
   fprintf(ctx->out, "POPFRAME\n");
