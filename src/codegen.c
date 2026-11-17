@@ -106,6 +106,9 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "PUSHFRAME\n");
   fprintf(ctx->out, "DEFVAR LF@res\n");
   fprintf(ctx->out, "READ LF@res int\n");
+  fprintf(ctx->out, "JUMPIFNEQ $ifj_readInt_end LF@res nil@nil\n");
+  fprintf(ctx->out, "MOVE LF@res int@0\n");
+  fprintf(ctx->out, "LABEL $ifj_readInt_end\n");
   fprintf(ctx->out, "PUSHS LF@res\n");
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
@@ -115,6 +118,9 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "PUSHFRAME\n");
   fprintf(ctx->out, "DEFVAR LF@res\n");
   fprintf(ctx->out, "READ LF@res float\n");
+  fprintf(ctx->out, "JUMPIFNEQ $ifj_readDouble_end LF@res nil@nil\n");
+  fprintf(ctx->out, "MOVE LF@res float@0x0p+0\n");
+  fprintf(ctx->out, "LABEL $ifj_readDouble_end\n");
   fprintf(ctx->out, "PUSHS LF@res\n");
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
