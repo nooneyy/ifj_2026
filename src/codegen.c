@@ -259,6 +259,15 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
 
+  fprintf(ctx->out, "LABEL $ifj_readBoolean\n");
+  fprintf(ctx->out, "CREATEFRAME\n");
+  fprintf(ctx->out, "PUSHFRAME\n");
+  fprintf(ctx->out, "DEFVAR LF@res\n");
+  fprintf(ctx->out, "READ LF@res bool\n");
+  fprintf(ctx->out, "PUSHS LF@res\n");
+  fprintf(ctx->out, "POPFRAME\n");
+  fprintf(ctx->out, "RETURN\n\n");
+
   return;
 }
 
@@ -282,8 +291,8 @@ static bool is_expression_node(const ASTNode *node) {
 
 static bool is_builtin_func(const char *name) {
   static const char *builtins[] = {
-      "print",     "readLine", "readInt", "readDouble", "toStr", "toInt",
-      "strLength", "subStr",   "ord",     "chr",        NULL,
+      "print",     "readLine", "readInt", "readDouble", "toStr",       "toInt",
+      "strLength", "subStr",   "ord",     "chr",        "readBoolean", NULL,
   };
 
   for (int i = 0; builtins[i] != NULL; i++) {
