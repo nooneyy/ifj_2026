@@ -715,6 +715,11 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
     print_error("Wrong node type passed to check_expr!", 0);
     return ERR_INTERNAL;
   }
+
+  if (ret == RETURN_SUCCESS) {
+    expr->data_type = *out;
+  }
+
   return ret;
 }
 
