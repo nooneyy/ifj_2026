@@ -4,6 +4,7 @@
 # @brief Runs the test suites from tests/<suite>/
 # @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
 # @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+# @author Oldřich Vašíček <xvasico00@stud.fit.vut.cz>
 # @date 12.11.2026
 #
 # Disclaimer!
@@ -23,6 +24,15 @@
 #   script runner like run_tests.sh and take an argument as to which part we're
 #   testing"
 #
+# Disclaimer!
+# The codegen suite was added by Claude Opus 5.5 AI model
+# Prompt:
+#  "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou architekturu
+#   jak testy pred tim, stejny prompt atd. Jestli budou testy potrebovat
+#   interpret IFJ26code, udelej je tak, aby interpret ic26int-linux-x86_64
+#   testy ocekavaly v root slozce repa, tedy ve stejne slozce jako je slozka
+#   src."
+#
 # Builds the project, then for every suite given as an argument
 # and every NAME.ifj in tests/<suite>/:
 #   1. runs tests/<suite>_main with NAME.ifj as argv[1]
@@ -32,6 +42,13 @@
 # Every test gets its own section with PASS/FAIL for each part,
 # the differences are shown in case of a failure.
 # A suite is built by the Makefile target <suite>_test.
+#
+# The codegen suite differs in step 1 and 2: tests/codegen_main prints the
+# generated IFJcode26 program, which is then run by the interpreter
+# ic26int-linux-x86_64 from the repository root with NAME.in on its stdin
+# (empty stdin if there's no NAME.in). The program's output is compared with
+# NAME.out and NAME.code holds the interpreter's return code, or the
+# compiler's one if the compilation failed (then the output must be empty).
 #
 # Usage: tests/run_tests.sh <suite>...
 #        e.g. tests/run_tests.sh scanner parser
@@ -49,6 +66,14 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # valgrind's return code when it finds an error or a leak,
 # can't collide with the compiler's return codes (0-10, 99)
 VALGRIND_ERR=200
+
+# the IFJcode26 interpreter for the codegen suite, it isn't versioned,
+# everyone downloads it from the e-learning into the repository root
+IC26INT="$ROOT_DIR/ic26int-linux-x86_64"
+
+# max seconds of one interpretation, so an endless loop in the generated
+# code fails the test instead of blocking the whole run (code 124)
+INTERPRET_TIMEOUT=10
 
 # colors only when printing into a terminal
 if [ -t 1 ]; then
@@ -113,6 +138,29 @@ passed=0
 failed=0
 failed_names=()
 
+# compiles one program of the codegen suite and interprets the result
+# params: testing main, NAME.ifj, NAME.in, file for the generated code,
+#         file for the program's output, file for the error output
+# returns the compiler's code if it failed, else the interpreter's code
+run_codegen() {
+  local test_main="$1" ifj="$2" in_file="$3" code26="$4" actual="$5"
+  local errors="$6" compile_code
+
+  "$test_main" "$ifj" > "$code26" 2> "$errors"
+  compile_code=$?
+  if [ "$compile_code" -ne 0 ]; then
+    # there's nothing to interpret, the program printed nothing
+    : > "$actual"
+    return "$compile_code"
+  fi
+
+  if [ ! -f "$in_file" ]; then
+    in_file=/dev/null
+  fi
+  timeout "$INTERPRET_TIMEOUT" "$IC26INT" "$code26" < "$in_file" \
+    > "$actual" 2>> "$errors"
+}
+
 # runs every test of one suite, updates passed, failed and failed_names
 run_suite() {
   local suite="$1"
@@ -128,6 +176,16 @@ run_suite() {
     return
   fi
 
+  if [ "$suite" = codegen ] && [ ! -x "$IC26INT" ]; then
+    printf '%sInterpreter %s not found or not executable, download it from\n' \
+      "$RED" "$IC26INT"
+    printf 'the e-learning into the repository root and run chmod +x on it.%s\n' \
+      "$RESET"
+    failed=$((failed + 1))
+    failed_names+=("$suite/(no interpreter)")
+    return
+  fi
+
   local ifj name out_file code_file actual errors test_ok code expected_code
   for ifj in "${tests[@]}"; do
     name="$(basename "$ifj" .ifj)"
@@ -140,7 +198,12 @@ run_suite() {
     printf '\n%s========== %s/%s ==========%s\n' "$BOLD" "$suite" "$name" "$RESET"
 
     # ---------- output ----------
-    "$test_main" "$ifj" > "$actual" 2> "$errors"
+    if [ "$suite" = codegen ]; then
+      run_codegen "$test_main" "$ifj" "$test_dir/$name.in" \
+        "$tmp_dir/$suite.$name.code26" "$actual" "$errors"
+    else
+      "$test_main" "$ifj" > "$actual" 2> "$errors"
+    fi
     code=$?
 
     if [ ! -f "$out_file" ]; then

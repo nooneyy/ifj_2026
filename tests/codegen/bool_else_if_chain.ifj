@@ -1,0 +1,42 @@
+/**
+ * @file bool_else_if_chain.ifj
+ * @brief Else if chain with a final else
+ * @author Oldřich Vašíček <xvasico00@stud.fit.vut.cz>
+ * @date 17.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou architekturu
+ * jak testy pred tim, stejny prompt atd. Jestli budou testy potrebovat
+ * interpret IFJ26code, udelej je tak, aby interpret ic26int-linux-x86_64 testy
+ * ocekavaly v root slozce repa, tedy ve stejne slozce jako je slozka src."
+ * (context: a tests/codegen/ suite like the semantic tests - every program is
+ * compiled by codegen_main, run by ic26int and its output and return code are
+ * compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// only the first matching branch runs (spec 5.2) -> ABCF
+import ifj26.*
+
+def grade(n: Int): Unit =
+  if n >= 90 then
+    print("A")
+  else if n >= 75 then
+    print("B")
+  else if n >= 50 then
+    print("C")
+  else
+    print("F")
+
+@main def main(): Unit =
+  grade(95)
+  grade(80)
+  grade(50)
+  grade(10)
+  print("\n")

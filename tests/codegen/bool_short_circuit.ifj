@@ -1,0 +1,44 @@
+/**
+ * @file bool_short_circuit.ifj
+ * @brief Short-circuit evaluation
+ * @author Oldřich Vašíček <xvasico00@stud.fit.vut.cz>
+ * @date 17.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou architekturu
+ * jak testy pred tim, stejny prompt atd. Jestli budou testy potrebovat
+ * interpret IFJ26code, udelej je tak, aby interpret ic26int-linux-x86_64 testy
+ * ocekavaly v root slozce repa, tedy ve stejne slozce jako je slozka src."
+ * (context: a tests/codegen/ suite like the semantic tests - every program is
+ * compiled by codegen_main, run by ic26int and its output and return code are
+ * compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// the right operand of && and || runs only when needed (spec 5.2, with
+// FUNEXP for calls in expressions) -> false true !false !true
+import ifj26.*
+
+def side(r: Boolean): Boolean =
+  print("!")
+  r
+
+@main def main(): Unit =
+  val a = false && side(true)
+  print(a)
+  print(" ")
+  val b = true || side(false)
+  print(b)
+  print(" ")
+  val c = true && side(false)
+  print(c)
+  print(" ")
+  val d = false || side(true)
+  print(d)
+  print("\n")

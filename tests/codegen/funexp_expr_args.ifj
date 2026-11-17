@@ -1,0 +1,40 @@
+/**
+ * @file funexp_expr_args.ifj
+ * @brief Expressions as arguments
+ * @author Oldřich Vašíček <xvasico00@stud.fit.vut.cz>
+ * @date 17.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou architekturu
+ * jak testy pred tim, stejny prompt atd. Jestli budou testy potrebovat
+ * interpret IFJ26code, udelej je tak, aby interpret ic26int-linux-x86_64 testy
+ * ocekavaly v root slozce repa, tedy ve stejne slozce jako je slozka src."
+ * (context: a tests/codegen/ suite like the semantic tests - every program is
+ * compiled by codegen_main, run by ic26int and its output and return code are
+ * compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// any expression can be an argument, also with Int to Double conversion
+// (spec 1.3, 5.1) -> 3 ab 6.0 2.0 1.5
+import ifj26.*
+
+def half(x: Double): Double = x / 2.0
+
+@main def main(): Unit =
+  print(1 + 2)
+  print(" ")
+  print("a" + "b")
+  print(" ")
+  print(2.0 * 3)
+  print(" ")
+  print(half(3 + 1))
+  print(" ")
+  print(1 + half(1))
+  print("\n")

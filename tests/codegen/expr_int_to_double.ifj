@@ -1,0 +1,47 @@
+/**
+ * @file expr_int_to_double.ifj
+ * @brief Implicit Int to Double in operations
+ * @author Oldřich Vašíček <xvasico00@stud.fit.vut.cz>
+ * @date 17.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou architekturu
+ * jak testy pred tim, stejny prompt atd. Jestli budou testy potrebovat
+ * interpret IFJ26code, udelej je tak, aby interpret ic26int-linux-x86_64 testy
+ * ocekavaly v root slozce repa, tedy ve stejne slozce jako je slozka src."
+ * (context: a tests/codegen/ suite like the semantic tests - every program is
+ * compiled by codegen_main, run by ic26int and its output and return code are
+ * compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// an Int operand is converted when the other one is Double, Int / Int
+// stays Int (spec 1.3, 3) -> 3.5, 1.5, 1.5, 3, 3.5, 5.5
+import ifj26.*
+
+@main def main(): Unit =
+  val i = 3
+  val a = i + 0.5
+  val b = 0.5 * i
+  val c = i / 2.0
+  val d = 7 / 2
+  val e = 7 / 2.0
+  val f = i - 0.5 + i
+  print(a)
+  print("\n")
+  print(b)
+  print("\n")
+  print(c)
+  print("\n")
+  print(d)
+  print("\n")
+  print(e)
+  print("\n")
+  print(f)
+  print("\n")

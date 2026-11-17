@@ -1,0 +1,37 @@
+/**
+ * @file bool_print.ifj
+ * @brief Boolean values printed
+ * @author Oldřich Vašíček <xvasico00@stud.fit.vut.cz>
+ * @date 17.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou architekturu
+ * jak testy pred tim, stejny prompt atd. Jestli budou testy potrebovat
+ * interpret IFJ26code, udelej je tak, aby interpret ic26int-linux-x86_64 testy
+ * ocekavaly v root slozce repa, tedy ve stejne slozce jako je slozka src."
+ * (context: a tests/codegen/ suite like the semantic tests - every program is
+ * compiled by codegen_main, run by ic26int and its output and return code are
+ * compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// print writes true or false, relations give Boolean (spec 5.2)
+import ifj26.*
+
+@main def main(): Unit =
+  print(true)
+  print(" ")
+  print(false)
+  print(" ")
+  val b = 3 < 5
+  print(b)
+  print(" ")
+  val c: Boolean = 2.5 == 2.5
+  print(c)
+  print("\n")

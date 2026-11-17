@@ -1,0 +1,46 @@
+/**
+ * @file builtin_readInt.ifj
+ * @brief readInt with valid and invalid lines
+ * @author Oldřich Vašíček <xvasico00@stud.fit.vut.cz>
+ * @date 17.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou architekturu
+ * jak testy pred tim, stejny prompt atd. Jestli budou testy potrebovat
+ * interpret IFJ26code, udelej je tak, aby interpret ic26int-linux-x86_64 testy
+ * ocekavaly v root slozce repa, tedy ve stejne slozce jako je slozka src."
+ * (context: a tests/codegen/ suite like the semantic tests - every program is
+ * compiled by codegen_main, run by ic26int and its output and return code are
+ * compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// readInt returns 0 for surrounding whitespace, a wrong format,
+// underscores and EOF (spec 4) -> 42 -3 0 0 0 0
+import ifj26.*
+
+@main def main(): Unit =
+  val a = readInt()
+  val b = readInt()
+  val c = readInt()
+  val d = readInt()
+  val e = readInt()
+  val f = readInt()
+  print(a)
+  print(" ")
+  print(b)
+  print(" ")
+  print(c)
+  print(" ")
+  print(d)
+  print(" ")
+  print(e)
+  print(" ")
+  print(f)
+  print("\n")
