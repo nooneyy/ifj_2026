@@ -97,13 +97,25 @@ typedef struct SymtableStack {
 } SymtableStack;
 
 /**
+ * @brief Item of the call stack - the functions whose body check is in progress
+ * (the top item is the function being checked, used to detect recursion)
+ */
+typedef struct CallStack {
+  Symbol *function;         // symbol of the function being checked
+  struct CallStack *caller; // item of the function that started this check
+                            // (NULL in the body pass)
+} CallStack;
+
+/**
  * @brief Shared state of the body pass, passed to every check_* function
  */
 typedef struct {
-  Symtable *global_sym;     // global symtable (functions incl. builtins)
-  Symbol *current_function; // the function whose body is being checked
-  ASTNode
-      *program; // root of the AST, used to find function definitions by name
+  Symtable *global_sym; // global symtable (functions incl. builtins)
+  // top of the call stack - the function whose body is being checked (NULL
+  // outside of a function check)
+  CallStack *top;
+  // root of the AST, used to find function definitions by name
+  ASTNode *program;
 } SemanticContext;
 
 /**
@@ -594,11 +606,17 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
           return ret;
         }
       } else if (fun_sym->data.function.state == IN_PROGRESS) {
-        if (!fun_sym->data.function.return_type_defined) {
-          print_error("Semantic error: recursive call of a function without "
-                      "and explicit return type",
-                      expr->line);
-          return ERR_SEM_TYPE;
+        for (CallStack *item = context->top; item != NULL;
+             item = item->caller) {
+          if (!item->function->data.function.return_type_defined) {
+            print_error("Semantic error: recursive call of a function without "
+                        "an explicit return type",
+                        expr->line);
+            return ERR_SEM_TYPE;
+          }
+          if (item->function == fun_sym) {
+            break;
+          }
         }
       }
     }
@@ -972,7 +990,7 @@ static ReturnCodes check_statement(SemanticContext *context, ASTNode *statement,
   case NODE_RETURN: {
     // RETURN node - if it has a value, check its expr
     ASTReturnNodeData *return_data = &statement->data.return_node;
-    FunctionSymbol *func_data = &context->current_function->data.function;
+    FunctionSymbol *func_data = &context->top->function->data.function;
 
     if (return_data->value != NULL) {
       ret = check_expr(context, return_data->value, stack, &expr_type);
@@ -1050,12 +1068,13 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
 
   ASTFunctionDefNodeData function_data = function->data.function_def;
 
-  Symbol *previous_function = context->current_function;
+  CallStack frame = {.function =
+                         symtable_get(context->global_sym, function_data.name),
+                     .caller = context->top};
 
-  context->current_function =
-      symtable_get(context->global_sym, function_data.name);
+  context->top = &frame;
 
-  context->current_function->data.function.state = IN_PROGRESS;
+  frame.function->data.function.state = IN_PROGRESS;
 
   for (size_t param_idx = 0; param_idx < function_data.param_count;
        param_idx++) {
@@ -1094,7 +1113,7 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
   }
 
   if (ret == RETURN_SUCCESS) {
-    FunctionSymbol *func_data = &context->current_function->data.function;
+    FunctionSymbol *func_data = &frame.function->data.function;
 
     if (!func_data->return_type_defined) {
       func_data->return_type = body_type;
@@ -1109,8 +1128,8 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
     }
   }
 
-  context->current_function->data.function.state = CHECKED;
-  context->current_function = previous_function;
+  frame.function->data.function.state = CHECKED;
+  context->top = frame.caller;
   symtable_free(stack.sym);
   return ret;
 }
@@ -1125,8 +1144,7 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
  */
 static ReturnCodes semantic_body_pass(Symtable *global_sym, ASTNode *program) {
   ReturnCodes ret = RETURN_SUCCESS;
-  SemanticContext context = {.global_sym = global_sym,
-                             .current_function = NULL};
+  SemanticContext context = {.global_sym = global_sym, .top = NULL};
   ASTNode *function = program->data.program.functions;
   context.program = program;
 
