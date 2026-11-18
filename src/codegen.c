@@ -95,7 +95,7 @@ static bool generate_prolog(CodeGenContext *ctx) {
   }
 
   fprintf(ctx->out, ".IFJcode26\n");
-  fprintf(ctx->out, "CALL $%s\n", main_name);
+  fprintf(ctx->out, "CALL $fn_%s\n", main_name);
   fprintf(ctx->out, "EXIT int@0\n\n");
 
   return true;
@@ -731,7 +731,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
     } else if (is_builtin_func(name)) {
       fprintf(ctx->out, "CALL $ifj_%s\n", name);
     } else {
-      fprintf(ctx->out, "CALL $%s\n", name);
+      fprintf(ctx->out, "CALL $fn_%s\n", name);
     }
 
     if (dest_var != NULL) {
@@ -954,7 +954,7 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
 
   ASTFunctionDefNodeData *fn = &fn_node->data.function_def;
 
-  fprintf(ctx->out, "LABEL $%s\n", fn->name);
+  fprintf(ctx->out, "LABEL $fn_%s\n", fn->name);
 
   fprintf(ctx->out, "CREATEFRAME\n");
   fprintf(ctx->out, "PUSHFRAME\n");
