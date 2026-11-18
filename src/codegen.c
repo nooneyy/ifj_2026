@@ -59,6 +59,10 @@ static const char *unop_instr_table[] = {
   (sizeof(binop_instr_table) / sizeof(binop_instr_table[0]))
 #define UNOP_TABLE_SIZE (sizeof(unop_instr_table) / sizeof(unop_instr_table[0]))
 
+//Forward declaration
+static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
+                                const char *dest_var);
+
 /**
  * @brief Searches the AST for the @main function
  * @param program Root AST node of the program
@@ -566,6 +570,98 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
 }
 
 /**
+ * @brief Emits IFJcode26 code for binary operations
+ * @param ctx Code generator context
+ * @param expr AST node of the binary expression
+ * @param dest_var Name of the variable where the result is stored
+ */
+static void expression_binary_op(CodeGenContext *ctx, ASTNode *expr,
+                                 const char *dest_var) {
+
+  const ASTBinaryOpNodeData *bin = &expr->data.binary_op;
+  ASTOperator op = bin->op;
+
+  if (op == OP_AND || op == OP_OR) {
+    int id = ctx->label_counter++;
+    char left_tmp[TMP_VAR_BUF_SIZE];
+
+    new_tmp_var(ctx, left_tmp);
+    generate_expression(ctx, bin->left, left_tmp);
+
+    const char *short_val = (op == OP_AND) ? "bool@false" : "bool@true";
+    fprintf(ctx->out, "JUMPIFEQ $sc_short_%d LF@%s %s\n", id, left_tmp, short_val);
+
+    generate_expression(ctx, bin->right, dest_var);
+
+    fprintf(ctx->out, "JUMP $sc_end_%d\n", id);
+    fprintf(ctx->out, "LABEL $sc_short_%d\n", id);
+
+    if (dest_var != NULL) {
+      fprintf(ctx->out, "MOVE LF@%s %s\n", dest_var, short_val);
+    }
+    fprintf(ctx->out, "LABEL $sc_end_%d\n", id);
+    return;
+  }
+
+  char left_tmp[TMP_VAR_BUF_SIZE];
+  char right_tmp[TMP_VAR_BUF_SIZE];
+  new_tmp_var(ctx, left_tmp);
+  new_tmp_var(ctx, right_tmp);
+  generate_expression(ctx, bin->left, left_tmp);
+  generate_expression(ctx, bin->right, right_tmp);
+
+  if (dest_var == NULL) {
+    return;
+  }
+
+  if (bin->left->data_type != bin->right->data_type) {
+    if (bin->left->data_type == INT) {
+      fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", left_tmp, left_tmp);
+    }
+    if (bin->right->data_type == INT) {
+      fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", right_tmp, right_tmp);
+    }
+  }
+
+  const char *inst;
+
+  switch (op) {
+    case OP_ADD:
+      inst = (expr->data_type == STRING) ? "CONCAT" : "ADD";
+      fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, dest_var, left_tmp,
+                right_tmp);
+      break;
+    case OP_DIV: {
+      inst = (expr->data_type == INT) ? "IDIV" : "DIV";
+      fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, dest_var, left_tmp,
+              right_tmp);
+      break;
+    }
+    case OP_NEQ:
+      fprintf(ctx->out, "EQ LF@%s LF@%s LF@%s\n", dest_var, left_tmp,
+              right_tmp);
+      fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, dest_var);
+      break;
+    case OP_LTE:
+      fprintf(ctx->out, "GT LF@%s LF@%s LF@%s\n", dest_var, left_tmp,
+              right_tmp);
+      fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, dest_var);
+      break;
+    case OP_GTE:
+      fprintf(ctx->out, "LT LF@%s LF@%s LF@%s\n", dest_var, left_tmp,
+              right_tmp);
+      fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, dest_var);
+      break;
+    default:
+      if (op < BINOP_TABLE_SIZE && binop_instr_table[op] != NULL) {
+        fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", binop_instr_table[op],
+                dest_var, left_tmp, right_tmp);
+      }
+      break;
+  }
+}
+
+/**
  * @brief Emits IFJcode26 code for expressions
  * 
  * Handles implicit INT to DOUBLE retyping
@@ -642,65 +738,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
   }
 
   case NODE_BINARY_OP: {
-    char left_tmp[TMP_VAR_BUF_SIZE];
-    new_tmp_var(ctx, left_tmp);
-    char right_tmp[TMP_VAR_BUF_SIZE];
-    new_tmp_var(ctx, right_tmp);
-
-    generate_expression(ctx, expr->data.binary_op.left, left_tmp);
-    generate_expression(ctx, expr->data.binary_op.right, right_tmp);
-
-    if (expr->data.binary_op.left->data_type !=
-        expr->data.binary_op.right->data_type) {
-      if (expr->data.binary_op.left->data_type == INT) {
-        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", left_tmp, left_tmp);
-      }
-
-      if (expr->data.binary_op.right->data_type == INT) {
-        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", right_tmp, right_tmp);
-      }
-    }
-
-    if (dest_var != NULL) {
-      ASTOperator op = expr->data.binary_op.op;
-      const char *inst;
-
-      switch (op) {
-      case OP_ADD:
-        inst = (expr->data_type == STRING) ? "CONCAT" : "ADD";
-        fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, dest_var, left_tmp,
-                right_tmp);
-        break;
-      case OP_DIV: {
-        inst = (expr->data_type == INT) ? "IDIV" : "DIV";
-        fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, dest_var, left_tmp,
-                right_tmp);
-        break;
-      }
-      case OP_NEQ:
-        fprintf(ctx->out, "EQ LF@%s LF@%s LF@%s\n", dest_var, left_tmp,
-                right_tmp);
-        fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, dest_var);
-        break;
-      case OP_LTE:
-        fprintf(ctx->out, "GT LF@%s LF@%s LF@%s\n", dest_var, left_tmp,
-                right_tmp);
-        fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, dest_var);
-        break;
-      case OP_GTE:
-        fprintf(ctx->out, "LT LF@%s LF@%s LF@%s\n", dest_var, left_tmp,
-                right_tmp);
-        fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, dest_var);
-        break;
-      default:
-        if (op < BINOP_TABLE_SIZE && binop_instr_table[op] != NULL) {
-          fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", binop_instr_table[op],
-                  dest_var, left_tmp, right_tmp);
-        }
-        break;
-      }
-    }
-
+    expression_binary_op(ctx, expr, dest_var);
     break;
   }
 
@@ -727,7 +765,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
 
     const char *name = expr->data.function_call.name;
     if (strncmp(name, IFJ_PREFIX, IFJ_PREFIX_LEN) == 0) {
-      fprintf(ctx->out, "CALL $ifj_%s\n", name + 4);
+      fprintf(ctx->out, "CALL $ifj_%s\n", name + IFJ_PREFIX_LEN);
     } else if (is_builtin_func(name)) {
       fprintf(ctx->out, "CALL $ifj_%s\n", name);
     } else {
