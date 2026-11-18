@@ -12,6 +12,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TMP_VAR_BUF_SIZE 32
+#define IR_NAME_BUF_SIZE 128
+#define INITIAL_VAR_CAP 16
+#define TMPS_PER_AST_NODE 2
+#define EXTRA_TMP_SLOTS 4
+#define IFJ_PREFIX "ifj."
+#define IFJ_PREFIX_LEN (sizeof(IFJ_PREFIX) - 1)
+
 /**
  * @brief Represents a local variable
  */
@@ -26,10 +34,10 @@ typedef struct {
  * @brief Internal context used by the code generator
  */
 typedef struct {
-  FILE *out;           // Desired output stream for emmited IFJcode26 code
+  FILE *out;           // Desired output stream for emitted IFJcode26 code
   int label_counter;   // Counter for unique labels
   int tmp_counter;     // Counter for unique IDs for temporary variables
-  ASTNode *program;    // Root ASTNode node of the program
+  ASTNode *program;    // Root AST node of the program
   LocalVarEntry *vars; // Stack of local variables
   size_t var_count;    // Number of active variables
   size_t var_cap;      // Allocated capacity for vars
@@ -53,8 +61,8 @@ static const char *unop_instr_table[] = {
 
 /**
  * @brief Searches the AST for the @main function
- * @param program Root ASTNode node of the program
- * @param out Output paramater that gets the main function's name or NULL if it isn't named
+ * @param program Root AST node of the program
+ * @param out Output parameter that gets the main function's name or NULL if it isn't named
  * @return true if main is named
  *         false if main is unnamed
  */
@@ -75,7 +83,7 @@ static bool find_main_function(ASTNode *program, char **out) {
 }
 
 /**
- * @brief Emits the IFJcode26 head, call to the main function and a program exit
+ * @brief Emits the IFJcode26 header, call to the main function and a program exit
  * @param ctx Code generator context
  * @return true on success
  *         false if there is no main function in the AST
@@ -295,10 +303,10 @@ static void generate_builtin_library(CodeGenContext *ctx) {
 }
 
 /**
- * @brief Determindes if an AST node produces a value
+ * @brief Determines if an AST node produces a value
  * @param node AST node to inspect
  * @return true if node produces a value
- *         false if if node is NULL or if the node doesn't produce a value
+ *         false if node is NULL or if the node doesn't produce a value
  */
 static bool is_expression_node(const ASTNode *node) {
   if (node == NULL)
@@ -319,7 +327,7 @@ static bool is_expression_node(const ASTNode *node) {
 }
 
 /**
- * @brief Checks if a function name refers to a IFJcode2026 library function
+ * @brief Checks if a function name refers to an IFJcode2026 library function
  * @param name Function name to check
  * @return true if the name matches a library function
  *         false otherwise
@@ -353,7 +361,7 @@ static void print_escaped_string(CodeGenContext *ctx, const char *str) {
 
   for (size_t i = 0; str[i] != '\0'; i++) {
     unsigned char c = (unsigned char)str[i];
-    if (c <= 32 || c == 35 || c == 92) {
+    if (c <= ' ' || c == '#' || c == '\\') {
       fprintf(ctx->out, "\\%03d", c);
     } else {
       fputc(c, ctx->out);
@@ -364,13 +372,13 @@ static void print_escaped_string(CodeGenContext *ctx, const char *str) {
 }
 
 /**
- * @brief Allocates the next unique temprary variable name
+ * @brief Allocates the next unique temporary variable name
  * @param ctx Code generator context
  * @param buf Output buffer for the name
  */
-static void new_tmp_var(CodeGenContext *ctx, char buf[32]) {
+static void new_tmp_var(CodeGenContext *ctx, char buf[TMP_VAR_BUF_SIZE]) {
   int id = ctx->tmp_counter++;
-  snprintf(buf, 32, "$tmp_%d", id);
+  snprintf(buf, TMP_VAR_BUF_SIZE, "$tmp_%d", id);
 
   return;
 }
@@ -382,7 +390,7 @@ static void new_tmp_var(CodeGenContext *ctx, char buf[32]) {
 static void scope_enter(CodeGenContext *ctx) { ctx->scope_depth++; }
 
 /**
- * @brief Exits the currect lexical scope and pop all variables in it
+ * @brief Exits the correct lexical scope and pops all variables in it
  * @param ctx Code generator context
  */
 static void scope_leave(CodeGenContext *ctx) {
@@ -410,7 +418,7 @@ static void scope_leave(CodeGenContext *ctx) {
 static int scope_push_var(CodeGenContext *ctx, const char *name,
                           DataType type) {
   if (ctx->var_count >= ctx->var_cap) {
-    size_t new_cap = (ctx->var_cap == 0) ? 16 : ctx->var_cap * 2;
+    size_t new_cap = (ctx->var_cap == 0) ? INITIAL_VAR_CAP : ctx->var_cap * 2;
     LocalVarEntry *tmp = realloc(ctx->vars, new_cap * sizeof(LocalVarEntry));
     if (tmp == NULL) {
       ctx->has_error = true;
@@ -438,7 +446,7 @@ static int scope_push_var(CodeGenContext *ctx, const char *name,
 static int count_ast_nodes(ASTNode *node) {
   int count = 0;
   while (node != NULL) {
-    count += 2;
+    count += TMPS_PER_AST_NODE;
     switch (node->node_type) {
     case NODE_VARIABLE_DEF:
       count += count_ast_nodes(node->data.variable_def.expr);
@@ -480,9 +488,9 @@ static int count_ast_nodes(ASTNode *node) {
 }
 
 /**
- * @brief Looks ip the innermost local variable or parameter by name
+ * @brief Looks up the innermost local variable or parameter by name
  * 
- * Searches the active stack from newest to eldest to support shadowing
+ * Searches the active stack from newest to oldest to support shadowing
  * 
  * @param ctx Code generator context
  * @param name Name of variable or parameter from the source code
@@ -503,7 +511,7 @@ static const LocalVarEntry *scope_lookup(const CodeGenContext *ctx,
  * @brief Finds a function's AST data by name
  * @param program Root AST node of program
  * @param name Name of the function to find
- * @return Pointer to the funtion's ASTFunctionDefNodeData
+ * @return Pointer to the function's ASTFunctionDefNodeData
  *         NULL if not found
  */
 static ASTFunctionDefNodeData *find_function_def(ASTNode *program,
@@ -521,7 +529,7 @@ static ASTFunctionDefNodeData *find_function_def(ASTNode *program,
 }
 
 /**
- * @brief Emits DEFVAR for all local variable in the function's body
+ * @brief Emits DEFVAR for all local variables in the function's body
  * 
  * Hoists every local variable so IFJcode26 variables are never defined inside loops
  * 
@@ -564,7 +572,7 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
  * 
  * @param ctx Code generator context
  * @param expr Expression's AST node
- * @param dest_var Name of the variable to store the reuslt in
+ * @param dest_var Name of the variable to store the result in
  *                 NULL if result is discarded
  */
 static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
@@ -614,7 +622,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
     break;
 
   case NODE_UNARY_OP: {
-    char op_tmp[32];
+    char op_tmp[TMP_VAR_BUF_SIZE];
     new_tmp_var(ctx, op_tmp);
 
     generate_expression(ctx, expr->data.unary_op.operand, op_tmp);
@@ -634,9 +642,9 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
   }
 
   case NODE_BINARY_OP: {
-    char left_tmp[32];
+    char left_tmp[TMP_VAR_BUF_SIZE];
     new_tmp_var(ctx, left_tmp);
-    char right_tmp[32];
+    char right_tmp[TMP_VAR_BUF_SIZE];
     new_tmp_var(ctx, right_tmp);
 
     generate_expression(ctx, expr->data.binary_op.left, left_tmp);
@@ -703,7 +711,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
     size_t arg_idx = 0;
 
     while (arg != NULL) {
-      char arg_tmp[32];
+      char arg_tmp[TMP_VAR_BUF_SIZE];
       new_tmp_var(ctx, arg_tmp);
 
       generate_expression(ctx, arg, arg_tmp);
@@ -718,7 +726,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
     }
 
     const char *name = expr->data.function_call.name;
-    if (strncmp(name, "ifj.", 4) == 0) {
+    if (strncmp(name, IFJ_PREFIX, IFJ_PREFIX_LEN) == 0) {
       fprintf(ctx->out, "CALL $ifj_%s\n", name + 4);
     } else if (is_builtin_func(name)) {
       fprintf(ctx->out, "CALL $ifj_%s\n", name);
@@ -729,7 +737,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
     if (dest_var != NULL) {
       fprintf(ctx->out, "POPS LF@%s\n", dest_var);
     } else {
-      char dummy[32];
+      char dummy[TMP_VAR_BUF_SIZE];
       new_tmp_var(ctx, dummy);
 
       fprintf(ctx->out, "POPS LF@%s\n", dummy);
@@ -763,7 +771,7 @@ static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr,
     return;
   }
 
-  char ret_tmp[32];
+  char ret_tmp[TMP_VAR_BUF_SIZE];
   new_tmp_var(ctx, ret_tmp);
 
   generate_expression(ctx, expr, ret_tmp);
@@ -795,7 +803,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
         (def->specified_type != UNKNOWN)
             ? def->specified_type
             : (def->expr != NULL ? def->expr->data_type : UNKNOWN);
-    char ir_name[128];
+    char ir_name[IR_NAME_BUF_SIZE];
     snprintf(ir_name, sizeof(ir_name), "%s$%d", def->name, ctx->next_var_uid);
 
     generate_expression(ctx, def->expr, ir_name);
@@ -811,7 +819,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
     ASTAssignNodeData *assign = &statement->data.assign;
     const LocalVarEntry *entry = scope_lookup(ctx, assign->left);
     if (entry != NULL) {
-      char ir_name[128];
+      char ir_name[IR_NAME_BUF_SIZE];
       snprintf(ir_name, sizeof(ir_name), "%s$%d", entry->name, entry->uid);
       generate_expression(ctx, assign->right, ir_name);
       if (entry->type == DOUBLE && assign->right != NULL &&
@@ -885,7 +893,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
 
   case NODE_IF: {
     int id = ctx->label_counter++;
-    char cond_tmp[32];
+    char cond_tmp[TMP_VAR_BUF_SIZE];
     new_tmp_var(ctx, cond_tmp);
 
     generate_expression(ctx, statement->data.if_node.condition, cond_tmp);
@@ -907,7 +915,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
 
   case NODE_WHILE: {
     int id = ctx->label_counter++;
-    char cond_tmp[32];
+    char cond_tmp[TMP_VAR_BUF_SIZE];
     new_tmp_var(ctx, cond_tmp);
 
     fprintf(ctx->out, "LABEL $while_start_%d\n", id);
@@ -934,7 +942,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
 /**
  * @brief Generates the complete IFJcode26 code for a function
  * 
- * Emits the function label, frame creation, parameter popping, DEFVARs for temporary and local variables, body instructions (RETURN alwats as last) and frame popping
+ * Emits the function label, frame creation, parameter popping, DEFVARs for temporary and local variables, body instructions (RETURN always as last) and frame popping
  * 
  * @param ctx Code generator context
  * @param fn_node AST node of the function
@@ -982,7 +990,7 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
     free(param_uids);
   }
 
-  int max_tmps = count_ast_nodes(fn->body) + 4;
+  int max_tmps = count_ast_nodes(fn->body) + EXTRA_TMP_SLOTS;
   for (int i = 0; i < max_tmps; i++) {
     fprintf(ctx->out, "DEFVAR LF@$tmp_%d\n", i);
   }
