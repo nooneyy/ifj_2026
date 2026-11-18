@@ -12,24 +12,30 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Represents a local variable
+ */
 typedef struct {
-  const char *name;
-  DataType type;
-  int uid;
-  int scope_depth;
+  const char *name; // Name of variable straight from the source code
+  DataType type;    // Data type of the variable
+  int uid;          // Unique ID for the variable LF@<name>$<uid>
+  int scope_depth;  // How deep the variable was declared
 } LocalVarEntry;
 
+/**
+ * @brief Internal context used by the code generator
+ */
 typedef struct {
-  FILE *out;
-  int label_counter;
-  int tmp_counter;
-  ASTNode *program;
-  LocalVarEntry *vars;
-  size_t var_count;
-  size_t var_cap;
-  int scope_depth;
-  int next_var_uid;
-  bool has_error;
+  FILE *out;           // Desired output stream for emmited IFJcode26 code
+  int label_counter;   // Counter for unique labels
+  int tmp_counter;     // Counter for unique IDs for temporary variables
+  ASTNode *program;    // Root ASTNode node of the program
+  LocalVarEntry *vars; // Stack of local variables
+  size_t var_count;    // Number of active variables
+  size_t var_cap;      // Allocated capacity for vars
+  int scope_depth;     // Current block depth
+  int next_var_uid;    // Next unique ID for variables
+  bool has_error;      // Set to true in case of an internal error
 } CodeGenContext;
 
 static const char *binop_instr_table[] = {
@@ -45,6 +51,13 @@ static const char *unop_instr_table[] = {
   (sizeof(binop_instr_table) / sizeof(binop_instr_table[0]))
 #define UNOP_TABLE_SIZE (sizeof(unop_instr_table) / sizeof(unop_instr_table[0]))
 
+/**
+ * @brief Searches the AST for the @main function
+ * @param program Root ASTNode node of the program
+ * @param out Output paramater that gets the main function's name or NULL if it isn't named
+ * @return true if main is named
+ *         false if main is unnamed
+ */
 static bool find_main_function(ASTNode *program, char **out) {
   *out = NULL;
   ASTNode *function = program->data.program.functions;
@@ -61,6 +74,12 @@ static bool find_main_function(ASTNode *program, char **out) {
   return false;
 }
 
+/**
+ * @brief Emits the IFJcode26 head, call to the main function and a program exit
+ * @param ctx Code generator context
+ * @return true on success
+ *         false if there is no main function in the AST
+ */
 static bool generate_prolog(CodeGenContext *ctx) {
   char *main_name = NULL;
   if (!find_main_function(ctx->program, &main_name)) {
@@ -74,6 +93,10 @@ static bool generate_prolog(CodeGenContext *ctx) {
   return true;
 }
 
+/**
+ * @brief Emits IFJcode26 built-in library functions
+ * @param ctx Code generator context
+ */
 static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "\n\n");
 
@@ -271,6 +294,12 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   return;
 }
 
+/**
+ * @brief Determindes if an AST node produces a value
+ * @param node AST node to inspect
+ * @return true if node produces a value
+ *         false if if node is NULL or if the node doesn't produce a value
+ */
 static bool is_expression_node(const ASTNode *node) {
   if (node == NULL)
     return false;
@@ -289,6 +318,12 @@ static bool is_expression_node(const ASTNode *node) {
   }
 }
 
+/**
+ * @brief Checks if a function name refers to a IFJcode2026 library function
+ * @param name Function name to check
+ * @return true if the name matches a library function
+ *         false otherwise
+ */
 static bool is_builtin_func(const char *name) {
   static const char *builtins[] = {
       "print",     "readLine", "readInt", "readDouble", "toStr",       "toInt",
@@ -303,6 +338,14 @@ static bool is_builtin_func(const char *name) {
   return false;
 }
 
+/**
+ * @brief Writes an IFJcode2026 string literal with required escape codes
+ * 
+ * Escapes characters with ASCII value <= 32, '#' and '\' as \xyz
+ * 
+ * @param ctx Code generator context
+ * @param str String content to emit
+ */
 static void print_escaped_string(CodeGenContext *ctx, const char *str) {
   fprintf(ctx->out, "string@");
   if (str == NULL)
@@ -320,6 +363,11 @@ static void print_escaped_string(CodeGenContext *ctx, const char *str) {
   return;
 }
 
+/**
+ * @brief Allocates the next unique temprary variable name
+ * @param ctx Code generator context
+ * @param buf Output buffer for the name
+ */
 static void new_tmp_var(CodeGenContext *ctx, char buf[32]) {
   int id = ctx->tmp_counter++;
   snprintf(buf, 32, "$tmp_%d", id);
@@ -327,8 +375,16 @@ static void new_tmp_var(CodeGenContext *ctx, char buf[32]) {
   return;
 }
 
+/**
+ * @brief Enters a new lexical scope
+ * @param ctx Code generator context
+ */
 static void scope_enter(CodeGenContext *ctx) { ctx->scope_depth++; }
 
+/**
+ * @brief Exits the currect lexical scope and pop all variables in it
+ * @param ctx Code generator context
+ */
 static void scope_leave(CodeGenContext *ctx) {
   if (ctx->scope_depth > 0) {
     ctx->scope_depth--;
@@ -339,6 +395,18 @@ static void scope_leave(CodeGenContext *ctx) {
   }
 }
 
+/**
+ * @brief Registers a variable or parameter in the lexical scope
+ * 
+ * Grows the stack if necessary and assigns a unique ID
+ * Sets ctx->has_error if malloc fails
+ * 
+ * @param ctx Code generator context
+ * @param name Name for the variable from the source code
+ * @param type Type of the variable
+ * @return Unique ID on success
+ *         -1 on malloc fail
+ */
 static int scope_push_var(CodeGenContext *ctx, const char *name,
                           DataType type) {
   if (ctx->var_count >= ctx->var_cap) {
@@ -362,6 +430,11 @@ static int scope_push_var(CodeGenContext *ctx, const char *name,
   return uid;
 }
 
+/**
+ * @brief Estimates how many temporary variables are needed for an AST subtree
+ * @param node AST node list to traverse
+ * @return Estimated number of temporary variables
+ */
 static int count_ast_nodes(ASTNode *node) {
   int count = 0;
   while (node != NULL) {
@@ -406,6 +479,16 @@ static int count_ast_nodes(ASTNode *node) {
   return count;
 }
 
+/**
+ * @brief Looks ip the innermost local variable or parameter by name
+ * 
+ * Searches the active stack from newest to eldest to support shadowing
+ * 
+ * @param ctx Code generator context
+ * @param name Name of variable or parameter from the source code
+ * @return Pointer to the matching LocalVarEntry
+ *         NULL if not found
+ */
 static const LocalVarEntry *scope_lookup(const CodeGenContext *ctx,
                                          const char *name) {
   for (size_t i = ctx->var_count; i > 0; i--) {
@@ -416,6 +499,13 @@ static const LocalVarEntry *scope_lookup(const CodeGenContext *ctx,
   return NULL;
 }
 
+/**
+ * @brief Finds a function's AST data by name
+ * @param program Root AST node of program
+ * @param name Name of the function to find
+ * @return Pointer to the funtion's ASTFunctionDefNodeData
+ *         NULL if not found
+ */
 static ASTFunctionDefNodeData *find_function_def(ASTNode *program,
                                                  const char *name) {
   ASTNode *fn = program->data.program.functions;
@@ -430,6 +520,15 @@ static ASTFunctionDefNodeData *find_function_def(ASTNode *program,
   return NULL;
 }
 
+/**
+ * @brief Emits DEFVAR for all local variable in the function's body
+ * 
+ * Hoists every local variable so IFJcode26 variables are never defined inside loops
+ * 
+ * @param ctx Code generator context
+ * @param node Root of the AST subtree to walk
+ * @param uid_counter Running UID counter
+ */
 static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
                                int *uid_counter) {
   while (node != NULL) {
@@ -458,6 +557,16 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
   }
 }
 
+/**
+ * @brief Emits IFJcode26 code for expressions
+ * 
+ * Handles implicit INT to DOUBLE retyping
+ * 
+ * @param ctx Code generator context
+ * @param expr Expression's AST node
+ * @param dest_var Name of the variable to store the reuslt in
+ *                 NULL if result is discarded
+ */
 static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
                                 const char *dest_var) {
   if (expr == NULL)
@@ -634,6 +743,16 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
   return;
 }
 
+/**
+ * @brief Evaluates a return expression and pushes it onto the stack
+ * 
+ * Handles implicit INT to DOUBLE retyping
+ * pushes nil@nil for Unit functions
+ * 
+ * @param ctx Code generator context
+ * @param expr Return value expression
+ * @param expected_return_type Expected return type of the function
+ */
 static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr,
                              DataType expected_ret_type) {
   if (expr == NULL || expected_ret_type == UNIT) {
@@ -658,6 +777,12 @@ static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr,
   return;
 }
 
+/**
+ * @brief Emits IFJcode26 code for a single statement AST node
+ * @param ctx Code generator context
+ * @param statement AST node with the statement to emit
+ * @param func_ret_type Return type of the statement
+ */
 static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
                                DataType func_ret_type) {
   if (statement == NULL)
@@ -708,7 +833,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
     break;
   }
 
-    /* AI Model used: Gemini
+    /* AI Model used: Gemini 4 Hydrogen High
     Prompt:
             case NODE_BLOCK:
                 ASTNode *s = statement->data.block.statements;
@@ -806,6 +931,14 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
   return;
 }
 
+/**
+ * @brief Generates the complete IFJcode26 code for a function
+ * 
+ * Emits the function label, frame creation, parameter popping, DEFVARs for temporary and local variables, body instructions (RETURN alwats as last) and frame popping
+ * 
+ * @param ctx Code generator context
+ * @param fn_node AST node of the function
+ */
 static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
   if (fn_node == NULL || fn_node->node_type != NODE_FUNCTION_DEF) {
     return;
