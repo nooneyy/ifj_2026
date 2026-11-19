@@ -44,6 +44,7 @@ typedef struct {
   int scope_depth;     // Current block depth
   int next_var_uid;    // Next unique ID for variables
   bool has_error;      // Set to true in case of an internal error
+  DataType current_func_ret_type; // Return type of the function being generated
 } CodeGenContext;
 
 static const char *binop_instr_table[] = {
@@ -59,9 +60,13 @@ static const char *unop_instr_table[] = {
   (sizeof(binop_instr_table) / sizeof(binop_instr_table[0]))
 #define UNOP_TABLE_SIZE (sizeof(unop_instr_table) / sizeof(unop_instr_table[0]))
 
-//Forward declaration
+//Forward declarations
 static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
                                 const char *dest_var);
+
+static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
+                               DataType func_ret_type);
+//Forward declarations end
 
 /**
  * @brief Searches the AST for the @main function
@@ -323,6 +328,7 @@ static bool is_expression_node(const ASTNode *node) {
   case NODE_FUNCTION_CALL:
     return true;
   case NODE_IF:
+    return node->data.if_node.is_expr || (node->data.if_node.else_branch != NULL && node->data_type != UNIT && node->data_type != UNKNOWN);
   case NODE_WHILE:
     return false;
   default:
@@ -408,6 +414,41 @@ static void scope_leave(CodeGenContext *ctx) {
 }
 
 /**
+ * @brief Registers a variable or parameter in the lexical scope with a given UID
+ * 
+ * Grows the stack if necessary and assigns a pre-allocated unique ID
+ * Sets ctx->has_error if malloc fails
+ * 
+ * @param ctx Code generator context
+ * @param name Name for the variable from the source code
+ * @param type Type of the variable
+ * @param uid Pre-allocated unique ID
+ * @return Unique ID on success
+ *         -1 on malloc fail
+ */
+static int scope_push_var_with_uid(CodeGenContext *ctx, const char *name,
+                          DataType type, int uid) {
+  if (ctx->var_count >= ctx->var_cap) {
+    size_t new_cap = (ctx->var_cap == 0) ? INITIAL_VAR_CAP : ctx->var_cap * 2;
+    LocalVarEntry *tmp = realloc(ctx->vars, new_cap * sizeof(LocalVarEntry));
+    if (tmp == NULL) {
+      ctx->has_error = true;
+      return -1;
+    }
+    ctx->vars = tmp;
+    ctx->var_cap = new_cap;
+  }
+
+  ctx->vars[ctx->var_count++] = (LocalVarEntry){
+      .name = name,
+      .type = type,
+      .uid = uid,
+      .scope_depth = ctx->scope_depth,
+  };
+  return uid;
+}
+
+/**
  * @brief Registers a variable or parameter in the lexical scope
  * 
  * Grows the stack if necessary and assigns a unique ID
@@ -421,25 +462,7 @@ static void scope_leave(CodeGenContext *ctx) {
  */
 static int scope_push_var(CodeGenContext *ctx, const char *name,
                           DataType type) {
-  if (ctx->var_count >= ctx->var_cap) {
-    size_t new_cap = (ctx->var_cap == 0) ? INITIAL_VAR_CAP : ctx->var_cap * 2;
-    LocalVarEntry *tmp = realloc(ctx->vars, new_cap * sizeof(LocalVarEntry));
-    if (tmp == NULL) {
-      ctx->has_error = true;
-      return -1;
-    }
-    ctx->vars = tmp;
-    ctx->var_cap = new_cap;
-  }
-
-  int uid = ctx->next_var_uid++;
-  ctx->vars[ctx->var_count++] = (LocalVarEntry){
-      .name = name,
-      .type = type,
-      .uid = uid,
-      .scope_depth = ctx->scope_depth,
-  };
-  return uid;
+  return scope_push_var_with_uid(ctx, name, type, ctx->next_var_uid++);
 }
 
 /**
@@ -545,25 +568,43 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
                                int *uid_counter) {
   while (node != NULL) {
     switch (node->node_type) {
-    case NODE_VARIABLE_DEF:
-      fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.variable_def.name,
-              (*uid_counter)++);
-      if (node->data.variable_def.expr != NULL) {
-        emit_var_defs_walk(ctx, node->data.variable_def.expr, uid_counter);
-      }
-      break;
-    case NODE_BLOCK:
-      emit_var_defs_walk(ctx, node->data.block.statements, uid_counter);
-      break;
-    case NODE_IF:
-      emit_var_defs_walk(ctx, node->data.if_node.then_branch, uid_counter);
-      emit_var_defs_walk(ctx, node->data.if_node.else_branch, uid_counter);
-      break;
-    case NODE_WHILE:
-      emit_var_defs_walk(ctx, node->data.while_node.body, uid_counter);
-      break;
-    default:
-      break;
+      case NODE_VARIABLE_DEF:
+        fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.variable_def.name,
+                (*uid_counter)++);
+        if (node->data.variable_def.expr != NULL) {
+          emit_var_defs_walk(ctx, node->data.variable_def.expr, uid_counter);
+        }
+        break;
+      case NODE_ASSIGN:
+        emit_var_defs_walk(ctx, node->data.assign.right, uid_counter);
+        break;
+      case NODE_UNARY_OP:
+        emit_var_defs_walk(ctx, node->data.unary_op.operand, uid_counter);
+        break;
+      case NODE_BINARY_OP:
+        emit_var_defs_walk(ctx, node->data.binary_op.left, uid_counter);
+        emit_var_defs_walk(ctx, node->data.binary_op.right, uid_counter);
+        break;
+      case NODE_FUNCTION_CALL:
+        emit_var_defs_walk(ctx, node->data.function_call.args, uid_counter);
+        break;
+      case NODE_RETURN:
+        emit_var_defs_walk(ctx, node->data.return_node.value, uid_counter);
+        break;
+      case NODE_BLOCK:
+        emit_var_defs_walk(ctx, node->data.block.statements, uid_counter);
+        break;
+      case NODE_IF:
+        emit_var_defs_walk(ctx, node->data.if_node.condition, uid_counter);
+        emit_var_defs_walk(ctx, node->data.if_node.then_branch, uid_counter);
+        emit_var_defs_walk(ctx, node->data.if_node.else_branch, uid_counter);
+        break;
+      case NODE_WHILE:
+        emit_var_defs_walk(ctx, node->data.while_node.condition, uid_counter);
+        emit_var_defs_walk(ctx, node->data.while_node.body, uid_counter);
+        break;
+      default:
+        break;
     }
     node = node->next;
   }
@@ -659,6 +700,76 @@ static void expression_binary_op(CodeGenContext *ctx, ASTNode *expr,
       }
       break;
   }
+}
+
+/**
+ * @brief Emits IFJcode26 code for one branch of an if branch into dest_var
+ * @param ctx Code generator context
+ * @param branch AST node of the then/else branch
+ * @param dest_var Name of the variable where the result is stored
+ * @param expected_type Expected data type of the if expression
+ */
+static void expression_if_branch(CodeGenContext *ctx, ASTNode *branch,
+                                 const char *dest_var, DataType expected_type) {
+  if (branch == NULL) {
+    if (dest_var != NULL) {
+      fprintf(ctx->out, "MOVE LF@%s nil@nil\n", dest_var);
+    }
+    return;
+  }
+
+  if (branch->node_type == NODE_BLOCK) {
+    scope_enter(ctx);
+    ASTNode *s = branch->data.block.statements;
+    if (s == NULL && dest_var != NULL) {
+      fprintf(ctx->out, "MOVE LF@%s nil@nil\n", dest_var);
+    }
+    while (s != NULL) {
+      if (s->next == NULL &&
+          (is_expression_node(s) || s->node_type == NODE_BLOCK)) {
+        expression_if_branch(ctx, s, dest_var, expected_type);
+      } else {
+        generate_statement(ctx, s, ctx->current_func_ret_type);
+        if (s->next == NULL && dest_var != NULL) {
+          fprintf(ctx->out, "MOVE LF@%s nil@nil\n", dest_var);
+        }
+      }
+      s = s->next;
+    }
+    scope_leave(ctx);
+    return;
+  }
+
+  generate_expression(ctx, branch, dest_var);
+  if (dest_var != NULL && expected_type == DOUBLE &&
+      branch->data_type == INT) {
+    fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", dest_var, dest_var);
+  }
+}
+
+/**
+ * @brief Emits IFJcode26 code for an if node
+ * @param ctx Code generator context
+ * @param expr AST node of the if branch
+ * @param dest_var Name of the variable where the result is stored
+ */
+static void expression_if(CodeGenContext *ctx, ASTNode *expr,
+                          const char *dest_var) {
+  const ASTIfNodeData *if_node = &expr->data.if_node;
+  int id = ctx->label_counter++;
+  char cond_tmp[TMP_VAR_BUF_SIZE];
+  new_tmp_var(ctx, cond_tmp);
+
+  generate_expression(ctx, if_node->condition, cond_tmp);
+  fprintf(ctx->out, "JUMPIFEQ $else_%d LF@%s bool@false\n", id, cond_tmp);
+
+  expression_if_branch(ctx, if_node->then_branch, dest_var, expr->data_type);
+  fprintf(ctx->out, "JUMP $if_end_%d\n", id);
+
+  fprintf(ctx->out, "LABEL $else_%d\n", id);
+  expression_if_branch(ctx, if_node->else_branch, dest_var, expr->data_type);
+
+  fprintf(ctx->out, "LABEL $if_end_%d\n", id);
 }
 
 /**
@@ -783,6 +894,10 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
     break;
   }
 
+  case NODE_IF:
+    expression_if(ctx, expr, dest_var);
+    break;
+
   default:
     break;
   }
@@ -841,15 +956,17 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
         (def->specified_type != UNKNOWN)
             ? def->specified_type
             : (def->expr != NULL ? def->expr->data_type : UNKNOWN);
+
+    int uid = ctx->next_var_uid++;
     char ir_name[IR_NAME_BUF_SIZE];
-    snprintf(ir_name, sizeof(ir_name), "%s$%d", def->name, ctx->next_var_uid);
+    snprintf(ir_name, sizeof(ir_name), "%s$%d", def->name, uid);
 
     generate_expression(ctx, def->expr, ir_name);
     if (var_type == DOUBLE && def->expr != NULL &&
         def->expr->data_type == INT) {
       fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ir_name, ir_name);
     }
-    scope_push_var(ctx, def->name, var_type);
+    scope_push_var_with_uid(ctx, def->name, var_type, uid);
     break;
   }
 
@@ -857,10 +974,11 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
     ASTAssignNodeData *assign = &statement->data.assign;
     const LocalVarEntry *entry = scope_lookup(ctx, assign->left);
     if (entry != NULL) {
+      DataType target_type = entry->type;
       char ir_name[IR_NAME_BUF_SIZE];
       snprintf(ir_name, sizeof(ir_name), "%s$%d", entry->name, entry->uid);
       generate_expression(ctx, assign->right, ir_name);
-      if (entry->type == DOUBLE && assign->right != NULL &&
+      if (target_type == DOUBLE && assign->right != NULL &&
           assign->right->data_type == INT) {
         fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ir_name, ir_name);
       }
@@ -1001,6 +1119,7 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
   ctx->var_count = 0;
   ctx->scope_depth = 0;
   ctx->next_var_uid = 0;
+  ctx->current_func_ret_type = fn->return_type;
 
   if (fn->param_count > 0) {
     int *param_uids = malloc(fn->param_count * sizeof(int));
