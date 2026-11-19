@@ -90,7 +90,7 @@ static const char *type_name(DataType type) {
  */
 static void print_indent(int depth) {
   for (int i = 0; i < depth; i++) {
-    (void)fputs("  ", stdout);
+    fputs("  ", stdout);
   }
 }
 
@@ -103,26 +103,26 @@ static void print_indent(int depth) {
  * \n, \t, \r, \\ and \", other control characters as \ddd.
  */
 static void print_string(const char *str) {
-  (void)putchar('"');
+  putchar('"');
   for (const char *p = str; *p != '\0'; p++) {
     unsigned char c = (unsigned char)*p;
     if (c == '\n') {
-      (void)fputs("\\n", stdout);
+      fputs("\\n", stdout);
     } else if (c == '\t') {
-      (void)fputs("\\t", stdout);
+      fputs("\\t", stdout);
     } else if (c == '\r') {
-      (void)fputs("\\r", stdout);
+      fputs("\\r", stdout);
     } else if (c == '\\') {
-      (void)fputs("\\\\", stdout);
+      fputs("\\\\", stdout);
     } else if (c == '"') {
-      (void)fputs("\\\"", stdout);
+      fputs("\\\"", stdout);
     } else if (c < 32 || c == 127) {
-      (void)printf("\\%03d", c);
+      printf("\\%03d", c);
     } else {
-      (void)putchar(c);
+      putchar(c);
     }
   }
-  (void)putchar('"');
+  putchar('"');
 }
 
 /**
@@ -137,15 +137,15 @@ static void print_string(const char *str) {
 static void print_double(double value) {
   char buf[64];
   for (int precision = 1; precision <= 17; precision++) {
-    (void)snprintf(buf, sizeof(buf), "%.*g", precision, value);
+    snprintf(buf, sizeof(buf), "%.*g", precision, value);
     if (strtod(buf, NULL) == value) {
       break;
     }
   }
-  (void)fputs(buf, stdout);
+  fputs(buf, stdout);
   // 'n' catches inf and nan
   if (strpbrk(buf, ".en") == NULL) {
-    (void)fputs(".0", stdout);
+    fputs(".0", stdout);
   }
 }
 
@@ -154,21 +154,21 @@ static void print_double(double value) {
  * @node: NODE_LITERAL node to print
  */
 static void print_literal(const ASTNode *node) {
-  (void)printf("LITERAL %s", type_name(node->data_type));
+  printf("LITERAL %s", type_name(node->data_type));
   switch (node->data_type) {
   case INT:
-    (void)printf(" %lld", node->data.literal.int_val);
+    printf(" %lld", node->data.literal.int_val);
     break;
   case DOUBLE:
-    (void)putchar(' ');
+    putchar(' ');
     print_double(node->data.literal.dbl_val);
     break;
   case STRING:
-    (void)putchar(' ');
+    putchar(' ');
     print_string(node->data.literal.string);
     break;
   case BOOLEAN:
-    (void)fputs(node->data.literal.bool_val ? " true" : " false", stdout);
+    fputs(node->data.literal.bool_val ? " true" : " false", stdout);
     break;
   default:
     break; // Unit has no value to print
@@ -194,7 +194,7 @@ static void print_list(const ASTNode *head, int depth) {
  */
 static void print_slot(const char *label, const ASTNode *node, int depth) {
   print_indent(depth);
-  (void)printf("%s:\n", label);
+  printf("%s:\n", label);
   print_node(node, depth + 1);
 }
 
@@ -206,19 +206,18 @@ static void print_slot(const char *label, const ASTNode *node, int depth) {
  */
 static void print_func_def(const ASTNode *node) {
   const ASTFunctionDefNodeData *def = &node->data.function_def;
-  (void)printf("FUNC_DEF %s", def->name);
+  printf("FUNC_DEF %s", def->name);
   if (def->is_main) {
-    (void)fputs(" @main", stdout);
+    fputs(" @main", stdout);
   }
-  (void)fputs(" (", stdout);
+  fputs(" (", stdout);
   for (size_t i = 0; i < def->param_count; i++) {
     if (i > 0) {
-      (void)fputs(", ", stdout);
+      fputs(", ", stdout);
     }
-    (void)printf("%s: %s", def->params[i].name,
-                 type_name(def->params[i].data_type));
+    printf("%s: %s", def->params[i].name, type_name(def->params[i].data_type));
   }
-  (void)printf(") : %s", type_name(def->return_type));
+  printf(") : %s", type_name(def->return_type));
 }
 
 /**
@@ -233,51 +232,51 @@ static void print_func_def(const ASTNode *node) {
 static void print_node(const ASTNode *node, int depth) {
   print_indent(depth);
   if (node == NULL) {
-    (void)puts("NULL");
+    puts("NULL");
     return;
   }
 
   switch (node->node_type) {
   case NODE_PROGRAM:
-    (void)puts("PROGRAM");
+    puts("PROGRAM");
     print_list(node->data.program.functions, depth + 1);
     break;
 
   case NODE_FUNCTION_DEF:
     print_func_def(node);
-    (void)putchar('\n');
+    putchar('\n');
     print_node(node->data.function_def.body, depth + 1);
     break;
 
   case NODE_FUNCTION_CALL:
-    (void)printf("CALL %s\n", node->data.function_call.name);
+    printf("CALL %s\n", node->data.function_call.name);
     print_list(node->data.function_call.args, depth + 1);
     break;
 
   case NODE_BLOCK:
-    (void)puts("BLOCK");
+    puts("BLOCK");
     print_list(node->data.block.statements, depth + 1);
     break;
 
   case NODE_VARIABLE_DEF:
-    (void)printf("VAR_DEF %s %s : %s\n",
-                 node->data.variable_def.variable_type == VAR ? "var" : "val",
-                 node->data.variable_def.name,
-                 type_name(node->data.variable_def.specified_type));
+    printf("VAR_DEF %s %s : %s\n",
+           node->data.variable_def.variable_type == VAR ? "var" : "val",
+           node->data.variable_def.name,
+           type_name(node->data.variable_def.specified_type));
     print_node(node->data.variable_def.expr, depth + 1);
     break;
 
   case NODE_VARIABLE_REF:
-    (void)printf("VAR_REF %s\n", node->data.variable_ref.name);
+    printf("VAR_REF %s\n", node->data.variable_ref.name);
     break;
 
   case NODE_ASSIGN:
-    (void)printf("ASSIGN %s\n", node->data.assign.left);
+    printf("ASSIGN %s\n", node->data.assign.left);
     print_node(node->data.assign.right, depth + 1);
     break;
 
   case NODE_IF:
-    (void)printf("IF %s\n", node->data.if_node.is_expr ? "expr" : "stmt");
+    printf("IF %s\n", node->data.if_node.is_expr ? "expr" : "stmt");
     print_slot("cond", node->data.if_node.condition, depth + 1);
     print_slot("then", node->data.if_node.then_branch, depth + 1);
     if (node->data.if_node.else_branch != NULL) {
@@ -286,21 +285,21 @@ static void print_node(const ASTNode *node, int depth) {
     break;
 
   case NODE_RETURN:
-    (void)puts("RETURN");
+    puts("RETURN");
     if (node->data.return_node.value != NULL) {
       print_node(node->data.return_node.value, depth + 1);
     }
     break;
 
   case NODE_WHILE:
-    (void)puts("WHILE");
+    puts("WHILE");
     print_slot("cond", node->data.while_node.condition, depth + 1);
     print_slot("body", node->data.while_node.body, depth + 1);
     break;
 
   case NODE_FOR:
-    (void)printf("FOR %s %s\n", node->data.for_node.generator_name,
-                 node->data.for_node.includes_end ? "to" : "until");
+    printf("FOR %s %s\n", node->data.for_node.generator_name,
+           node->data.for_node.includes_end ? "to" : "until");
     print_slot("start", node->data.for_node.range_start, depth + 1);
     print_slot("end", node->data.for_node.range_end, depth + 1);
     if (node->data.for_node.range_step != NULL) {
@@ -315,35 +314,35 @@ static void print_node(const ASTNode *node, int depth) {
 
   case NODE_LITERAL:
     print_literal(node);
-    (void)putchar('\n');
+    putchar('\n');
     break;
 
   case NODE_BINARY_OP:
-    (void)printf("BINARY_OP %s\n", operator_name(node->data.binary_op.op));
+    printf("BINARY_OP %s\n", operator_name(node->data.binary_op.op));
     print_node(node->data.binary_op.left, depth + 1);
     print_node(node->data.binary_op.right, depth + 1);
     break;
 
   case NODE_UNARY_OP:
-    (void)printf("UNARY_OP %s\n", operator_name(node->data.unary_op.op));
+    printf("UNARY_OP %s\n", operator_name(node->data.unary_op.op));
     print_node(node->data.unary_op.operand, depth + 1);
     break;
 
   default:
-    (void)printf("UNKNOWN_NODE %d\n", (int)node->node_type);
+    printf("UNKNOWN_NODE %d\n", (int)node->node_type);
     break;
   }
 }
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    (void)fprintf(stderr, "Usage: %s <source file>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <source file>\n", argv[0]);
     return ERR_INTERNAL;
   }
 
   FILE *src = fopen(argv[1], "r");
   if (src == NULL) {
-    (void)fprintf(stderr, "Couldn't open source file.\n");
+    fprintf(stderr, "Couldn't open source file.\n");
     return ERR_INTERNAL;
   }
 
@@ -357,6 +356,6 @@ int main(int argc, char **argv) {
     ast_free(program);
   }
 
-  (void)fclose(src);
+  fclose(src);
   return rc;
 }

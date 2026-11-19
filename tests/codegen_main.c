@@ -31,13 +31,13 @@
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    (void)fprintf(stderr, "Usage: %s <source file>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <source file>\n", argv[0]);
     return ERR_INTERNAL;
   }
 
   FILE *src = fopen(argv[1], "r");
   if (src == NULL) {
-    (void)fprintf(stderr, "Couldn't open source file.\n");
+    fprintf(stderr, "Couldn't open source file.\n");
     return ERR_INTERNAL;
   }
 
@@ -56,6 +56,6 @@ int main(int argc, char **argv) {
     ast_free(program);
   }
 
-  (void)fclose(src);
+  fclose(src);
   return rc;
 }

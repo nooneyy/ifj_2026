@@ -14,7 +14,8 @@ Checks: >
   -readability-magic-numbers,
   -readability-function-cognitive-complexity,
   -bugprone-easily-swappable-parameters,
-  -misc-no-recursion
+  -misc-no-recursion,
+  -cert-err33-c
 
 WarningsAsErrors: ""
 

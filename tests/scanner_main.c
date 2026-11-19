@@ -110,26 +110,26 @@ static const char *token_name(TokenType type) {
  * \n, \t, \r, \\ and \", other control characters as \ddd.
  */
 static void print_string(const char *str) {
-  (void)putchar('"');
+  putchar('"');
   for (const char *p = str; *p != '\0'; p++) {
     unsigned char c = (unsigned char)*p;
     if (c == '\n') {
-      (void)fputs("\\n", stdout);
+      fputs("\\n", stdout);
     } else if (c == '\t') {
-      (void)fputs("\\t", stdout);
+      fputs("\\t", stdout);
     } else if (c == '\r') {
-      (void)fputs("\\r", stdout);
+      fputs("\\r", stdout);
     } else if (c == '\\') {
-      (void)fputs("\\\\", stdout);
+      fputs("\\\\", stdout);
     } else if (c == '"') {
-      (void)fputs("\\\"", stdout);
+      fputs("\\\"", stdout);
     } else if (c < 32 || c == 127) {
-      (void)printf("\\%03d", c);
+      printf("\\%03d", c);
     } else {
-      (void)putchar(c);
+      putchar(c);
     }
   }
-  (void)putchar('"');
+  putchar('"');
 }
 
 /**
@@ -141,33 +141,33 @@ static void print_string(const char *str) {
  * DOUBLE is printed readable (%g) and exact (%a) in parentheses.
  */
 static void print_token(const Token *token) {
-  (void)fputs(token_name(token->type), stdout);
+  fputs(token_name(token->type), stdout);
 
   switch (token->type) {
   case TOKEN_ID:
-    (void)printf(" %s", token->content.string);
+    printf(" %s", token->content.string);
     break;
 
   case TOKEN_INT:
-    (void)printf(" %lld", token->content.int_val);
+    printf(" %lld", token->content.int_val);
     break;
 
   case TOKEN_DOUBLE: {
     double d = token->content.dbl_val;
-    (void)printf(" %g (%a)", d, d);
+    printf(" %g (%a)", d, d);
     break;
   }
 
   case TOKEN_STRING:
-    (void)putchar(' ');
+    putchar(' ');
     print_string(token->content.string);
     break;
 
   case TOKEN_BOOL:
     if (token->content.boolean) {
-      (void)printf(" true");
+      printf(" true");
     } else {
-      (void)printf(" false");
+      printf(" false");
     }
     break;
 
@@ -178,18 +178,18 @@ static void print_token(const Token *token) {
   if (token->lf_before) {
     printf(" (after LF)");
   }
-  (void)putchar('\n');
+  putchar('\n');
 }
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    (void)fprintf(stderr, "Usage: %s <source file>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <source file>\n", argv[0]);
     return ERR_INTERNAL;
   }
 
   FILE *src = fopen(argv[1], "r");
   if (src == NULL) {
-    (void)fprintf(stderr, "Couldn't open source file.\n");
+    fprintf(stderr, "Couldn't open source file.\n");
     return ERR_INTERNAL;
   }
 
@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
     rc = scanner_get_token(&sc, &token);
     if (rc != RETURN_SUCCESS) {
       // only the file needs closing, then the scanner's code goes up
-      (void)fclose(src);
+      fclose(src);
       return rc;
     }
 
@@ -209,6 +209,6 @@ int main(int argc, char **argv) {
     token_free(&token);
   } while (token.type != TOKEN_EOF);
 
-  (void)fclose(src);
+  fclose(src);
   return RETURN_SUCCESS;
 }

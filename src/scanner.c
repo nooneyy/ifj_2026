@@ -358,13 +358,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       }
       if (indent_pending && c != '/' && !isspace(c)) {
         // means there is an indent pending that appeared before block comment
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         indent_pending = false;
         state = STATE_LINE_START;
         break;
       }
       if (sc->at_line_start) {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         sc->at_line_start = false;
         state = STATE_LINE_START;
         break;
@@ -374,7 +374,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
          * means there are dedentation tokens to be sent
          * because the last dedentation was multiple-level
          */
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DEDENT;
         token_to_fill->line = sc->line;
         sc->dedents_pending--;
@@ -532,7 +532,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         APPEND_OR_ERROR(str, c);
         state = STATE_ID;
       } else {
-        (void)ungetc(c, sc->src); // for the next token to read
+        ungetc(c, sc->src); // for the next token to read
         token_to_fill->type = id_or_keyword(str.data);
         if (token_to_fill->type == TOKEN_ID) {
           token_to_fill->content.string = dynstr_take(&str);
@@ -583,7 +583,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         return int_to_token(&str, token_to_fill, sc->line);
       }
       break;
@@ -629,7 +629,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           print_error("Unexpected character after 'd' suffix.", sc->line);
           return ERR_LEX_ANA;
         }
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         return double_to_token(&str, token_to_fill, sc->line);
       } else {
         if (isalpha(c)) {
@@ -638,7 +638,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         return double_to_token(&str, token_to_fill, sc->line);
       }
       break;
@@ -695,7 +695,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           print_error("Unexpected character after 'd' suffix.", sc->line);
           return ERR_LEX_ANA;
         }
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         return double_to_token(&str, token_to_fill, sc->line);
       } else {
         if (isalpha(c)) {
@@ -704,7 +704,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         return double_to_token(&str, token_to_fill, sc->line);
       }
       break;
@@ -727,7 +727,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         APPEND_OR_ERROR(str, c);
         state = STATE_DOUBLE;
       } else {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         dynstr_free(&str);
         token_to_fill->type = TOKEN_DOT;
         token_to_fill->line = sc->line;
@@ -752,7 +752,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         return int_to_token(&str, token_to_fill, sc->line);
       }
       break;
@@ -779,7 +779,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_NOT_EQ;
         token_to_fill->line = sc->line;
       } else {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         token_to_fill->type = TOKEN_EXCL_MARK;
         token_to_fill->line = sc->line;
       }
@@ -789,7 +789,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == '=') {
         token_to_fill->type = TOKEN_IS_EQ;
       } else {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         token_to_fill->type = TOKEN_ASSIGN;
       }
       token_to_fill->line = sc->line;
@@ -799,7 +799,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == '=') {
         token_to_fill->type = TOKEN_GREEQ;
       } else {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         token_to_fill->type = TOKEN_GRE;
       }
       token_to_fill->line = sc->line;
@@ -831,7 +831,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       } else if (c == '-') {
         token_to_fill->type = TOKEN_GENERATOR;
       } else {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         token_to_fill->type = TOKEN_LOW;
       }
       token_to_fill->line = sc->line;
@@ -845,7 +845,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         // Whitespace, start of commment or EOF are the only allowed
         // chars after @main
         if (isspace(c) || c == '/' || c == EOF) {
-          (void)ungetc(c, sc->src);
+          ungetc(c, sc->src);
           token_to_fill->type = TOKEN_AT_MAIN;
           token_to_fill->line = sc->line;
           return RETURN_SUCCESS;
@@ -861,7 +861,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         comm_depth++;
         state = STATE_COMM_BLOCK;
       } else if (!must_follow_eol) {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         token_to_fill->type = TOKEN_DIV;
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
@@ -873,7 +873,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_COMM_LINE:
       if (c == '\n' || c == EOF) {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         state = STATE_IDLE;
       }
       break;
@@ -891,7 +891,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (c == '*') {
           comm_depth++;
         } else {
-          (void)ungetc(c, sc->src);
+          ungetc(c, sc->src);
         }
       } else if (c == EOF) {
         print_error("Unterminated block comment.", sc->line);
@@ -920,7 +920,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           state = STATE_COMM_BLOCK;
         }
       } else {
-        (void)ungetc(c, sc->src); // in case a '\n' follows
+        ungetc(c, sc->src); // in case a '\n' follows
         state = STATE_COMM_BLOCK;
       }
       break;
@@ -950,7 +950,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == '"') {
         state = STATE_STR_ML;
       } else {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         token_to_fill->type = TOKEN_STRING;
         token_to_fill->content.string = dynstr_take(&str);
         token_to_fill->line = sc->line;
@@ -1023,7 +1023,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           if (c == '"') {
             APPEND_OR_ERROR(str, c);
           } else {
-            (void)ungetc(c, sc->src);
+            ungetc(c, sc->src);
             break;
           }
         }
@@ -1051,7 +1051,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     case STATE_LINE_START:
       c = count_indent(sc->src, c, &indent_cnt, &tab_appeared);
       if (c == '/') {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         indent_pending = true;
         state = STATE_IDLE;
         break;
@@ -1063,7 +1063,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         break;
       }
       if (c == EOF) {
-        (void)ungetc(c, sc->src);
+        ungetc(c, sc->src);
         state = STATE_IDLE;
         break;
       }
@@ -1072,7 +1072,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         return ERR_LEX_ANA;
       }
       // For everything else the indentation matters
-      (void)ungetc(c, sc->src);
+      ungetc(c, sc->src);
       state = STATE_IDLE;
 
       rc = indent_compare(sc, indent_cnt, token_to_fill, &token_ready);
@@ -1092,7 +1092,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         indent_cnt = 0;
         break;
       }
-      (void)ungetc(c, sc->src);
+      ungetc(c, sc->src);
       state = STATE_IDLE;
       if (c == EOF || c == '/') {
         break; // EOF or a comment, nothing to check
