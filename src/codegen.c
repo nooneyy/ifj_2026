@@ -8,6 +8,7 @@
 #include "codegen.h"
 #include "ast.h"
 #include "return.h"
+#include "symbol.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -318,8 +319,9 @@ static void generate_builtin_library(CodeGenContext *ctx) {
  *         false if node is NULL or if the node doesn't produce a value
  */
 static bool is_expression_node(const ASTNode *node) {
-  if (node == NULL)
+  if (node == NULL) {
     return false;
+  }
   switch (node->node_type) {
   case NODE_LITERAL:
   case NODE_VARIABLE_REF:
@@ -328,11 +330,9 @@ static bool is_expression_node(const ASTNode *node) {
   case NODE_FUNCTION_CALL:
     return true;
   case NODE_IF:
-    return node->data.if_node.is_expr ||
-           (node->data.if_node.else_branch != NULL && node->data_type != UNIT &&
-            node->data_type != UNKNOWN);
-  case NODE_WHILE:
-    return false;
+    return (node->data.if_node.is_expr ||
+            (node->data.if_node.else_branch != NULL &&
+             node->data_type != UNIT && node->data_type != UNKNOWN)) != 0;
   default:
     return false;
   }
@@ -368,8 +368,9 @@ static bool is_builtin_func(const char *name) {
  */
 static void print_escaped_string(CodeGenContext *ctx, const char *str) {
   fprintf(ctx->out, "string@");
-  if (str == NULL)
+  if (str == NULL) {
     return;
+  }
 
   for (size_t i = 0; str[i] != '\0'; i++) {
     unsigned char c = (unsigned char)str[i];
@@ -798,13 +799,15 @@ static void expression_if(CodeGenContext *ctx, ASTNode *expr,
  */
 static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
                                 const char *dest_var) {
-  if (expr == NULL)
+  if (expr == NULL) {
     return;
+  }
 
   switch (expr->node_type) {
   case NODE_LITERAL:
-    if (dest_var == NULL)
+    if (dest_var == NULL) {
       break;
+    }
     switch (expr->data_type) {
     case INT:
       fprintf(ctx->out, "MOVE LF@%s int@%lld\n", dest_var,
@@ -1038,16 +1041,21 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
  */
 static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
                                DataType func_ret_type) {
-  if (statement == NULL)
+  if (statement == NULL) {
     return;
+  }
 
   switch (statement->node_type) {
   case NODE_VARIABLE_DEF: {
     ASTVarDefNodeData *def = &statement->data.variable_def;
-    DataType var_type =
-        (def->specified_type != UNKNOWN)
-            ? def->specified_type
-            : (def->expr != NULL ? def->expr->data_type : UNKNOWN);
+
+    DataType var_type = UNKNOWN;
+
+    if (def->specified_type != UNKNOWN) {
+      var_type = def->specified_type;
+    } else if (def->expr != NULL) {
+      var_type = def->expr->data_type;
+    }
 
     int uid = ctx->next_var_uid++;
     char ir_name[IR_NAME_BUF_SIZE];
