@@ -11,8 +11,6 @@
 #include "ast.h"
 #include "return.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /**
  * @brief Generates IFJcode26 instructions from an annotated AST.
@@ -20,11 +18,12 @@
  * Traverses the AST (already verified and annotated by semantics) and writes
  * the corresponding intermediate code to the output stream.
  * Neither the AST nor the output stream are freed/closed by this function.
- * 
- * @param program Pointer to the AST root of the entire program. (caller retains ownership)
+ *
+ * @param program Pointer to the AST root of the entire program. (caller retains
+ * ownership)
  * @param out Output stream where the code is written (stdout)
- * @return ReturnCodes RETURN_SUCCESS in case of a success
- *                     ERR_INTERNAL in case of a error during codegen
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_INTERNAL in case of an error during codegen
  */
 ReturnCodes generate_code(ASTNode *program, FILE *out);
 
