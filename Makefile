@@ -18,7 +18,7 @@ TARGET := ifj26
 all: $(TARGET)
 
 # IMPORTANT - add all object files to be linked with final executable here with the .o extension 
-$(TARGET): src/main.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o src/return.o src/ast.o src/parser.o src/prec_stack.o src/semantic.o
+$(TARGET): src/main.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o src/return.o src/ast.o src/codegen.o src/parser.o src/prec_stack.o src/semantic.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 # Scanner's testing main - every module except src/main.o, it has its own main
@@ -55,9 +55,25 @@ semantic_test: $(SEMANTIC_TEST)
 $(SEMANTIC_TEST): tests/semantic_main.o src/semantic.o src/parser.o src/prec_stack.o src/ast.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o src/return.o
 	$(CC) $(CFLAGS) -o $@ $^
 
+# Disclaimer! The codegen_test target was made by Claude Opus 5.5
+# Prompt: "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou
+# architekturu jak testy pred tim, stejny prompt atd." (context: a
+# tests/codegen/ suite like the semantic tests, its main parses, runs the
+# semantic analysis, prints the generated code and returns the code; the
+# runner interprets the code with ic26int-linux-x86_64 from the repo root)
+
+# Code generator's testing main - prints the generated IFJcode26, returns the
+# code, has its own main
+CODEGEN_TEST := tests/codegen_main
+
+codegen_test: $(CODEGEN_TEST)
+
+$(CODEGEN_TEST): tests/codegen_main.o src/codegen.o src/semantic.o src/parser.o src/prec_stack.o src/ast.o src/symbol.o src/symtable.o src/scanner.o src/dynstr.o src/tokens.o src/return.o
+	$(CC) $(CFLAGS) -o $@ $^
+
 # Runs every test suite (tests/<suite>/ with its tests/<suite>_main)
 test:
-	tests/run_tests.sh scanner parser semantic
+	tests/run_tests.sh scanner parser semantic codegen
 
 ##
 # ADD NEW DEPENDENCIES BELOW - example for new symtable.c and symtable.h files:
@@ -65,10 +81,11 @@ test:
 # src/symtable.o: src/symtable.h
 ##
 
-src/main.o: src/return.h src/scanner.h src/tokens.h src/parser.h src/ast.h src/semantic.h
+src/main.o: src/return.h src/scanner.h src/tokens.h src/parser.h src/ast.h src/semantic.h src/codegen.h
 src/scanner.o: src/scanner.h src/return.h src/tokens.h src/dynstr.h
 src/parser.o: src/parser.h src/ast.h src/tokens.h src/return.h src/scanner.h src/prec_stack.h src/symbol.h
 src/semantic.o: src/semantic.h src/ast.h src/return.h src/symbol.h src/symtable.h
+src/codegen.o: src/codegen.h src/ast.h src/return.h src/symbol.h
 src/ast.o: src/ast.h src/symbol.h src/return.h
 src/prec_stack.o: src/prec_stack.h src/ast.h src/return.h src/tokens.h
 src/dynstr.o: src/dynstr.h src/return.h
@@ -79,6 +96,7 @@ src/return.o: src/return.h
 tests/scanner_main.o: src/return.h src/scanner.h src/tokens.h
 tests/parser_main.o: src/ast.h src/parser.h src/return.h src/scanner.h src/symbol.h src/tokens.h
 tests/semantic_main.o: src/ast.h src/parser.h src/return.h src/scanner.h src/semantic.h src/symbol.h src/tokens.h
+tests/codegen_main.o: src/ast.h src/codegen.h src/parser.h src/return.h src/scanner.h src/semantic.h src/symbol.h src/tokens.h
 
 # Auto-compile .c source files into .o object files
 src/%.o: src/%.c
@@ -86,7 +104,7 @@ src/%.o: src/%.c
 
 # Cleans the final executable, testing executables and all object files
 clean:
-	rm -f $(TARGET) $(SCANNER_TEST) $(PARSER_TEST) $(SEMANTIC_TEST) src/*.o tests/*.o
+	rm -f $(TARGET) $(SCANNER_TEST) $(PARSER_TEST) $(SEMANTIC_TEST) $(CODEGEN_TEST) src/*.o tests/*.o
 
 # Format all source code files in the repo
 # Wildcard is there for not throwing errors on non-existent header files
@@ -102,6 +120,6 @@ compile_commands.json:
 	bear -- $(MAKE) clean all
 
 # Commands that are not build targets
-.PHONY: all clean format tidy scanner_test parser_test semantic_test test
+.PHONY: all clean format tidy scanner_test parser_test semantic_test codegen_test test
 
 # TODO: tidy and format commands, zip commands, test commands,....

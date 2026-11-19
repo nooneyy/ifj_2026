@@ -6,3 +6,5 @@ scanner_main
 .cache
 parser_main
 semantic_main
+codegen_main
+/ic26int-linux-x86_64

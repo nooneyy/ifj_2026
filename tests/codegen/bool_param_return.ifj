@@ -1,0 +1,46 @@
+/**
+ * @file bool_param_return.ifj
+ * @brief Boolean parameters, results and variables
+ * @author Oldřich Vašíček <xvasico00@stud.fit.vut.cz>
+ * @date 17.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Ok, rozsir tedy prosim testy o codegen testy, aby mely stejnou architekturu
+ * jak testy pred tim, stejny prompt atd. Jestli budou testy potrebovat
+ * interpret IFJ26code, udelej je tak, aby interpret ic26int-linux-x86_64 testy
+ * ocekavaly v root slozce repa, tedy ve stejne slozce jako je slozka src."
+ * (context: a tests/codegen/ suite like the semantic tests - every program is
+ * compiled by codegen_main, run by ic26int and its output and return code are
+ * compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// Boolean can be passed, returned and stored (spec 5.2)
+// -> false false true true
+import ifj26.*
+
+def negate(b: Boolean): Boolean = !b
+
+def isPositive(x: Int): Boolean = x > 0
+
+@main def main(): Unit =
+  val m = -3
+  val a = negate(true)
+  val c = isPositive(m)
+  val d = isPositive(4)
+  var flag = false
+  flag = d
+  print(a)
+  print(" ")
+  print(c)
+  print(" ")
+  print(d)
+  print(" ")
+  print(flag)
+  print("\n")

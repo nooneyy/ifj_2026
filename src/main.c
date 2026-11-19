@@ -7,6 +7,7 @@
  */
 
 #include "ast.h"
+#include "codegen.h"
 #include "parser.h"
 #include "return.h"
 #include "scanner.h"
@@ -28,6 +29,8 @@ int main(void) {
     return rc;
   }
 
+  rc = generate_code(program, stdout);
+
   ast_free(program);
-  return RETURN_SUCCESS;
+  return rc;
 }
