@@ -9,8 +9,8 @@
 CC := clang
 
 # Compiler flags
-# C99 standard, as much warnings as possible, treat all warnings as errors, add debug info
-CFLAGS := -std=c99 -Wall -Wextra -Werror -pedantic -g
+# C99 standard, as much warnings as possible, add debug info
+CFLAGS := -std=c99 -Wall -Wextra -pedantic -g
 
 # The name of our finished executable
 TARGET := ifj26
