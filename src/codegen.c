@@ -867,7 +867,7 @@ static void expression_valmem_field(CodeGenContext *ctx, const ASTNode *expr,
   } else if (strcmp(valmem->name, "toString") == 0) {
     callee = "$ifj_toStr";
   } else {
-    return; // This could've been better if the AST had a valmem->type
+    return; // This could've been a much cleaner switch if the AST had a valmem->operation_type
   }
 
   char recv_tmp[TMP_VAR_BUF_SIZE];
