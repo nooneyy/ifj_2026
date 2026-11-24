@@ -711,6 +711,62 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
 
     break;
   }
+  case NODE_VALMEM_FIELD: {
+    ASTValmemFieldData *valmem_data = &expr->data.valmem_field;
+
+    DataType receiver_type = UNKNOWN;
+
+    ret = check_expr(context, valmem_data->receiver, stack, &receiver_type);
+
+    if (ret != RETURN_SUCCESS) {
+      break;
+    }
+
+    if (strcmp(valmem_data->name, "toInt") == 0) {
+      if (receiver_type != DOUBLE) {
+        // toInt is for DOUBLE only
+        print_error("toInt field called on value that's not DOUBLE!",
+                    valmem_data->receiver->line);
+        return ERR_SEM_TYPE;
+      }
+
+      *out = INT;
+      break;
+    }
+
+    if (strcmp(valmem_data->name, "floor") == 0) {
+      if (receiver_type != DOUBLE) {
+        // floor is for DOUBLE only
+        print_error("floor field called on value that's not DOUBLE!",
+                    valmem_data->receiver->line);
+        return ERR_SEM_TYPE;
+      }
+
+      *out = DOUBLE;
+      break;
+    }
+
+    if (strcmp(valmem_data->name, "length") == 0) {
+      if (receiver_type != STRING) {
+        // length is for STRING only
+        print_error("length field called on value that's not STRING!",
+                    valmem_data->receiver->line);
+        return ERR_SEM_TYPE;
+      }
+
+      *out = INT;
+      break;
+    }
+
+    if (strcmp(valmem_data->name, "toString") == 0) {
+      *out = STRING;
+      break;
+    }
+
+    print_error("Unknown field operation called on value!",
+                valmem_data->receiver->line);
+    return ERR_SEM_UNDEF;
+  }
   default:
     print_error("Wrong node type passed to check_expr!", 0);
     return ERR_INTERNAL;
