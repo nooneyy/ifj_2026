@@ -67,7 +67,7 @@ typedef enum TokenType {
   TOKEN_KW_LIST,      // "List"
   TOKEN_KW_MATCH,     // "match"
   TOKEN_KW_TYPE,      // "type"
-  TOKEN_UNDERSCORE    // "_"
+  TOKEN_UNDERSCORE,   // "_"
 } TokenType;
 
 /**

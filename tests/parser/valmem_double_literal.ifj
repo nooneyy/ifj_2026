@@ -1,0 +1,15 @@
+/**
+ * @file valmem_double_literal.ifj
+ * @brief VALMEM members right after double literals
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+// a member right after a double literal: 5.0.toString is DOUBLE 5.0, DOT and ID
+// toString, not a malformed decimal literal (spec 5.4) -> 0
+import ifj26.*
+@main def main(): Unit =
+  val a = 5.0.toString
+  val b = 1e10.toString.length
+  val c = -2.5.toString

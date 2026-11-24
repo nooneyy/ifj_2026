@@ -310,6 +310,30 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "PUSHS LF@res\n");
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
+
+  fprintf(ctx->out, "LABEL $ifj_floor\n");
+  fprintf(ctx->out, "CREATEFRAME\n");
+  fprintf(ctx->out, "PUSHFRAME\n");
+  fprintf(ctx->out, "DEFVAR LF@val\n");
+  fprintf(ctx->out, "POPS LF@val\n");
+  fprintf(ctx->out, "DEFVAR LF@res\n");
+  fprintf(ctx->out, "DEFVAR LF@cond\n");
+  fprintf(ctx->out, "DEFVAR LF@i\n");
+  fprintf(ctx->out, "MOVE LF@res LF@val\n");
+  fprintf(ctx->out, "LT LF@cond LF@val float@0x1p+53\n");
+  fprintf(ctx->out, "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n");
+  fprintf(ctx->out, "SUB LF@i float@0x0p+0 float@0x1p+53\n");
+  fprintf(ctx->out, "GT LF@cond LF@val LF@i\n");
+  fprintf(ctx->out, "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n");
+  fprintf(ctx->out, "FLOAT2INT LF@i LF@val\n");
+  fprintf(ctx->out, "INT2FLOAT LF@res LF@i\n");
+  fprintf(ctx->out, "LT LF@cond LF@val LF@res\n");
+  fprintf(ctx->out, "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n");
+  fprintf(ctx->out, "SUB LF@res LF@res float@0x1p+0\n");
+  fprintf(ctx->out, "LABEL $ifj_floor_end\n");
+  fprintf(ctx->out, "PUSHS LF@res\n");
+  fprintf(ctx->out, "POPFRAME\n");
+  fprintf(ctx->out, "RETURN\n\n");
 }
 
 /**
@@ -328,6 +352,7 @@ static bool is_expression_node(const ASTNode *node) {
   case NODE_UNARY_OP:
   case NODE_BINARY_OP:
   case NODE_FUNCTION_CALL:
+  case NODE_VALMEM_FIELD:
     return true;
   case NODE_IF:
     return (node->data.if_node.is_expr ||
@@ -475,37 +500,47 @@ static int count_ast_nodes(ASTNode *node) {
   while (node != NULL) {
     count += TMPS_PER_AST_NODE;
     switch (node->node_type) {
+
     case NODE_VARIABLE_DEF:
       count += count_ast_nodes(node->data.variable_def.expr);
       break;
+
     case NODE_ASSIGN:
       count += count_ast_nodes(node->data.assign.right);
       break;
+
     case NODE_UNARY_OP:
       count += count_ast_nodes(node->data.unary_op.operand);
       break;
+
     case NODE_BINARY_OP:
       count += count_ast_nodes(node->data.binary_op.left);
       count += count_ast_nodes(node->data.binary_op.right);
       break;
+
     case NODE_FUNCTION_CALL:
       count += count_ast_nodes(node->data.function_call.args);
       break;
+
     case NODE_RETURN:
       count += count_ast_nodes(node->data.return_node.value);
       break;
+
     case NODE_BLOCK:
       count += count_ast_nodes(node->data.block.statements);
       break;
+
     case NODE_IF:
       count += count_ast_nodes(node->data.if_node.condition);
       count += count_ast_nodes(node->data.if_node.then_branch);
       count += count_ast_nodes(node->data.if_node.else_branch);
       break;
+
     case NODE_WHILE:
       count += count_ast_nodes(node->data.while_node.condition);
       count += count_ast_nodes(node->data.while_node.body);
       break;
+
     case NODE_FOR:
       count += TMPS_PER_AST_NODE; // For loop required additional temp vars
       count += count_ast_nodes(node->data.for_node.range_start);
@@ -514,6 +549,11 @@ static int count_ast_nodes(ASTNode *node) {
       count += count_ast_nodes(node->data.for_node.guards);
       count += count_ast_nodes(node->data.for_node.body);
       break;
+
+    case NODE_VALMEM_FIELD:
+      count += count_ast_nodes(node->data.valmem_field.receiver);
+      break;
+
     default:
       break;
     }
@@ -577,6 +617,7 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
                                int *uid_counter) {
   while (node != NULL) {
     switch (node->node_type) {
+
     case NODE_VARIABLE_DEF:
       fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.variable_def.name,
               (*uid_counter)++);
@@ -584,34 +625,43 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
         emit_var_defs_walk(ctx, node->data.variable_def.expr, uid_counter);
       }
       break;
+
     case NODE_ASSIGN:
       emit_var_defs_walk(ctx, node->data.assign.right, uid_counter);
       break;
+
     case NODE_UNARY_OP:
       emit_var_defs_walk(ctx, node->data.unary_op.operand, uid_counter);
       break;
+
     case NODE_BINARY_OP:
       emit_var_defs_walk(ctx, node->data.binary_op.left, uid_counter);
       emit_var_defs_walk(ctx, node->data.binary_op.right, uid_counter);
       break;
+
     case NODE_FUNCTION_CALL:
       emit_var_defs_walk(ctx, node->data.function_call.args, uid_counter);
       break;
+
     case NODE_RETURN:
       emit_var_defs_walk(ctx, node->data.return_node.value, uid_counter);
       break;
+
     case NODE_BLOCK:
       emit_var_defs_walk(ctx, node->data.block.statements, uid_counter);
       break;
+
     case NODE_IF:
       emit_var_defs_walk(ctx, node->data.if_node.condition, uid_counter);
       emit_var_defs_walk(ctx, node->data.if_node.then_branch, uid_counter);
       emit_var_defs_walk(ctx, node->data.if_node.else_branch, uid_counter);
       break;
+
     case NODE_WHILE:
       emit_var_defs_walk(ctx, node->data.while_node.condition, uid_counter);
       emit_var_defs_walk(ctx, node->data.while_node.body, uid_counter);
       break;
+
     case NODE_FOR:
       emit_var_defs_walk(ctx, node->data.for_node.range_start, uid_counter);
       emit_var_defs_walk(ctx, node->data.for_node.range_end, uid_counter);
@@ -621,6 +671,11 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
       emit_var_defs_walk(ctx, node->data.for_node.guards, uid_counter);
       emit_var_defs_walk(ctx, node->data.for_node.body, uid_counter);
       break;
+
+    case NODE_VALMEM_FIELD:
+      emit_var_defs_walk(ctx, node->data.valmem_field.receiver, uid_counter);
+      break;
+
     default:
       break;
     }
@@ -788,6 +843,50 @@ static void expression_if(CodeGenContext *ctx, ASTNode *expr,
 }
 
 /**
+ * @brief Emits IFJcode26 code for a VALMEM field access
+ * @param ctx Code generator context
+ * @param expr AST node of the VALMEM field expression
+ * @param dest_var Name of the variable where the result is stored
+ *                 NULL if result is discarded
+ */
+static void expression_valmem_field(CodeGenContext *ctx, const ASTNode *expr,
+                                    const char *dest_var) {
+  const ASTValmemFieldData *valmem = &expr->data.valmem_field;
+
+  if (valmem->name == NULL || valmem->receiver == NULL) {
+    return;
+  }
+
+  const char *callee;
+  if (strcmp(valmem->name, "toInt") == 0) {
+    callee = "$ifj_toInt";
+  } else if (strcmp(valmem->name, "floor") == 0) {
+    callee = "$ifj_floor";
+  } else if (strcmp(valmem->name, "length") == 0) {
+    callee = "$ifj_strLength";
+  } else if (strcmp(valmem->name, "toString") == 0) {
+    callee = "$ifj_toStr";
+  } else {
+    return; // This could've been better if the AST had a valmem->type
+  }
+
+  char recv_tmp[TMP_VAR_BUF_SIZE];
+  new_tmp_var(ctx, recv_tmp);
+
+  generate_expression(ctx, valmem->receiver, recv_tmp);
+  fprintf(ctx->out, "PUSHS LF@%s\n", recv_tmp);
+  fprintf(ctx->out, "CALL %s\n", callee);
+
+  if (dest_var != NULL) {
+    fprintf(ctx->out, "POPS LF@%s\n", dest_var);
+  } else {
+    char dummy[TMP_VAR_BUF_SIZE];
+    new_tmp_var(ctx, dummy);
+    fprintf(ctx->out, "POPS LF@%s\n", dummy);
+  }
+}
+
+/**
  * @brief Emits IFJcode26 code for expressions
  *
  * Handles implicit INT to DOUBLE retyping
@@ -913,6 +1012,10 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
 
   case NODE_IF:
     expression_if(ctx, expr, dest_var);
+    break;
+
+  case NODE_VALMEM_FIELD:
+    expression_valmem_field(ctx, expr, dest_var);
     break;
 
   default:
@@ -1138,6 +1241,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
   case NODE_UNARY_OP:
   case NODE_BINARY_OP:
   case NODE_FUNCTION_CALL:
+  case NODE_VALMEM_FIELD:
     generate_expression(ctx, statement, NULL);
     break;
 

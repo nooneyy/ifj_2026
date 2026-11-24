@@ -1,0 +1,19 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val d : ?
+        LITERAL Double 3.7
+      VAR_DEF val s : ?
+        LITERAL String "abc"
+      VAR_DEF val a : ?
+        VALMEM_FIELD toString
+          VAR_REF d
+      VAR_DEF val b : ?
+        VALMEM_FIELD toInt
+          VAR_REF d
+      VAR_DEF val c : ?
+        VALMEM_FIELD floor
+          VAR_REF d
+      VAR_DEF val e : ?
+        VALMEM_FIELD length
+          VAR_REF s

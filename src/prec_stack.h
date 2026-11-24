@@ -43,6 +43,7 @@ typedef enum {
   PREC_NEQ,     // !=
   PREC_AND,     // &&
   PREC_OR,      // ||
+  PREC_DOT,     // . (VALMEM)
   PREC_DELIM,   // $ - the delimiter for the input start and input end
 } PrecTerminal;
 

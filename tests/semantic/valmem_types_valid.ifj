@@ -1,0 +1,48 @@
+/**
+ * @file valmem_types_valid.ifj
+ * @brief Result types of the VALMEM members
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: semantic tests for the VALMEM extension (spec 5.4) - the
+ * result type depends on the receiver type, an unknown member name is error 3
+ * and a known member on a wrong receiver type is error 6 (the trial accepted
+ * 3 or 6), derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// toString gives a String for any receiver, toInt and floor take a Double and
+// give an Int and a Double, length takes a String and gives an Int; chains
+// and members inside expressions keep these types (spec 5.4) -> 0
+import ifj26.*
+
+@main def main(): Unit =
+  val d: Double = 3.7
+  val s: String = "abc"
+  val b: Boolean = d > 1.0
+  val t1: String = d.toString
+  val t2: String = s.toString
+  val t3: String = b.toString
+  val t4: String = ().toString
+  val t5: String = s.length.toString
+  val i1: Int = d.toInt
+  val f1: Double = d.floor
+  val n1: Int = s.length
+  val i2: Int = d.floor.toInt
+  val n2: Int = d.toString.length
+  val i3: Int = (if n1 > 2 then 1.5 else 2.5).floor.toInt
+  val f2: Double = -d.floor + 0.5
+  val f3: Double = s.length
+  val i4: Int = s.length * 2 - 1
+  for i <- 0 until s.length do print(i)
+  if s.length == 3 then print(s)

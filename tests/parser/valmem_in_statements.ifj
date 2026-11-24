@@ -1,0 +1,40 @@
+/**
+ * @file valmem_in_statements.ifj
+ * @brief VALMEM members in statements and function bodies
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: parser tests for the VALMEM extension (spec 5.4) - a member
+ * binds tighter than every operator and chains go from the left, derived from
+ * the IFJ26 spec as a black box)
+ */
+// members in for ranges and guards, conditions, call arguments, function
+// bodies and return; a range or guard still ends at until, by, if and do after
+// a member (spec 5.3, 5.4) -> 0
+import ifj26.*
+def len(s: String) = s.length
+def lastFloor(d: Double): Double =
+  val x = d * 2.0
+  x.floor
+def early(d: Double): Double =
+  return d.floor
+@main def main(): Unit =
+  val s = "abcd"
+  for i <- 0 until s.length do print(i)
+  for i <- 0 to s.length by s.length.toString.length if i != s.length do print(i)
+  if s.length > 2 then print(s.length)
+  var t = s
+  while t.length > 1 do
+    t = subStr(t, 1, t.length)
+  print(toStr(len(s)).length)

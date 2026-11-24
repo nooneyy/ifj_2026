@@ -1,0 +1,31 @@
+/**
+ * @file valmem_unknown_member_chain.ifj
+ * @brief Unknown member at the end of a chain
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: semantic tests for the VALMEM extension (spec 5.4) - the
+ * result type depends on the receiver type, an unknown member name is error 3
+ * and a known member on a wrong receiver type is error 6 (the trial accepted
+ * 3 or 6), derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// an unknown member after a valid one is still unknown (spec 5.4) -> 3
+import ifj26.*
+
+@main def main(): Unit =
+  val d = 3.7
+  val s = "abc"
+  val b = true
+  val x = s.length.foo

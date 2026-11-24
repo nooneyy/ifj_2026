@@ -34,6 +34,8 @@ typedef struct Scanner {
                        // on a new line and should mind the indentation
   bool emit_eol_eof; // A flag that determines whether to emit an EOL before an
                      // EOF
+  bool emit_dot; // A flag that determines whether to emit a DOT after it was
+                 // consumed to look ahead
   unsigned int line; // Line the scanner is currently on
 } Scanner;
 

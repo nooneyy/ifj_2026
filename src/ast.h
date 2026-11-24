@@ -33,6 +33,7 @@ typedef enum {
   NODE_LITERAL,   // A literal value node (Int, Double, String, Unit, Boolean)
   NODE_BINARY_OP, // A binary operation node
   NODE_UNARY_OP,  // A unary operation node
+  NODE_VALMEM_FIELD, // Field node for VALMEM extension on identifier
 } ASTNodeType;
 
 /**
@@ -208,6 +209,14 @@ typedef struct {
 } ASTUnaryOpNodeData;
 
 /**
+ * @brief Data specified to the Valmem field node
+ */
+typedef struct {
+  ASTNode *receiver; // The value which the operation is called on
+  char *name;        // The name of the operation
+} ASTValmemFieldData;
+
+/**
  * @brief Union of node content depending on the node type
  */
 typedef union {
@@ -225,6 +234,7 @@ typedef union {
   ASTLiteralNodeData literal;
   ASTBinaryOpNodeData binary_op;
   ASTUnaryOpNodeData unary_op;
+  ASTValmemFieldData valmem_field;
 } ASTNodeData;
 
 /**
@@ -412,6 +422,17 @@ ASTNode *ast_init_var_ref(char *name, unsigned int line);
  */
 ASTNode *ast_init_literal(DataType data_type, ASTLiteralNodeData value,
                           unsigned int line);
+
+/**
+ * @brief A constructor function for the Valmem field node
+ * @param receiver The value/identifier on which the operation is done
+ * @param name The name of the operation which is done on the value/identifier
+ * @param line The line number in the input where the node was created
+ * @return A pointer to the created AST node on success, otherwise NULL
+ * (and name and receiver node gets freed)
+ */
+ASTNode *ast_init_valmem_field(ASTNode *receiver, char *name,
+                               unsigned int line);
 
 /**
  * @brief Appends a node to the end of a linked list of AST nodes (program

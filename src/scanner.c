@@ -57,6 +57,7 @@ typedef enum FsmState {
   STATE_EXP_UNDER,       // "_" appeared inside an exponent
   STATE_ZERO,            // "0" is first in the sequence
   STATE_ZERO_INT,        // "0" followed with int number
+  STATE_ZERO_INT_DOT,    // "0" followed with int number followed with "."
   STATE_SLASH,           // "/" is first in the sequence
   STATE_COMM_LINE,       // Line comment scanning state
   STATE_COMM_BLOCK,      // Block comment scanning state
@@ -349,6 +350,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     switch (state) {
     case STATE_IDLE:
 
+      if (sc->emit_dot) {
+        ungetc(c, sc->src);
+        sc->emit_dot = false;
+        token_to_fill->type = TOKEN_DOT;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
+      }
+
       if (must_follow_eol) {
         // for multiline block comments containing \n
         if (c != EOF && c != '/' && !isspace(c)) {
@@ -604,9 +613,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         APPEND_OR_ERROR(str, c);
         state = STATE_DOUBLE;
       } else {
-        dynstr_free(&str);
-        print_error("Unexpected indentifier after '.' in a number.", sc->line);
-        return ERR_LEX_ANA;
+        ungetc(c, sc->src);
+        // DOT is already consumed, but we must return it
+        sc->emit_dot = true;
+        return int_to_token(&str, token_to_fill, sc->line);
       }
       break;
 
@@ -752,11 +762,23 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_ZERO_INT;
       } else if (c == '.') {
         APPEND_OR_ERROR(str, c);
-        state = STATE_DOT;
+        state = STATE_ZERO_INT_DOT;
       } else if (c == 'e' || c == 'E') {
         APPEND_OR_ERROR(str, 'e');
         state = STATE_E;
       } else {
+        dynstr_free(&str);
+        print_error("Integer with a leading zero.", sc->line);
+        return ERR_LEX_ANA;
+      }
+      break;
+
+    case STATE_ZERO_INT_DOT:
+      if (isdigit(c)) {
+        APPEND_OR_ERROR(str, c);
+        state = STATE_DOUBLE;
+      } else {
+        // Leading zero integer followed by dot
         dynstr_free(&str);
         print_error("Integer with a leading zero.", sc->line);
         return ERR_LEX_ANA;
