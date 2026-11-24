@@ -1,0 +1,25 @@
+/**
+ * @file paramlists_no_return_type.ifj
+ * @brief Parameter lists without a return type annotation (PARAMLISTS)
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Using the test format in tests/ create tests for parser for the paramalists
+ * extension from the specification."
+ * (context: parser tests for the PARAMLISTS extension, derived from the IFJ26
+ * spec, section 5.10 and the trailing comma rule in section 1.2)
+ */
+// the return type annotation stays optional after no list or several lists -> 0
+import ifj26.*
+def answer = 42
+def add(a: Int)(b: Int) = a + b
+def empty()() = 1
+@main def run(): Unit = ()

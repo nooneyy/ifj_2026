@@ -1,0 +1,19 @@
+PROGRAM
+  FUNC_DEF answer : Int
+    LITERAL Int 42
+  FUNC_DEF answerWithParens () : Int
+    LITERAL Int 42
+  FUNC_DEF add (a: Int)(b: Int)(c: Int) : Int
+    BINARY_OP +
+      BINARY_OP +
+        VAR_REF a
+        VAR_REF b
+      VAR_REF c
+  FUNC_DEF offset ()(value: Int) : Int
+    BINARY_OP +
+      VAR_REF value
+      LITERAL Int 1
+  FUNC_DEF mixed (a: Int, b: String)()(c: Double) : Int
+    VAR_REF a
+  FUNC_DEF run @main () : Unit
+    LITERAL Unit

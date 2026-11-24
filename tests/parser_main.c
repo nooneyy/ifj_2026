@@ -203,6 +203,9 @@ static void print_slot(const char *label, const ASTNode *node, int depth) {
  * @node: NODE_FUNCTION_DEF node to print
  *
  * Format: FUNC_DEF name [@main] (param: Type, ...) : ReturnType
+ * With PARAMLISTS every list has its own parentheses, e.g.
+ * FUNC_DEF add (a: Int)(b: Int) : Int, and a function without a parameter
+ * list has none: FUNC_DEF answer : Int
  */
 static void print_func_def(const ASTNode *node) {
   const ASTFunctionDefNodeData *def = &node->data.function_def;
@@ -210,14 +213,21 @@ static void print_func_def(const ASTNode *node) {
   if (def->is_main) {
     fputs(" @main", stdout);
   }
-  fputs(" (", stdout);
-  for (size_t i = 0; i < def->param_count; i++) {
-    if (i > 0) {
-      fputs(", ", stdout);
+  // every parameter list in its own parentheses (PARAMLISTS), none if the
+  // function has no parameter list
+  size_t param_idx = 0;
+  for (size_t list_idx = 0; list_idx < def->list_count; list_idx++) {
+    fputs(list_idx == 0 ? " (" : "(", stdout);
+    for (size_t i = 0; i < def->list_sizes[list_idx]; i++, param_idx++) {
+      if (i > 0) {
+        fputs(", ", stdout);
+      }
+      printf("%s: %s", def->params[param_idx].name,
+             type_name(def->params[param_idx].data_type));
     }
-    printf("%s: %s", def->params[i].name, type_name(def->params[i].data_type));
+    fputs(")", stdout);
   }
-  printf(") : %s", type_name(def->return_type));
+  printf(" : %s", type_name(def->return_type));
 }
 
 /**

@@ -1,7 +1,8 @@
 /**
- * @file err_def_no_parens.ifj
- * @brief Function definition without parentheses
+ * @file paramlists_no_list.ifj
+ * @brief Function definition without a parameter list (PARAMLISTS)
  * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
  * @date 12.11.2026
  */
 
@@ -18,7 +19,8 @@
  * (context: parser tests from the agreed list, derived from the IFJ26 spec
  * and the demo slides as a black box)
  */
-// the parameter list in parentheses is mandatory -> 2
+// without PARAMLISTS the parameter list in parentheses was mandatory (-> 2),
+// with PARAMLISTS a function may have no parameter list at all -> 0
 import ifj26.*
 def f: Int = 1
 @main def main(): Unit = ()
