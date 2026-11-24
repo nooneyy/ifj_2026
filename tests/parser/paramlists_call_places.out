@@ -1,0 +1,113 @@
+PROGRAM
+  FUNC_DEF answer : Int
+    LITERAL Int 42
+  FUNC_DEF add (a: Int)(b: Int) : Int
+    BINARY_OP +
+      VAR_REF a
+      VAR_REF b
+  FUNC_DEF flag ()(n: Int) : Boolean
+    BINARY_OP >
+      VAR_REF n
+      LITERAL Int 0
+  FUNC_DEF body (a: Int)(b: Int) : ?
+    CALL add (1)(1)
+      VAR_REF a
+      VAR_REF b
+  FUNC_DEF early (a: Int)(b: Int) : Int
+    BLOCK
+      RETURN
+        CALL add (1)(1)
+          VAR_REF a
+          VAR_REF b
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        CALL add (1)(1)
+          LITERAL Int 1
+          LITERAL Int 2
+      VAR_DEF var b : ?
+        VAR_REF answer
+      ASSIGN b
+        CALL add (1)(1)
+          VAR_REF b
+          VAR_REF answer
+      CALL add (1)(1)
+        LITERAL Int 3
+        LITERAL Int 4
+      VAR_REF answer
+      CALL add (1)(1)
+        LITERAL Int 5
+        LITERAL Int 6
+      VAR_REF answer
+      IF stmt
+        cond:
+          CALL flag (0)(1)
+            VAR_REF b
+        then:
+          BLOCK
+            CALL print
+              VAR_REF b
+      WHILE
+        cond:
+          BINARY_OP &&
+            CALL flag (0)(1)
+              BINARY_OP -
+                VAR_REF b
+                LITERAL Int 100
+            BINARY_OP >
+              VAR_REF answer
+              LITERAL Int 0
+        body:
+          BLOCK
+            ASSIGN b
+              BINARY_OP -
+                VAR_REF b
+                LITERAL Int 1
+      FOR i to
+        start:
+          CALL add (1)(1)
+            LITERAL Int 0
+            LITERAL Int 1
+        end:
+          CALL add (1)(1)
+            VAR_REF answer
+            LITERAL Int 1
+        body:
+          BLOCK
+            CALL print
+              VAR_REF i
+      CALL print
+        CALL add (1)(1)
+          CALL add (1)(1)
+            LITERAL Int 1
+            LITERAL Int 2
+          VAR_REF answer
+      VAR_DEF val c : ?
+        BINARY_OP +
+          BINARY_OP *
+            UNARY_OP -
+              CALL add (1)(1)
+                LITERAL Int 1
+                LITERAL Int 2
+            VAR_REF answer
+          LITERAL Int 1
+      VAR_DEF val d : ?
+        VALMEM_FIELD toString
+          CALL add (1)(1)
+            LITERAL Int 1
+            LITERAL Int 2
+      VAR_DEF val e : ?
+        VALMEM_FIELD length
+          VALMEM_FIELD toString
+            VAR_REF answer
+      VAR_DEF val f : ?
+        IF expr
+          cond:
+            CALL flag (0)(1)
+              VAR_REF a
+          then:
+            CALL add (1)(1)
+              VAR_REF a
+              LITERAL Int 1
+          else:
+            VAR_REF answer

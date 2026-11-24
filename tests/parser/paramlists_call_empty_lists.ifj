@@ -1,0 +1,38 @@
+/**
+ * @file paramlists_call_empty_lists.ifj
+ * @brief Calls with empty argument lists among the others
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: parser tests for calls of the PARAMLISTS extension (spec 5.10),
+ * next to the existing tests for definitions; a call with several lists prints
+ * as CALL name (n1)(n2)... with the argument count of every list, a call with
+ * one list stays CALL name, and a bare name of a function without a list is a
+ * VAR_REF until the semantic analysis; derived from the IFJ26 spec as a black
+ * box, with the claimed extensions BOOLTHEN, CONTROL, FUNEXP and VALMEM)
+ */
+// an empty argument list can't be left out and can stand anywhere among the
+// other lists (spec 5.10) -> 0
+import ifj26.*
+
+def none()(): Int = 1
+def first()(a: Int): Int = a
+def middle(a: Int)()(b: Int): Int = a + b
+def last(a: Int, b: Int)(): Int = a - b
+
+@main def main(): Unit =
+  val w = none()()
+  val x = first()(1)
+  val y = middle(1)()(2)
+  val z = last(1, 2)()

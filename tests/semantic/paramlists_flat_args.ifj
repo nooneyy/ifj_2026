@@ -1,0 +1,31 @@
+/**
+ * @file paramlists_flat_args.ifj
+ * @brief All arguments in one list
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: semantic tests for the PARAMLISTS extension (spec 5.10) - a wrong
+ * number of lists, a wrong argument count in any list or an incompatible
+ * argument type is error 5, a parameter name repeated across the lists is error
+ * 4; derived from the IFJ26 spec as a black box, with the claimed extensions
+ * BOOLTHEN, CONTROL, FUNEXP and VALMEM)
+ */
+// the arguments must be split into lists the same way as the parameters, one
+// list with all of them is wrong (spec 5.10) -> 5
+import ifj26.*
+
+def add(a: Int)(b: Int)(c: Int): Int = a + b + c
+
+@main def main(): Unit =
+  val x = add(1, 2, 3)

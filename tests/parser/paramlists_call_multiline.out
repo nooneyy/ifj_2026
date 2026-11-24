@@ -1,0 +1,19 @@
+PROGRAM
+  FUNC_DEF add (a: Int)(b: Int, c: Int) : Int
+    BINARY_OP +
+      BINARY_OP +
+        VAR_REF a
+        VAR_REF b
+      VAR_REF c
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val x : ?
+        CALL add (1)(2)
+          LITERAL Int 1
+          LITERAL Int 2
+          LITERAL Int 3
+      VAR_DEF val y : ?
+        CALL add (1)(2)
+          LITERAL Int 1
+          LITERAL Int 2
+          LITERAL Int 3

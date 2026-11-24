@@ -1,0 +1,35 @@
+/**
+ * @file paramlists_no_list_reevaluated.ifj
+ * @brief Every use of a function without a list runs its body
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: codegen tests for the PARAMLISTS extension (spec 5.10); every
+ * program is compiled by codegen_main, run by ic26int and its output and return
+ * code are compared; derived from the IFJ26 spec as a black box, with the
+ * claimed extensions BOOLTHEN, CONTROL, FUNEXP and VALMEM)
+ */
+// every use of a function without a list runs its body again, it isn't a stored
+// value (spec 5.10) -> tick tick tick 21
+import ifj26.*
+
+def seven: Int =
+  print("tick ")
+  7
+
+@main def main(): Unit =
+  val a = seven
+  val b = seven + seven
+  print(a + b)
+  print("\n")
