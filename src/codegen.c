@@ -501,58 +501,58 @@ static int count_ast_nodes(ASTNode *node) {
     count += TMPS_PER_AST_NODE;
     switch (node->node_type) {
 
-      case NODE_VARIABLE_DEF:
-        count += count_ast_nodes(node->data.variable_def.expr);
-        break;
+    case NODE_VARIABLE_DEF:
+      count += count_ast_nodes(node->data.variable_def.expr);
+      break;
 
-      case NODE_ASSIGN:
-        count += count_ast_nodes(node->data.assign.right);
-        break;
+    case NODE_ASSIGN:
+      count += count_ast_nodes(node->data.assign.right);
+      break;
 
-      case NODE_UNARY_OP:
-        count += count_ast_nodes(node->data.unary_op.operand);
-        break;
+    case NODE_UNARY_OP:
+      count += count_ast_nodes(node->data.unary_op.operand);
+      break;
 
-      case NODE_BINARY_OP:
-        count += count_ast_nodes(node->data.binary_op.left);
-        count += count_ast_nodes(node->data.binary_op.right);
-        break;
+    case NODE_BINARY_OP:
+      count += count_ast_nodes(node->data.binary_op.left);
+      count += count_ast_nodes(node->data.binary_op.right);
+      break;
 
-      case NODE_FUNCTION_CALL:
-        count += count_ast_nodes(node->data.function_call.args);
-        break;
+    case NODE_FUNCTION_CALL:
+      count += count_ast_nodes(node->data.function_call.args);
+      break;
 
-      case NODE_RETURN:
-        count += count_ast_nodes(node->data.return_node.value);
-        break;
+    case NODE_RETURN:
+      count += count_ast_nodes(node->data.return_node.value);
+      break;
 
-      case NODE_BLOCK:
-        count += count_ast_nodes(node->data.block.statements);
-        break;
+    case NODE_BLOCK:
+      count += count_ast_nodes(node->data.block.statements);
+      break;
 
-      case NODE_IF:
-        count += count_ast_nodes(node->data.if_node.condition);
-        count += count_ast_nodes(node->data.if_node.then_branch);
-        count += count_ast_nodes(node->data.if_node.else_branch);
-        break;
+    case NODE_IF:
+      count += count_ast_nodes(node->data.if_node.condition);
+      count += count_ast_nodes(node->data.if_node.then_branch);
+      count += count_ast_nodes(node->data.if_node.else_branch);
+      break;
 
-      case NODE_WHILE:
-        count += count_ast_nodes(node->data.while_node.condition);
-        count += count_ast_nodes(node->data.while_node.body);
-        break;
+    case NODE_WHILE:
+      count += count_ast_nodes(node->data.while_node.condition);
+      count += count_ast_nodes(node->data.while_node.body);
+      break;
 
-      case NODE_FOR:
-        count += TMPS_PER_AST_NODE; // For loop required additional temp vars
-        count += count_ast_nodes(node->data.for_node.range_start);
-        count += count_ast_nodes(node->data.for_node.range_end);
-        count += count_ast_nodes(node->data.for_node.range_step);
-        count += count_ast_nodes(node->data.for_node.guards);
-        count += count_ast_nodes(node->data.for_node.body);
-        break;
+    case NODE_FOR:
+      count += TMPS_PER_AST_NODE; // For loop required additional temp vars
+      count += count_ast_nodes(node->data.for_node.range_start);
+      count += count_ast_nodes(node->data.for_node.range_end);
+      count += count_ast_nodes(node->data.for_node.range_step);
+      count += count_ast_nodes(node->data.for_node.guards);
+      count += count_ast_nodes(node->data.for_node.body);
+      break;
 
-      case NODE_VALMEM_FIELD:
-        count += count_ast_nodes(node->data.valmem_field.receiver);
-        break;
+    case NODE_VALMEM_FIELD:
+      count += count_ast_nodes(node->data.valmem_field.receiver);
+      break;
 
     default:
       break;
@@ -618,66 +618,66 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
   while (node != NULL) {
     switch (node->node_type) {
 
-      case NODE_VARIABLE_DEF:
-        fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.variable_def.name,
-                (*uid_counter)++);
-        if (node->data.variable_def.expr != NULL) {
-          emit_var_defs_walk(ctx, node->data.variable_def.expr, uid_counter);
-        }
-        break;
+    case NODE_VARIABLE_DEF:
+      fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.variable_def.name,
+              (*uid_counter)++);
+      if (node->data.variable_def.expr != NULL) {
+        emit_var_defs_walk(ctx, node->data.variable_def.expr, uid_counter);
+      }
+      break;
 
-      case NODE_ASSIGN:
-        emit_var_defs_walk(ctx, node->data.assign.right, uid_counter);
-        break;
+    case NODE_ASSIGN:
+      emit_var_defs_walk(ctx, node->data.assign.right, uid_counter);
+      break;
 
-      case NODE_UNARY_OP:
-        emit_var_defs_walk(ctx, node->data.unary_op.operand, uid_counter);
-        break;
+    case NODE_UNARY_OP:
+      emit_var_defs_walk(ctx, node->data.unary_op.operand, uid_counter);
+      break;
 
-      case NODE_BINARY_OP:
-        emit_var_defs_walk(ctx, node->data.binary_op.left, uid_counter);
-        emit_var_defs_walk(ctx, node->data.binary_op.right, uid_counter);
-        break;
+    case NODE_BINARY_OP:
+      emit_var_defs_walk(ctx, node->data.binary_op.left, uid_counter);
+      emit_var_defs_walk(ctx, node->data.binary_op.right, uid_counter);
+      break;
 
-      case NODE_FUNCTION_CALL:
-        emit_var_defs_walk(ctx, node->data.function_call.args, uid_counter);
-        break;
+    case NODE_FUNCTION_CALL:
+      emit_var_defs_walk(ctx, node->data.function_call.args, uid_counter);
+      break;
 
-      case NODE_RETURN:
-        emit_var_defs_walk(ctx, node->data.return_node.value, uid_counter);
-        break;
+    case NODE_RETURN:
+      emit_var_defs_walk(ctx, node->data.return_node.value, uid_counter);
+      break;
 
-      case NODE_BLOCK:
-        emit_var_defs_walk(ctx, node->data.block.statements, uid_counter);
-        break;
+    case NODE_BLOCK:
+      emit_var_defs_walk(ctx, node->data.block.statements, uid_counter);
+      break;
 
-      case NODE_IF:
-        emit_var_defs_walk(ctx, node->data.if_node.condition, uid_counter);
-        emit_var_defs_walk(ctx, node->data.if_node.then_branch, uid_counter);
-        emit_var_defs_walk(ctx, node->data.if_node.else_branch, uid_counter);
-        break;
+    case NODE_IF:
+      emit_var_defs_walk(ctx, node->data.if_node.condition, uid_counter);
+      emit_var_defs_walk(ctx, node->data.if_node.then_branch, uid_counter);
+      emit_var_defs_walk(ctx, node->data.if_node.else_branch, uid_counter);
+      break;
 
-      case NODE_WHILE:
-        emit_var_defs_walk(ctx, node->data.while_node.condition, uid_counter);
-        emit_var_defs_walk(ctx, node->data.while_node.body, uid_counter);
-        break;
+    case NODE_WHILE:
+      emit_var_defs_walk(ctx, node->data.while_node.condition, uid_counter);
+      emit_var_defs_walk(ctx, node->data.while_node.body, uid_counter);
+      break;
 
-      case NODE_FOR:
-        emit_var_defs_walk(ctx, node->data.for_node.range_start, uid_counter);
-        emit_var_defs_walk(ctx, node->data.for_node.range_end, uid_counter);
-        emit_var_defs_walk(ctx, node->data.for_node.range_step, uid_counter);
-        fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.for_node.generator_name,
-                (*uid_counter)++);
-        emit_var_defs_walk(ctx, node->data.for_node.guards, uid_counter);
-        emit_var_defs_walk(ctx, node->data.for_node.body, uid_counter);
-        break;
+    case NODE_FOR:
+      emit_var_defs_walk(ctx, node->data.for_node.range_start, uid_counter);
+      emit_var_defs_walk(ctx, node->data.for_node.range_end, uid_counter);
+      emit_var_defs_walk(ctx, node->data.for_node.range_step, uid_counter);
+      fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.for_node.generator_name,
+              (*uid_counter)++);
+      emit_var_defs_walk(ctx, node->data.for_node.guards, uid_counter);
+      emit_var_defs_walk(ctx, node->data.for_node.body, uid_counter);
+      break;
 
-      case NODE_VALMEM_FIELD:
-          emit_var_defs_walk(ctx, node->data.valmem_field.receiver, uid_counter);
-          break;
+    case NODE_VALMEM_FIELD:
+      emit_var_defs_walk(ctx, node->data.valmem_field.receiver, uid_counter);
+      break;
 
-      default:
-        break;
+    default:
+      break;
     }
     node = node->next;
   }
@@ -849,7 +849,8 @@ static void expression_if(CodeGenContext *ctx, ASTNode *expr,
  * @param dest_var Name of the variable where the result is stored
  *                 NULL if result is discarded
  */
-static void expression_valmem_field(CodeGenContext *ctx, const ASTNode *expr, const char *dest_var) {
+static void expression_valmem_field(CodeGenContext *ctx, const ASTNode *expr,
+                                    const char *dest_var) {
   const ASTValmemFieldData *valmem = &expr->data.valmem_field;
 
   if (valmem->name == NULL || valmem->receiver == NULL) {
