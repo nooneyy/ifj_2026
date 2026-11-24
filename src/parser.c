@@ -2672,10 +2672,34 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
                                 first_item.terminal_token.line);
 
       if (expr != NULL) {
+        ReturnCodes ret = ast_func_call_new_arg_list(expr);
+
+        if (ret != RETURN_SUCCESS) {
+
+          for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx += 2) {
+            // for every E, free it because allocation failed
+            ast_free(ps->items[arg_idx + less_idx + 3].expr);
+          }
+
+          parser->rc = ret;
+          return false;
+        }
+
         for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx += 2) {
           // for every E, add it as an argument
-          ast_ll_append(&expr->data.function_call.args,
-                        ps->items[arg_idx + less_idx + 3].expr);
+          ret = ast_func_call_add_arg(expr,
+                                      ps->items[arg_idx + less_idx + 3].expr);
+
+          if (ret != RETURN_SUCCESS) {
+            for (size_t inner_arg_idx = arg_idx + 2; inner_arg_idx < arg_len;
+                 inner_arg_idx += 2) {
+              // free every other arg because allocation failed
+              ast_free(ps->items[inner_arg_idx + less_idx + 3].expr);
+            }
+
+            parser->rc = ret;
+            return false;
+          }
         }
       } else {
         for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx += 2) {

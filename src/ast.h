@@ -99,6 +99,10 @@ typedef struct {
   ASTNode *args; // Linked list of function arguments (any expr nodes -
                  // NODE_LITERAL, NODE_VARIABLE_REF, NODE_BINARY_OP,
                  // NODE_UNARY_OP, NODE_FUNCTION_CALL)
+  size_t *arg_list_sizes; // An array of the sizes of each argument list
+                          // (PARAMLISTS ext)
+  size_t
+      arg_list_count; // How many items are in arg_list_sizes (PARAMLISTS ext)
 } ASTFunctionCallNodeData;
 
 /**
@@ -391,6 +395,25 @@ ASTNode *ast_init_return(ASTNode *value, unsigned int line);
  * gets freed)
  */
 ASTNode *ast_init_func_call(char *name, unsigned int line);
+
+/**
+ * @brief Adds a new argument list to a Function Call node
+ * @param func_call A pointer to the Function call node
+ * @return RETURN_SUCCESS on success, ERR_INTERNAL on reallocation failure or
+ * NULL func_call or wrong node type (func_call gets freed)
+ */
+ReturnCodes ast_func_call_new_arg_list(ASTNode *func_call);
+
+/**
+ * @brief Adds a new argument to the last argument list of the Function Call
+ * node
+ * @param func_call A pointer to the Function call node
+ * @param arg A pointer to the expr node of the argument to add
+ * @return RETURN_SUCCESS on success, ERR_INTERNAL on reallocation failure or
+ * NULL arguments, wrong node type or no argument list (func_call and arg get
+ * freed)
+ */
+ReturnCodes ast_func_call_add_arg(ASTNode *func_call, ASTNode *arg);
 
 /**
  * @brief A constructor function for a Binary Operation node
