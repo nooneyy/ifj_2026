@@ -497,6 +497,15 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_CLOSE_PAR;
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
+      } else if (c == '}' && sc->interp_expr) {
+        sc->interp_expr = false;
+        sc->interp_text = true;
+        if (sc->parenth_depth > 0) {
+          sc->parenth_depth--;
+        }
+        token_to_fill->type = TOKEN_INTERP_EXPR_END;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
       } else if (c == '!') {
         state = STATE_EXCL;
       } else if (c == '=') {
@@ -526,6 +535,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == EOF) {
+        if (sc->interp_expr) {
+          print_error("Lexical error: Unterminated interpolated string.",
+                      sc->line);
+          return ERR_LEX_ANA;
+        }
         if (sc->emit_eol_eof) {
           token_to_fill->type = TOKEN_EOL;
           sc->emit_eol_eof = false;
@@ -1014,13 +1028,32 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
-
       if (sc->interp_text && c == '$') {
         c = fgetc(sc->src);
         if (c == '$') {
           APPEND_OR_ERROR(str, c);
           break;
         }
+        if (c == '{') {
+          sc->interp_text = false;
+          sc->interp_expr = true;
+          sc->parenth_depth++;
+          if (strcmp(str.data, "") == 0) {
+            dynstr_free(&str);
+            token_to_fill->type = TOKEN_INTERP_EXPR_BEGIN;
+          } else {
+            sc->has_pending = true;
+            sc->pending = TOKEN_INTERP_BEGIN;
+            token_to_fill->type = TOKEN_STRING;
+            token_to_fill->content.string = dynstr_take(&str);
+          }
+          token_to_fill->line = sc->line;
+          return RETURN_SUCCESS;
+        }
+        dynstr_free(&str);
+        print_error("Lexical error: Invalid $ in an interpolated string.",
+                    sc->line);
+        return ERR_LEX_ANA;
       }
 
       if (c == '\n' || c == EOF) {

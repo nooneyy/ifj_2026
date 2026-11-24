@@ -41,6 +41,7 @@ typedef struct Scanner {
   bool interp_ml;   // ...of a multi-line one (s""")
   bool has_pending; // A flag that determines whether a token decided earlier
                     // must be returned right away
+  bool interp_expr; // inside ${ ... } of an interpolated string
   TokenType pending; // The token to return when has_pending is set
   unsigned int line; // Line the scanner is currently on
 } Scanner;
