@@ -1,0 +1,34 @@
+/**
+ * @file ctrl_for_oneline_guard_block.ifj
+ * @brief One-line for header with guards and a block body
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you make tests for the cases where the trial submission fails now?
+ * (one-line for guards) and also the unchecked cases where it could fail in a
+ * similar way (until and by variants)? Use the same test structure as always
+ * pls"
+ * (context: codegen regression tests for the one-line for guard bug from the
+ * trial submission - tests 333, 335, 397 and 410 failed with "Invalid syntax
+ * after to." - and the untested until/by variants; every program is compiled
+ * by codegen_main, run by ic26int and its output and return code are
+ * compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// guards with Boolean operators in the one-line header and a block body
+// after do (spec 5.3) -> "3 7 "
+import ifj26.*
+
+@main def main(): Unit =
+  for i <- 1 to 10 by 2 if i > 1 && i < 9 if !(i == 5) do
+    print(i)
+    print(" ")
+  print("\n")

@@ -1,0 +1,61 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val limit : ?
+        LITERAL Int 10
+      FOR i until
+        start:
+          LITERAL Int 0
+        end:
+          VAR_REF limit
+        guard:
+          BINARY_OP !=
+            VAR_REF i
+            LITERAL Int 3
+        guard:
+          BINARY_OP <
+            VAR_REF i
+            LITERAL Int 8
+        body:
+          CALL print
+            VAR_REF i
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          VAR_REF limit
+        step:
+          LITERAL Int 2
+        guard:
+          BINARY_OP &&
+            BINARY_OP >
+              VAR_REF i
+              LITERAL Int 1
+            BINARY_OP <
+              VAR_REF i
+              LITERAL Int 9
+        guard:
+          UNARY_OP !
+            BINARY_OP ==
+              VAR_REF i
+              LITERAL Int 5
+        body:
+          BLOCK
+            CALL print
+              VAR_REF i
+            CALL print
+              LITERAL String "\n"
+      FOR i to
+        start:
+          LITERAL Int 5
+        end:
+          LITERAL Int 15
+        guard:
+          BINARY_OP ==
+            CALL strLength
+              CALL toStr
+                VAR_REF i
+            LITERAL Int 1
+        body:
+          CALL print
+            VAR_REF i

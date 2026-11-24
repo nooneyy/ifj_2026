@@ -1,0 +1,32 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      FOR i to
+        start:
+          LITERAL Int 1
+        end:
+          LITERAL Int 10
+        step:
+          LITERAL Int 2
+        guard:
+          BINARY_OP !=
+            VAR_REF i
+            LITERAL Int 5
+        body:
+          CALL print
+            VAR_REF i
+      FOR i to
+        start:
+          LITERAL Int 10
+        end:
+          LITERAL Int 1
+        step:
+          UNARY_OP -
+            LITERAL Int 3
+        guard:
+          BINARY_OP !=
+            VAR_REF i
+            LITERAL Int 7
+        body:
+          CALL print
+            VAR_REF i

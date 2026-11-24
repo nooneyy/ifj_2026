@@ -84,6 +84,7 @@ static const char *const TOKEN_NAMES[] = {
     [TOKEN_KW_LIST] = "KW_LIST",
     [TOKEN_KW_MATCH] = "KW_MATCH",
     [TOKEN_KW_TYPE] = "KW_TYPE",
+    [TOKEN_UNDERSCORE] = "UNDERSCORE",
 };
 
 /**

@@ -717,7 +717,7 @@ static bool parse_for(Parser *parser, ASTNode **out);
  * @brief Parses the generator and guards of a for loop
  *
  * RULE 53: FOR_SET -> EOL INDENT ID ARROW <expr> UN_TO EOL GUARDS DEDENT
- * RULE 54: FOR_SET -> ID ARROW <expr> UN_TO
+ * RULE 54: FOR_SET -> ID ARROW <expr> UN_TO ONELINE_GUARDS
  *
  * @param parser Parser's current state
  * @param gen_name Where to store the name of the generator variable
@@ -774,6 +774,19 @@ static bool parse_opt_by(Parser *parser, ASTNode **range_step);
  * true
  */
 static bool parse_guards(Parser *parser, ASTNode **guards);
+
+/**
+ * @brief Parses guards of a for loop in a one-line syntax
+ *
+ * RULE 78: ONELINE_GUARDS -> KW_IF <expr> ONELINE_GUARDS
+ * RULE 79: ONELINE_GUARDS -> eps
+ *
+ * @param parser Parser's current state
+ * @param guards List to add the guards to
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_oneline_guards(Parser *parser, ASTNode **guards);
 
 /**
  * @brief Parses body of a for loop after do
@@ -1880,6 +1893,13 @@ static bool parse_for_set(Parser *parser, char **gen_name,
     // ID ARROW <expr> UN_TO
     // RULES 55, 56
     correct = parse_un_to(parser, range_end, range_step, is_to);
+    if (!correct) {
+      return false;
+    }
+
+    // ID ARROW <expr> UN_TO ONELINE_GUARDS
+    // RULES 78, 79
+    correct = parse_oneline_guards(parser, guards);
   } else {
     syntax_error(parser, "Syntactic error: Invalid symbol in for setup.");
     return false;
@@ -1928,7 +1948,8 @@ static bool parse_opt_by(Parser *parser, ASTNode **range_step) {
     }
     correct = parse_expr(parser, range_step);
   } else if (parser->current_token.type == TOKEN_EOL ||
-             parser->current_token.type == TOKEN_KW_DO) {
+             parser->current_token.type == TOKEN_KW_DO ||
+             parser->current_token.type == TOKEN_KW_IF) {
     // eps
     // no deeper RULE
     correct = true;
@@ -1965,6 +1986,33 @@ static bool parse_guards(Parser *parser, ASTNode **guards) {
     correct = true;
   } else {
     syntax_error(parser, "Syntactic error: Invalid guard definition.");
+    return false;
+  }
+  return correct;
+}
+
+static bool parse_oneline_guards(Parser *parser, ASTNode **guards) {
+  bool correct = false;
+  ASTNode *guard = NULL;
+  if (expect(parser, TOKEN_KW_IF)) {
+    // RULE 78
+    // KW_IF <expr> ONELINE_GUARDS
+    correct = parse_expr(parser, &guard);
+    if (!correct) {
+      return false;
+    }
+    ast_ll_append(guards, guard);
+    correct = parse_oneline_guards(parser, guards);
+    if (!correct) {
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_KW_DO) {
+    // RULE 79
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid oneline guard definition.");
     return false;
   }
   return correct;

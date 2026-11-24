@@ -1,0 +1,28 @@
+/**
+ * @file err_num_letter_double.ifj
+ * @brief Letters right after a decimal literal
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you please write the tests where our trial submission is failing in
+ * the scanner (import ifj26._, indentation in parentheses, letter after a
+ * number should end the number, emit it and then start an ID which the parser
+ * then rejects)? Modify any tests that expect another thing currently, use the
+ * same test structure as always pls"
+ * (context: parser regression tests for the trial submission failures - test 32
+ * (lone _), 64 (indentation inside parentheses) and 82 (letter right after a
+ * number) returned 1 instead of 2 - derived from the IFJ26 spec as a black
+ * box)
+ */
+// 1.5abc is DOUBLE 1.5 followed by ID abc, a syntax error -> 2
+import ifj26.*
+@main def main(): Unit =
+  val x = 1.5abc

@@ -1,0 +1,35 @@
+/**
+ * @file ctrl_for_oneline_guards_valid.ifj
+ * @brief Valid guards in one-line for headers
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you make tests for the cases where the trial submission fails now?
+ * (one-line for guards) and also the unchecked cases where it could fail in a
+ * similar way (until and by variants)? Use the same test structure as always
+ * pls"
+ * (context: semantic regression tests for the one-line for guard bug from
+ * the trial submission - tests 333, 335, 397 and 410 failed with "Invalid
+ * syntax after to." - and the untested until/by variants, derived from the
+ * IFJ26 spec as a black box, with the claimed extensions BOOLTHEN, CONTROL
+ * and FUNEXP)
+ */
+// guards after all three range forms, the loop variable is visible in the
+// guards (spec 5.3) -> 0
+import ifj26.*
+
+@main def main(): Unit =
+  val limit = 10
+  for i <- 1 to limit if i != 3 do print(i)
+  for i <- 0 until limit if i != 3 if i < 8 do print(i)
+  for i <- limit to 1 by -2 if i > 2 && i != 6 do
+    print(i)
+  for i <- 1 to 20 if strLength(toStr(i)) == 2 do print(i)

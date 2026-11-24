@@ -1,0 +1,31 @@
+/**
+ * @file err_paren_unclosed_next_line.ifj
+ * @brief Missing closing parenthesis before the next statement
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you please write the tests where our trial submission is failing in
+ * the scanner (import ifj26._, indentation in parentheses, letter after a
+ * number should end the number, emit it and then start an ID which the parser
+ * then rejects)? Modify any tests that expect another thing currently, use the
+ * same test structure as always pls"
+ * (context: parser regression tests for the trial submission failures - test 32
+ * (lone _), 64 (indentation inside parentheses) and 82 (letter right after a
+ * number) returned 1 instead of 2 - derived from the IFJ26 spec as a black
+ * box)
+ */
+// a missing ')' keeps the next line inside the parentheses, which is not
+// indented more than the logical line; it's a syntax error, not a lexical one
+// (trial test 64 expected 2) -> 2
+import ifj26.*
+@main def main(): Unit =
+  print((1 + 2)
+  print(3)
