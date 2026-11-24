@@ -34,13 +34,14 @@ typedef struct Scanner {
                        // on a new line and should mind the indentation
   bool emit_eol_eof; // A flag that determines whether to emit an EOL before an
                      // EOF
-  bool emit_dot; // A flag that determines whether to emit a DOT after it was
-                 // consumed to look ahead
-  bool interp;   // A flag that determines whether current sting is interpolated
-                 // (s") or not
+  bool emit_dot;    // A flag that determines whether to emit a DOT after it was
+                    // consumed to look ahead
+  bool interp_text; // the next token continues the text of an interpolated
+                    // string
+  bool interp_ml;   // ...of a multi-line one (s""")
   bool emit_interp_end; // A flag that deteremines whether INTERP_END must be
                         // returned right away
-  unsigned int line; // Line the scanner is currently on
+  unsigned int line;    // Line the scanner is currently on
 } Scanner;
 
 /**

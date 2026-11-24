@@ -345,6 +345,17 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   bool tab_appeared = false;
   bool indent_pending = false;
   bool token_ready = false;
+  if (sc->interp_text) {
+    rc = dynstr_init(&str);
+    if (rc != RETURN_SUCCESS) {
+      return rc;
+    }
+    if (sc->interp_ml) {
+      state = STATE_STR_ML;
+    } else {
+      state = STATE_STR;
+    }
+  }
   while (1) {
 
     int c = fgetc(sc->src);
@@ -552,7 +563,6 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         state = STATE_ID;
       } else if (strcmp(str.data, "s") == 0 && c == '\"') {
         dynstr_free(&str);
-        sc->interp = true;
         state = STATE_INTERP_1_QUOT;
       } else {
         ungetc(c, sc->src); // for the next token to read
@@ -985,8 +995,21 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_STR:
       if (c == '"') {
-        token_to_fill->type = TOKEN_STRING;
-        token_to_fill->content.string = dynstr_take(&str);
+        if (sc->interp_text) {
+          if (strcmp(str.data, "") == 0) {
+            dynstr_free(&str);
+            sc->interp_text = false;
+            token_to_fill->type = TOKEN_INTERP_END;
+          } else {
+            sc->emit_interp_end = true;
+            sc->interp_text = false;
+            token_to_fill->type = TOKEN_STRING;
+            token_to_fill->content.string = dynstr_take(&str);
+          }
+        } else {
+          token_to_fill->type = TOKEN_STRING;
+          token_to_fill->content.string = dynstr_take(&str);
+        }
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
@@ -1052,8 +1075,22 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
             break;
           }
         }
-        token_to_fill->type = TOKEN_STRING;
-        token_to_fill->content.string = dynstr_take(&str);
+
+        if (sc->interp_text) {
+          if (strcmp(str.data, "") == 0) {
+            dynstr_free(&str);
+            sc->interp_text = false;
+            token_to_fill->type = TOKEN_INTERP_END;
+          } else {
+            sc->emit_interp_end = true;
+            sc->interp_text = false;
+            token_to_fill->type = TOKEN_STRING;
+            token_to_fill->content.string = dynstr_take(&str);
+          }
+        } else {
+          token_to_fill->type = TOKEN_STRING;
+          token_to_fill->content.string = dynstr_take(&str);
+        }
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
@@ -1137,6 +1174,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == '\"') {
         state = STATE_INTERP_2_QUOT;
       } else {
+        sc->interp_ml = false;
+        sc->interp_text = true;
         token_to_fill->type = TOKEN_INTERP_BEGIN;
         token_to_fill->line = sc->line;
         ungetc(c, sc->src);
@@ -1148,6 +1187,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == '\"') {
         token_to_fill->type = TOKEN_INTERP_BEGIN;
         token_to_fill->line = sc->line;
+        sc->interp_ml = true;
+        sc->interp_text = true;
         return RETURN_SUCCESS;
       } else {
         ungetc(c, sc->src);
