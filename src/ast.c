@@ -9,6 +9,7 @@
 #include "ast.h"
 #include "return.h"
 #include "symbol.h"
+#include <stddef.h>
 #include <stdlib.h>
 
 ASTNode *ast_init_program(void) {
@@ -45,6 +46,8 @@ ASTNode *ast_init_func_def(char *name, bool is_main, unsigned int line) {
       .name = name,
       .param_count = 0,
       .params = NULL,
+      .list_count = 0,
+      .list_sizes = NULL,
       .return_type = UNKNOWN,
   };
 
@@ -84,6 +87,35 @@ ReturnCodes ast_func_def_add_param(ASTNode *func_def, char *param_name,
 
   func_def->data.function_def.params = temp;
   func_def->data.function_def.param_count++;
+
+  if (func_def->data.function_def.list_count > 0) {
+    func_def->data.function_def
+        .list_sizes[func_def->data.function_def.list_count - 1]++;
+  }
+
+  return RETURN_SUCCESS;
+}
+
+ReturnCodes ast_func_def_add_param_list(ASTNode *func_def) {
+  if (func_def == NULL || func_def->node_type != NODE_FUNCTION_DEF) {
+    print_error("Received NULL pointer or node was not of type FUNCTION_DEF",
+                0);
+    return ERR_INTERNAL;
+  }
+
+  size_t list_count = func_def->data.function_def.list_count;
+  size_t *temp = realloc(func_def->data.function_def.list_sizes,
+                         sizeof(size_t) * (list_count + 1));
+
+  if (temp == NULL) {
+    print_error("Reallocation failed!", 0);
+    return ERR_INTERNAL;
+  }
+
+  temp[list_count] = 0;
+
+  func_def->data.function_def.list_sizes = temp;
+  func_def->data.function_def.list_count++;
 
   return RETURN_SUCCESS;
 }
@@ -418,6 +450,7 @@ void ast_free(ASTNode *node) {
         free(node->data.function_def.params[idx].name);
       }
       free(node->data.function_def.params);
+      free(node->data.function_def.list_sizes);
       ast_free(node->data.function_def.body);
       break;
     case NODE_FUNCTION_CALL:

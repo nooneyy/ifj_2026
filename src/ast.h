@@ -79,6 +79,9 @@ typedef struct {
       name; // The name of the function, owned by this struct (taken from token)
   FunctionParam *params; // Array of function parameters
   size_t param_count;    // Count of function parameters
+  size_t
+      *list_sizes; // Sizes of parameter lists in params (NULL if no parameters)
+  size_t list_count;    // Count of parameter lists in params
   DataType return_type; // The return type of the function (UNKNOWN until set by
                         // parser)
   bool is_main;         // Is this function annotated with "@main"?
@@ -269,6 +272,15 @@ ASTNode *ast_init_func_def(char *name, bool is_main, unsigned int line);
  */
 ReturnCodes ast_func_def_add_param(ASTNode *func_def, char *param_name,
                                    DataType data_type);
+
+/**
+ * @brief Function for adding a new (empty) parameter list to a Function
+ * Definition node
+ * @param func_def A pointer to the Function Definition node
+ * @return RETURN_SUCCESS on success, ERR_INTERNAL if func_def is not a Function
+ * Definition node or if realloc fails
+ */
+ReturnCodes ast_func_def_add_param_list(ASTNode *func_def);
 
 /**
  * @brief A constructor function for a Block node
