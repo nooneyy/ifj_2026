@@ -36,6 +36,10 @@ typedef struct Scanner {
                      // EOF
   bool emit_dot; // A flag that determines whether to emit a DOT after it was
                  // consumed to look ahead
+  bool interp;   // A flag that determines whether current sting is interpolated
+                 // (s") or not
+  bool emit_interp_end; // A flag that deteremines whether INTERP_END must be
+                        // returned right away
   unsigned int line; // Line the scanner is currently on
 } Scanner;
 

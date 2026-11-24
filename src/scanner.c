@@ -69,6 +69,8 @@ typedef enum FsmState {
   STATE_AND,             // "&" is first in the sequence
   STATE_OR,              // "|" is first in the sequence
   STATE_PAREN_NEWLINE,   // Newline inside of parenthesis
+  STATE_INTERP_1_QUOT,   // s" start of an interpolated string
+  STATE_INTERP_2_QUOT,   // s"" empty interp string or start of ml interp string
 } FsmState;
 
 /**
@@ -358,6 +360,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         return RETURN_SUCCESS;
       }
 
+      if (sc->emit_interp_end) {
+        ungetc(c, sc->src);
+        sc->emit_interp_end = false;
+        token_to_fill->type = TOKEN_INTERP_END;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
+      }
+
       if (must_follow_eol) {
         // for multiline block comments containing \n
         if (c != EOF && c != '/' && !isspace(c)) {
@@ -540,6 +550,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isalnum(c) || c == '_') {
         APPEND_OR_ERROR(str, c);
         state = STATE_ID;
+      } else if (strcmp(str.data, "s") == 0 && c == '\"') {
+        dynstr_free(&str);
+        sc->interp = true;
+        state = STATE_INTERP_1_QUOT;
       } else {
         ungetc(c, sc->src); // for the next token to read
         token_to_fill->type = id_or_keyword(str.data);
@@ -1116,6 +1130,31 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         print_error("Not enough indentation inside parentheses.", sc->line);
         // This is a syntax error according to the trial submission feedback
         return ERR_SYN_ANA;
+      }
+      break;
+
+    case STATE_INTERP_1_QUOT:
+      if (c == '\"') {
+        state = STATE_INTERP_2_QUOT;
+      } else {
+        token_to_fill->type = TOKEN_INTERP_BEGIN;
+        token_to_fill->line = sc->line;
+        ungetc(c, sc->src);
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_INTERP_2_QUOT:
+      if (c == '\"') {
+        token_to_fill->type = TOKEN_INTERP_BEGIN;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
+      } else {
+        ungetc(c, sc->src);
+        sc->emit_interp_end = true;
+        token_to_fill->type = TOKEN_INTERP_BEGIN;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
       }
       break;
     }
