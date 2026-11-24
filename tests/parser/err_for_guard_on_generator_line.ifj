@@ -1,0 +1,31 @@
+/**
+ * @file err_for_guard_on_generator_line.ifj
+ * @brief Guard on the generator's line in a multi-line for header
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you make tests for the cases where the trial submission fails now?
+ * (one-line for guards) and also the unchecked cases where it could fail in a
+ * similar way (until and by variants)? Use the same test structure as always
+ * pls"
+ * (context: parser regression tests for the one-line for guard bug from the
+ * trial submission - tests 333, 335, 397 and 410 failed with "Invalid syntax
+ * after to." - and the untested until/by variants, derived from the IFJ26
+ * spec as a black box)
+ */
+// in the multi-line header each generator and each guard is on its own logical
+// line (spec 1.2 and 5.3), so a guard can't follow the generator -> 2
+import ifj26.*
+@main def main(): Unit =
+  for
+    i <- 1 to 10 if i != 3
+  do
+    print(i)

@@ -1,0 +1,33 @@
+/**
+ * @file ctrl_for_oneline_guards_multi.ifj
+ * @brief One-line for header with several and complex guards (CONTROL)
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you make tests for the cases where the trial submission fails now?
+ * (one-line for guards) and also the unchecked cases where it could fail in a
+ * similar way (until and by variants)? Use the same test structure as always
+ * pls"
+ * (context: parser regression tests for the one-line for guard bug from the
+ * trial submission - tests 333, 335, 397 and 410 failed with "Invalid syntax
+ * after to." - and the untested until/by variants, derived from the IFJ26
+ * spec as a black box)
+ */
+// any number of guards in the one-line header, Boolean operators and calls
+// inside guards, a block body after do -> 0
+import ifj26.*
+@main def main(): Unit =
+  val limit = 10
+  for i <- 0 until limit if i != 3 if i < 8 do print(i)
+  for i <- 1 to limit by 2 if i > 1 && i < 9 if !(i == 5) do
+    print(i)
+    print("\n")
+  for i <- 5 to 15 if strLength(toStr(i)) == 1 do print(i)

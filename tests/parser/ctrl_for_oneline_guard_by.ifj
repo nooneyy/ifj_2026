@@ -1,0 +1,29 @@
+/**
+ * @file ctrl_for_oneline_guard_by.ifj
+ * @brief One-line for header with a guard after a stepped range (CONTROL)
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you make tests for the cases where the trial submission fails now?
+ * (one-line for guards) and also the unchecked cases where it could fail in a
+ * similar way (until and by variants)? Use the same test structure as always
+ * pls"
+ * (context: parser regression tests for the one-line for guard bug from the
+ * trial submission - tests 333, 335, 397 and 410 failed with "Invalid syntax
+ * after to." - and the untested until/by variants, derived from the IFJ26
+ * spec as a black box)
+ */
+// a guard may follow a to ... by range in the one-line header, also with a
+// negative step -> 0
+import ifj26.*
+@main def main(): Unit =
+  for i <- 1 to 10 by 2 if i != 5 do print(i)
+  for i <- 10 to 1 by -3 if i != 7 do print(i)
