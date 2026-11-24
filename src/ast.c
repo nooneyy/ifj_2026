@@ -416,6 +416,30 @@ ASTNode *ast_init_literal(DataType data_type, ASTLiteralNodeData value,
   return literal;
 }
 
+ASTNode *ast_init_valmem_field(ASTNode *receiver, char *name,
+                               unsigned int line) {
+  ASTNode *valmem_field = malloc(sizeof(ASTNode));
+
+  if (valmem_field == NULL) {
+    print_error("Allocation failed!", 0);
+    ast_free(receiver);
+    free(name);
+    return NULL;
+  }
+
+  ASTValmemFieldData data = {.receiver = receiver, .name = name};
+
+  *valmem_field = (ASTNode){
+      .node_type = NODE_VALMEM_FIELD,
+      .data_type = UNKNOWN,
+      .data.valmem_field = data,
+      .line = line,
+      .next = NULL,
+  };
+
+  return valmem_field;
+}
+
 void ast_ll_append(ASTNode **list_start, ASTNode *node) {
   if (list_start == NULL || node == NULL) {
     print_error("Received NULL list pointer or node", 0);
@@ -502,6 +526,10 @@ void ast_free(ASTNode *node) {
       break;
     case NODE_UNARY_OP:
       ast_free(node->data.unary_op.operand);
+      break;
+    case NODE_VALMEM_FIELD:
+      ast_free(node->data.valmem_field.receiver);
+      free(node->data.valmem_field.name);
       break;
     }
 

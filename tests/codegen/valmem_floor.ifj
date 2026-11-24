@@ -1,0 +1,44 @@
+/**
+ * @file valmem_floor.ifj
+ * @brief floor rounding Doubles down
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: codegen tests for the VALMEM extension (spec 5.4); every program
+ * is compiled by codegen_main, run by ic26int and its output and return code
+ * are compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// floor rounds down to a whole number and stays a Double, negative values go
+// away from zero (spec 5.4) -> 3.0, -4.0, -3.0, 0.0, -1.0, 7.0 printed as %a
+import ifj26.*
+
+@main def main(): Unit =
+  val a = 3.7
+  val b = -3.7
+  val c = -3.0
+  val d = 0.5
+  val e = -0.5
+  print(a.floor)
+  print("\n")
+  print(b.floor)
+  print("\n")
+  print(c.floor)
+  print("\n")
+  print(d.floor)
+  print("\n")
+  print(e.floor)
+  print("\n")
+  print((7.0).floor)
+  print("\n")

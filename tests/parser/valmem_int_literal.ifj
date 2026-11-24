@@ -1,0 +1,28 @@
+/**
+ * @file valmem_int_literal.ifj
+ * @brief VALMEM members right after integer literals
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: parser tests for the VALMEM extension (spec 5.4) - a member
+ * binds tighter than every operator and chains go from the left, derived from
+ * the IFJ26 spec as a black box)
+ */
+// a member right after an integer literal: 5.toString is INT 5, DOT and ID
+// toString, not a malformed decimal literal (spec 5.4) -> 0
+import ifj26.*
+@main def main(): Unit =
+  val a = 5.toString
+  val b = 10.toString.length
+  val c = 0.toString

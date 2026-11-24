@@ -1,0 +1,80 @@
+PROGRAM
+  FUNC_DEF len (s: String) : ?
+    VALMEM_FIELD length
+      VAR_REF s
+  FUNC_DEF lastFloor (d: Double) : Double
+    BLOCK
+      VAR_DEF val x : ?
+        BINARY_OP *
+          VAR_REF d
+          LITERAL Double 2.0
+      VALMEM_FIELD floor
+        VAR_REF x
+  FUNC_DEF early (d: Double) : Double
+    BLOCK
+      RETURN
+        VALMEM_FIELD floor
+          VAR_REF d
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val s : ?
+        LITERAL String "abcd"
+      FOR i until
+        start:
+          LITERAL Int 0
+        end:
+          VALMEM_FIELD length
+            VAR_REF s
+        body:
+          CALL print
+            VAR_REF i
+      FOR i to
+        start:
+          LITERAL Int 0
+        end:
+          VALMEM_FIELD length
+            VAR_REF s
+        step:
+          VALMEM_FIELD length
+            VALMEM_FIELD toString
+              VALMEM_FIELD length
+                VAR_REF s
+        guard:
+          BINARY_OP !=
+            VAR_REF i
+            VALMEM_FIELD length
+              VAR_REF s
+        body:
+          CALL print
+            VAR_REF i
+      IF stmt
+        cond:
+          BINARY_OP >
+            VALMEM_FIELD length
+              VAR_REF s
+            LITERAL Int 2
+        then:
+          CALL print
+            VALMEM_FIELD length
+              VAR_REF s
+      VAR_DEF var t : ?
+        VAR_REF s
+      WHILE
+        cond:
+          BINARY_OP >
+            VALMEM_FIELD length
+              VAR_REF t
+            LITERAL Int 1
+        body:
+          BLOCK
+            ASSIGN t
+              CALL subStr
+                VAR_REF t
+                LITERAL Int 1
+                VALMEM_FIELD length
+                  VAR_REF t
+      CALL print
+        VALMEM_FIELD length
+          CALL toStr
+            CALL len
+              VAR_REF s

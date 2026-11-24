@@ -1,0 +1,60 @@
+/**
+ * @file valmem_chains.ifj
+ * @brief Chained VALMEM members
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: codegen tests for the VALMEM extension (spec 5.4); every program
+ * is compiled by codegen_main, run by ic26int and its output and return code
+ * are compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// chains apply from the left; n.floor.toInt rounds down first, unlike n.toInt
+// (spec 5.4) -> 3, -4, -3, 3!, 3.00, 4, 3abc, 2, 4, 3, 4, 2, 4, 4
+import ifj26.*
+
+@main def main(): Unit =
+  val d = 3.7
+  val n = -3.7
+  val pi = 3.14159
+  val s = "abc"
+  val big = -123.5
+  print(d.floor.toInt)
+  print("\n")
+  print(n.floor.toInt)
+  print("\n")
+  print(n.toInt)
+  print("\n")
+  print(d.toInt.toString + "!")
+  print("\n")
+  print(d.floor.toString)
+  print("\n")
+  print(pi.toString.length)
+  print("\n")
+  print(s.length.toString + s)
+  print("\n")
+  print("abcdefghijk".length.toString.length)
+  print("\n")
+  print(big.floor.toInt.toString.length)
+  print("\n")
+  print(s.toString.toString.length)
+  print("\n")
+  print((d + 1.0).toString.length)
+  print("\n")
+  print(().toString.length)
+  print("\n")
+  print(true.toString.length)
+  print("\n")
+  print(toStr(d.floor).length)
+  print("\n")

@@ -1,0 +1,65 @@
+/**
+ * @file valmem_in_expressions.ifj
+ * @brief VALMEM members inside expressions and statements
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: codegen tests for the VALMEM extension (spec 5.4); every program
+ * is compiled by codegen_main, run by ic26int and its output and return code
+ * are compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// members inside arithmetic, conditions, loops, guards and function bodies;
+// -d.floor is -(d.floor), so -2.00 and not -3.00 (spec 5.3, 5.4)
+// -> 9, -2.00, 2.50, 3, 1234, 013, four, 1, 3.00, 5, 2.00, 1
+import ifj26.*
+
+def half(x: Int): Double = x / 2.0
+
+def len(s: String) = s.length
+
+def doubledFloor(d: Double): Double =
+  val x = d * 2.0
+  x.floor
+
+@main def main(): Unit =
+  val s = "abcd"
+  val d = 2.5
+  print(s.length * 2 + 1)
+  print("\n")
+  print((-d.floor).toString)
+  print("\n")
+  print((d.floor + 0.5).toString)
+  print("\n")
+  print(s.length - 1)
+  print("\n")
+  for i <- 1 to s.length do print(i)
+  print("\n")
+  for i <- 0 until s.length if i != s.length - 2 do print(i)
+  print("\n")
+  if s.length == 4 then print("four") else print("other")
+  print("\n")
+  var t = "aaaa"
+  while t.length > 1 do
+    t = subStr(t, 1, t.length)
+  print(t.length)
+  print("\n")
+  print(half(7).floor.toString)
+  print("\n")
+  print(len("hello"))
+  print("\n")
+  print(doubledFloor(1.3).toString)
+  print("\n")
+  print((if s.length > 3 then 1.9 else 2.9).floor.toInt)
+  print("\n")

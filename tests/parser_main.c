@@ -20,6 +20,19 @@
  * parser's return code)
  */
 
+/**
+ * Disclaimer!
+ * The NODE_VALMEM_FIELD case of print_node was added by Claude Opus 5.5 AI
+ * model.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: the parser tests need the new node in the AST dump, printed like a
+ * call - the member name, then the receiver indented under it)
+ */
+
 #include "../src/ast.h"
 #include "../src/parser.h"
 #include "../src/return.h"
@@ -336,6 +349,11 @@ static void print_node(const ASTNode *node, int depth) {
   case NODE_UNARY_OP:
     printf("UNARY_OP %s\n", operator_name(node->data.unary_op.op));
     print_node(node->data.unary_op.operand, depth + 1);
+    break;
+
+  case NODE_VALMEM_FIELD:
+    printf("VALMEM_FIELD %s\n", node->data.valmem_field.name);
+    print_node(node->data.valmem_field.receiver, depth + 1);
     break;
 
   default:
