@@ -371,10 +371,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         return RETURN_SUCCESS;
       }
 
-      if (sc->emit_interp_end) {
+      if (sc->has_pending) {
         ungetc(c, sc->src);
-        sc->emit_interp_end = false;
-        token_to_fill->type = TOKEN_INTERP_END;
+        sc->has_pending = false;
+        token_to_fill->type = sc->pending;
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
@@ -1001,7 +1001,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
             sc->interp_text = false;
             token_to_fill->type = TOKEN_INTERP_END;
           } else {
-            sc->emit_interp_end = true;
+            sc->has_pending = true;
+            sc->pending = TOKEN_INTERP_END;
             sc->interp_text = false;
             token_to_fill->type = TOKEN_STRING;
             token_to_fill->content.string = dynstr_take(&str);
@@ -1012,6 +1013,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
+      }
+
+      if (sc->interp_text && c == '$') {
+        c = fgetc(sc->src);
+        if (c == '$') {
+          APPEND_OR_ERROR(str, c);
+          break;
+        }
       }
 
       if (c == '\n' || c == EOF) {
@@ -1043,6 +1052,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (c == '\n') {
           sc->line++;
         }
+        if (sc->interp_text && c == '$') {
+          c = fgetc(sc->src);
+          if (c == '$') {
+            APPEND_OR_ERROR(str, c);
+            break;
+          }
+        }
         APPEND_OR_ERROR(str, c);
       }
       break;
@@ -1055,11 +1071,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         print_error("Unterminated multiline string.", sc->line);
         return ERR_LEX_ANA;
       } else {
-        if (c == '\n') {
-          sc->line++;
-        }
         APPEND_OR_ERROR(str, '"');
-        APPEND_OR_ERROR(str, c);
+        ungetc(c, sc->src);
         state = STATE_STR_ML;
       }
       break;
@@ -1082,7 +1095,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
             sc->interp_text = false;
             token_to_fill->type = TOKEN_INTERP_END;
           } else {
-            sc->emit_interp_end = true;
+            sc->has_pending = true;
+            sc->pending = TOKEN_INTERP_END;
             sc->interp_text = false;
             token_to_fill->type = TOKEN_STRING;
             token_to_fill->content.string = dynstr_take(&str);
@@ -1102,10 +1116,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       for (int i = 0; i < 2; i++) {
         APPEND_OR_ERROR(str, '"');
       }
-      if (c == '\n') {
-        sc->line++;
-      }
-      APPEND_OR_ERROR(str, c);
+      ungetc(c, sc->src);
       state = STATE_STR_ML;
 
       break;
@@ -1192,7 +1203,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         return RETURN_SUCCESS;
       } else {
         ungetc(c, sc->src);
-        sc->emit_interp_end = true;
+        sc->has_pending = true;
+        sc->pending = TOKEN_INTERP_END;
         token_to_fill->type = TOKEN_INTERP_BEGIN;
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;

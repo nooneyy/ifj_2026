@@ -39,9 +39,10 @@ typedef struct Scanner {
   bool interp_text; // the next token continues the text of an interpolated
                     // string
   bool interp_ml;   // ...of a multi-line one (s""")
-  bool emit_interp_end; // A flag that deteremines whether INTERP_END must be
-                        // returned right away
-  unsigned int line;    // Line the scanner is currently on
+  bool has_pending; // A flag that determines whether a token decided earlier
+                    // must be returned right away
+  TokenType pending; // The token to return when has_pending is set
+  unsigned int line; // Line the scanner is currently on
 } Scanner;
 
 /**
