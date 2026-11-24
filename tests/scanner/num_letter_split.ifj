@@ -1,0 +1,43 @@
+/**
+ * @file num_letter_split.ifj
+ * @brief Number directly followed by letters testing input
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 19.10.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model in xHigh effort mode
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Could you please make test files for the 4 issues I fixed to verify that
+ * they pass?"
+ */
+
+
+/**
+ * Disclaimer!
+ * Modified by Claude Opus 5.5 AI model - renamed from err_num_letter, a letter
+ * after a complete number now ends the number instead of being a lexical
+ * error, more number forms added.
+ *
+ * Prompt:
+ * "Could you please write the tests where our trial submission is failing in
+ * the scanner (import ifj26._, indentation in parentheses, letter after a
+ * number should end the number, emit it and then start an ID which the parser
+ * then rejects)? Modify any tests that expect another thing currently, use the
+ * same test structure as always pls"
+ * (context: the trial submission's test 82 expected 2 for a letter right after
+ * a number, tests 18, 19, 20 and 25 accepted 1 or 2)
+ */
+// a letter right after a complete number ends the number and starts an
+// identifier (12abc is INT 12 + ID abc), the parser then rejects it -> 0
+import ifj26.*
+@main def main(): Unit =
+  val a = 12abc
+  val b = 1.5abc
+  val c = 1e5abc
+  val d = 0abc
+  val e = 1_000abc

@@ -1,0 +1,43 @@
+/**
+ * @file err_paren_cont_indent.ifj
+ * @brief Continuation inside parentheses not indented
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 12.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Since AI can be used freely to make tests, could you make them for me?
+ * Let's collaborate on the design, the test contents and then i'll let u
+ * implement it"
+ * (context: parser tests from the agreed list, derived from the IFJ26 spec
+ * and the demo slides as a black box)
+ */
+
+
+/**
+ * Disclaimer!
+ * Modified by Claude Opus 5.5 AI model - renamed from lex_paren_cont_indent,
+ * the expected return code changed from 1 to 2.
+ *
+ * Prompt:
+ * "Could you please write the tests where our trial submission is failing in
+ * the scanner (import ifj26._, indentation in parentheses, letter after a
+ * number should end the number, emit it and then start an ID which the parser
+ * then rejects)? Modify any tests that expect another thing currently, use the
+ * same test structure as always pls"
+ * (context: the trial submission's test 64 expected 2 for a line inside
+ * parentheses that isn't indented more than the logical line, test 53
+ * accepted 1 or 2)
+ */
+// a line inside parentheses must be indented more than the logical line, a
+// syntax error -> 2
+import ifj26.*
+@main def main(): Unit =
+  print(1 +
+  2)
