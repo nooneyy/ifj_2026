@@ -1,0 +1,33 @@
+/**
+ * @file valmem_receivers.ifj
+ * @brief VALMEM members on different kinds of receivers
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: parser tests for the VALMEM extension (spec 5.4) - a member
+ * binds tighter than every operator and chains go from the left, derived from
+ * the IFJ26 spec as a black box)
+ */
+// the receiver can be a literal, a parenthesized expression, a call, the unit
+// value or an if expression in parentheses (spec 5.4) -> 0
+import ifj26.*
+@main def main(): Unit =
+  val d = 3.7
+  val a = "abc".length
+  val b = 1.5.toString
+  val c = (d + 1.0).floor
+  val e = toStr(d).length
+  val f = ().toString
+  val g = true.toString
+  val h = (if d > 1.0 then 1.5 else 2.5).toInt

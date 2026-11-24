@@ -1,0 +1,26 @@
+/**
+ * @file err_valmem_parens.ifj
+ * @brief VALMEM member written with an empty argument list
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: parser tests for the VALMEM extension (spec 5.4) - a member
+ * binds tighter than every operator and chains go from the left, derived from
+ * the IFJ26 spec as a black box)
+ */
+// the members are written without an empty argument list (spec 5.4) -> 2
+import ifj26.*
+@main def main(): Unit =
+  val s = "abc"
+  val n = s.length()

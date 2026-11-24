@@ -1,0 +1,13 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        VALMEM_FIELD toString
+          LITERAL Int 5
+      VAR_DEF val b : ?
+        VALMEM_FIELD length
+          VALMEM_FIELD toString
+            LITERAL Int 10
+      VAR_DEF val c : ?
+        VALMEM_FIELD toString
+          LITERAL Int 0

@@ -1,0 +1,34 @@
+/**
+ * @file valmem_precedence.ifj
+ * @brief VALMEM members inside operator expressions
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: parser tests for the VALMEM extension (spec 5.4) - a member
+ * binds tighter than every operator and chains go from the left, derived from
+ * the IFJ26 spec as a black box)
+ */
+// a member binds tighter than every operator: -d.floor is -(d.floor) and
+// 1 + s.length * 2 is 1 + ((s.length) * 2), a minus after a member is binary
+// (spec 5.4) -> 0
+import ifj26.*
+@main def main(): Unit =
+  val d = 2.5
+  val s = "abc"
+  val a = -d.floor
+  val b = 1 + s.length * 2
+  val c = s.length - 1
+  val e = d.floor + 0.5
+  val f = s.length == 3
+  val g = d.toInt / 2 < s.length

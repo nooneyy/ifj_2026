@@ -1,0 +1,41 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val d : ?
+        LITERAL Double 2.5
+      VAR_DEF val s : ?
+        LITERAL String "abc"
+      VAR_DEF val a : ?
+        UNARY_OP -
+          VALMEM_FIELD floor
+            VAR_REF d
+      VAR_DEF val b : ?
+        BINARY_OP +
+          LITERAL Int 1
+          BINARY_OP *
+            VALMEM_FIELD length
+              VAR_REF s
+            LITERAL Int 2
+      VAR_DEF val c : ?
+        BINARY_OP -
+          VALMEM_FIELD length
+            VAR_REF s
+          LITERAL Int 1
+      VAR_DEF val e : ?
+        BINARY_OP +
+          VALMEM_FIELD floor
+            VAR_REF d
+          LITERAL Double 0.5
+      VAR_DEF val f : ?
+        BINARY_OP ==
+          VALMEM_FIELD length
+            VAR_REF s
+          LITERAL Int 3
+      VAR_DEF val g : ?
+        BINARY_OP <
+          BINARY_OP /
+            VALMEM_FIELD toInt
+              VAR_REF d
+            LITERAL Int 2
+          VALMEM_FIELD length
+            VAR_REF s

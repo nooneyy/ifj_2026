@@ -1,0 +1,43 @@
+/**
+ * @file valmem_length.ifj
+ * @brief length of Strings
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please add tests for the VALMEM extension. Check <any>.toString,
+ * Double.toInt, Double.floor and String.length. Make combinations of chained
+ * VALMEM fields. Use the same test convention as always."
+ * (context: codegen tests for the VALMEM extension (spec 5.4); every program
+ * is compiled by codegen_main, run by ic26int and its output and return code
+ * are compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL and FUNEXP)
+ */
+// length counts the characters of a String, escape sequences count as one
+// character (spec 4, 5.4) -> 5, 0, 3, 8, 5, 10, 2
+import ifj26.*
+
+@main def main(): Unit =
+  val s = "hello"
+  val empty = ""
+  print(s.length)
+  print("\n")
+  print(empty.length)
+  print("\n")
+  print("a\nb".length)
+  print("\n")
+  print("tab\there".length)
+  print("\n")
+  print(toStr(12345).length)
+  print("\n")
+  print((s + s).length)
+  print("\n")
+  print(subStr(s, 1, 3).length)
+  print("\n")
