@@ -33,6 +33,20 @@
  * call - the member name, then the receiver indented under it)
  */
 
+/**
+ * Disclaimer!
+ * The argument lists in the NODE_FUNCTION_CALL case of print_node were added
+ * by Claude Opus 5.5 AI model.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: a call with exactly one argument list keeps printing as
+ * CALL name, any other count prints the argument count of every list, e.g.
+ * CALL add (1)(1)(1), so the existing parser tests keep their output)
+ */
+
 #include "../src/ast.h"
 #include "../src/parser.h"
 #include "../src/return.h"
@@ -271,10 +285,20 @@ static void print_node(const ASTNode *node, int depth) {
     print_node(node->data.function_def.body, depth + 1);
     break;
 
-  case NODE_FUNCTION_CALL:
-    printf("CALL %s\n", node->data.function_call.name);
-    print_list(node->data.function_call.args, depth + 1);
+  case NODE_FUNCTION_CALL: {
+    const ASTFunctionCallNodeData *call = &node->data.function_call;
+    printf("CALL %s", call->name);
+    // PARAMLISTS: the argument count of every list, unless there's just one
+    if (call->arg_list_count != 1) {
+      putchar(' ');
+      for (size_t i = 0; i < call->arg_list_count; i++) {
+        printf("(%zu)", call->arg_list_sizes[i]);
+      }
+    }
+    putchar('\n');
+    print_list(call->args, depth + 1);
     break;
+  }
 
   case NODE_BLOCK:
     puts("BLOCK");
