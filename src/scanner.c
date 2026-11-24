@@ -558,9 +558,12 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         APPEND_OR_ERROR(str, c);
         state = STATE_ID;
       } else {
+        // _ token
         dynstr_free(&str);
-        print_error("Unexpected character after '_'.", sc->line);
-        return ERR_LEX_ANA;
+        ungetc(c, sc->src);
+        token_to_fill->type = TOKEN_UNDERSCORE;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
       }
       break;
 
@@ -577,12 +580,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         APPEND_OR_ERROR(str, 'e');
         state = STATE_E;
       } else {
-        if (isalpha(c)) {
-          // A unrecognized char after number -> lexical error
-          dynstr_free(&str);
-          print_error("Unexpected character after a digit.", sc->line);
-          return ERR_LEX_ANA;
-        }
+        // Return correct number and then start with ID -> syntax error
         ungetc(c, sc->src);
         return int_to_token(&str, token_to_fill, sc->line);
       }
@@ -632,12 +630,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         ungetc(c, sc->src);
         return double_to_token(&str, token_to_fill, sc->line);
       } else {
-        if (isalpha(c)) {
-          // A unrecognized char after number -> lexical error
-          dynstr_free(&str);
-          print_error("Unexpected character after a digit.", sc->line);
-          return ERR_LEX_ANA;
-        }
+        // Return correct number and then start with ID -> syntax error
         ungetc(c, sc->src);
         return double_to_token(&str, token_to_fill, sc->line);
       }
@@ -698,12 +691,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         ungetc(c, sc->src);
         return double_to_token(&str, token_to_fill, sc->line);
       } else {
-        if (isalpha(c)) {
-          // Unrecognized char after suffix -> lexical error
-          dynstr_free(&str);
-          print_error("Unexpected character after a digit.", sc->line);
-          return ERR_LEX_ANA;
-        }
+        // Return correct number and then start with ID -> syntax error
         ungetc(c, sc->src);
         return double_to_token(&str, token_to_fill, sc->line);
       }
@@ -746,12 +734,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         APPEND_OR_ERROR(str, c);
         state = STATE_DOT;
       } else {
-        if (isalpha(c) || c == '_') {
-          // A unrecognized char after number -> lexical error
+        if (c == '_') {
+          // '_' after zero -> lexical error
           dynstr_free(&str);
           print_error("Unexpected character after a digit.", sc->line);
           return ERR_LEX_ANA;
         }
+        // Something else after number -> return number, continue
         ungetc(c, sc->src);
         return int_to_token(&str, token_to_fill, sc->line);
       }
@@ -1103,7 +1092,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       }
       if (indent_cnt <= sc->indent_levels[sc->indent_depth]) {
         print_error("Not enough indentation inside parentheses.", sc->line);
-        return ERR_LEX_ANA;
+        // This is a syntax error according to the trial submission feedback
+        return ERR_SYN_ANA;
       }
       break;
     }
