@@ -49,6 +49,7 @@ ASTNode *ast_init_func_def(char *name, bool is_main, unsigned int line) {
       .list_count = 0,
       .list_sizes = NULL,
       .return_type = UNKNOWN,
+      .receiver = {.name = NULL, .data_type = UNKNOWN},
   };
 
   *func_def = (ASTNode){
@@ -530,6 +531,7 @@ void ast_free(ASTNode *node) {
       break;
     case NODE_FUNCTION_DEF:
       free(node->data.function_def.name);
+      free(node->data.function_def.receiver.name);
       for (size_t idx = 0; idx < node->data.function_def.param_count; idx++) {
         free(node->data.function_def.params[idx].name);
       }

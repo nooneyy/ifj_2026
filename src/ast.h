@@ -88,6 +88,8 @@ typedef struct {
   bool is_main;         // Is this function annotated with "@main"?
   ASTNode *body;        // The body of the function (Block node, non-NULL once
                         // successfully parsed)
+  FunctionParam receiver; // EXTKW: receiver of a method, name owned by this
+                          // struct, name == NULL for plain function
 } ASTFunctionDefNodeData;
 
 /**
