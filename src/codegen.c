@@ -111,224 +111,236 @@ static bool generate_prolog(CodeGenContext *ctx) {
 static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "\n\n");
 
-  fprintf(ctx->out, "LABEL $ifj_print\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@val\n");
-  fprintf(ctx->out, "POPS LF@val\n");
-  fprintf(ctx->out, "JUMPIFEQ $input_is_nil LF@val nil@nil\n");
-  fprintf(ctx->out, "WRITE LF@val\n");
-  fprintf(ctx->out, "JUMP $print_jump_end\n");
-  fprintf(ctx->out, "LABEL $input_is_nil\n");
-  fprintf(ctx->out, "WRITE string@()\n");
-  fprintf(ctx->out, "LABEL $print_jump_end\n");
-  fprintf(ctx->out, "PUSHS nil@nil\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_print\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@val\n"
+        "POPS LF@val\n"
+        "JUMPIFEQ $input_is_nil LF@val nil@nil\n"
+        "WRITE LF@val\n"
+        "JUMP $print_jump_end\n"
+        "LABEL $input_is_nil\n"
+        "WRITE string@()\n"
+        "LABEL $print_jump_end\n"
+        "PUSHS nil@nil\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_readLine\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "READ LF@res string\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_readLine\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@res\n"
+        "READ LF@res string\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_readInt\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "READ LF@res int\n");
-  fprintf(ctx->out, "JUMPIFNEQ $ifj_readInt_end LF@res nil@nil\n");
-  fprintf(ctx->out, "MOVE LF@res int@0\n");
-  fprintf(ctx->out, "LABEL $ifj_readInt_end\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_readInt\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@res\n"
+        "READ LF@res int\n"
+        "JUMPIFNEQ $ifj_readInt_end LF@res nil@nil\n"
+        "MOVE LF@res int@0\n"
+        "LABEL $ifj_readInt_end\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_readDouble\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "READ LF@res float\n");
-  fprintf(ctx->out, "JUMPIFNEQ $ifj_readDouble_end LF@res nil@nil\n");
-  fprintf(ctx->out, "MOVE LF@res float@0x0p+0\n");
-  fprintf(ctx->out, "LABEL $ifj_readDouble_end\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_readDouble\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@res\n"
+        "READ LF@res float\n"
+        "JUMPIFNEQ $ifj_readDouble_end LF@res nil@nil\n"
+        "MOVE LF@res float@0x0p+0\n"
+        "LABEL $ifj_readDouble_end\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_strLength\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@s\n");
-  fprintf(ctx->out, "POPS LF@s\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "STRLEN LF@res LF@s\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_strLength\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@s\n"
+        "POPS LF@s\n"
+        "DEFVAR LF@res\n"
+        "STRLEN LF@res LF@s\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_toStr\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@val\n");
-  fprintf(ctx->out, "POPS LF@val\n");
-  fprintf(ctx->out, "DEFVAR LF@type\n");
-  fprintf(ctx->out, "TYPE LF@type LF@val\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "JUMPIFEQ $toStr_int LF@type string@int\n");
-  fprintf(ctx->out, "JUMPIFEQ $toStr_float LF@type string@float\n");
-  fprintf(ctx->out, "JUMPIFEQ $ifj_toStr_unit LF@type string@nil\n");
-  fprintf(ctx->out, "JUMPIFEQ $ifj_toStr_bool LF@type string@bool\n");
-  fprintf(ctx->out, "MOVE LF@res LF@val\n");
-  fprintf(ctx->out, "JUMP $toStr_end\n");
-  fprintf(ctx->out, "LABEL $toStr_int\n");
-  fprintf(ctx->out, "INT2STR LF@res LF@val\n");
-  fprintf(ctx->out, "JUMP $toStr_end\n");
-  fprintf(ctx->out, "LABEL $toStr_float\n");
-  fprintf(ctx->out, "FLOAT2STR LF@res LF@val\n");
-  fprintf(ctx->out, "JUMP $toStr_end\n");
-  fprintf(ctx->out, "LABEL $ifj_toStr_unit\n");
-  fprintf(ctx->out, "MOVE LF@res string@()\n");
-  fprintf(ctx->out, "JUMP $toStr_end\n");
-  fprintf(ctx->out, "LABEL $ifj_toStr_bool\n");
-  fprintf(ctx->out, "MOVE LF@res string@true\n");
-  fprintf(ctx->out, "JUMPIFEQ $toStr_end LF@val bool@true\n");
-  fprintf(ctx->out, "MOVE LF@res string@false\n");
-  fprintf(ctx->out, "LABEL $toStr_end\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_toStr\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@val\n"
+        "POPS LF@val\n"
+        "DEFVAR LF@type\n"
+        "TYPE LF@type LF@val\n"
+        "DEFVAR LF@res\n"
+        "JUMPIFEQ $toStr_int LF@type string@int\n"
+        "JUMPIFEQ $toStr_float LF@type string@float\n"
+        "JUMPIFEQ $ifj_toStr_unit LF@type string@nil\n"
+        "JUMPIFEQ $ifj_toStr_bool LF@type string@bool\n"
+        "MOVE LF@res LF@val\n"
+        "JUMP $toStr_end\n"
+        "LABEL $toStr_int\n"
+        "INT2STR LF@res LF@val\n"
+        "JUMP $toStr_end\n"
+        "LABEL $toStr_float\n"
+        "FLOAT2STR LF@res LF@val\n"
+        "JUMP $toStr_end\n"
+        "LABEL $ifj_toStr_unit\n"
+        "MOVE LF@res string@()\n"
+        "JUMP $toStr_end\n"
+        "LABEL $ifj_toStr_bool\n"
+        "MOVE LF@res string@true\n"
+        "JUMPIFEQ $toStr_end LF@val bool@true\n"
+        "MOVE LF@res string@false\n"
+        "LABEL $toStr_end\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_toInt\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@val\n");
-  fprintf(ctx->out, "POPS LF@val\n");
-  fprintf(ctx->out, "DEFVAR LF@type\n");
-  fprintf(ctx->out, "TYPE LF@type LF@val\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "MOVE LF@res LF@val\n");
-  fprintf(ctx->out, "JUMPIFEQ $ifj_toInt_end LF@type string@int\n");
-  fprintf(ctx->out, "FLOAT2INT LF@res LF@val\n");
-  fprintf(ctx->out, "LABEL $ifj_toInt_end\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_toInt\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@val\n"
+        "POPS LF@val\n"
+        "DEFVAR LF@type\n"
+        "TYPE LF@type LF@val\n"
+        "DEFVAR LF@res\n"
+        "MOVE LF@res LF@val\n"
+        "JUMPIFEQ $ifj_toInt_end LF@type string@int\n"
+        "FLOAT2INT LF@res LF@val\n"
+        "LABEL $ifj_toInt_end\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_subStr\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@j\n");
-  fprintf(ctx->out, "POPS LF@j\n");
-  fprintf(ctx->out, "DEFVAR LF@i\n");
-  fprintf(ctx->out, "POPS LF@i\n");
-  fprintf(ctx->out, "DEFVAR LF@s\n");
-  fprintf(ctx->out, "POPS LF@s\n");
-  fprintf(ctx->out, "DEFVAR LF@len\n");
-  fprintf(ctx->out, "STRLEN LF@len LF@s\n");
-  fprintf(ctx->out, "DEFVAR LF@cond\n");
-  fprintf(ctx->out, "LT LF@cond LF@i int@0\n");
-  fprintf(ctx->out, "JUMPIFEQ $subStr_err LF@cond bool@true\n");
-  fprintf(ctx->out, "LT LF@cond LF@j int@0\n");
-  fprintf(ctx->out, "JUMPIFEQ $subStr_err LF@cond bool@true\n");
-  fprintf(ctx->out, "GT LF@cond LF@i LF@j\n");
-  fprintf(ctx->out, "JUMPIFEQ $subStr_err LF@cond bool@true\n");
-  fprintf(ctx->out, "LT LF@cond LF@i LF@len\n");
-  fprintf(ctx->out, "JUMPIFNEQ $subStr_err LF@cond bool@true\n");
-  fprintf(ctx->out, "GT LF@cond LF@j LF@len\n");
-  fprintf(ctx->out, "JUMPIFEQ $subStr_err LF@cond bool@true\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "MOVE LF@res string@\n");
-  fprintf(ctx->out, "DEFVAR LF@k\n");
-  fprintf(ctx->out, "MOVE LF@k LF@i\n");
-  fprintf(ctx->out, "DEFVAR LF@char\n");
-  fprintf(ctx->out, "LABEL $subStr_loop\n");
-  fprintf(ctx->out, "JUMPIFEQ $subStr_done LF@k LF@j\n");
-  fprintf(ctx->out, "GETCHAR LF@char LF@s LF@k\n");
-  fprintf(ctx->out, "CONCAT LF@res LF@res LF@char\n");
-  fprintf(ctx->out, "ADD LF@k LF@k int@1\n");
-  fprintf(ctx->out, "JUMP $subStr_loop\n");
-  fprintf(ctx->out, "LABEL $subStr_err\n");
-  fprintf(ctx->out, "EXIT int@40\n");
-  fprintf(ctx->out, "LABEL $subStr_done\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_subStr\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@j\n"
+        "POPS LF@j\n"
+        "DEFVAR LF@i\n"
+        "POPS LF@i\n"
+        "DEFVAR LF@s\n"
+        "POPS LF@s\n"
+        "DEFVAR LF@len\n"
+        "STRLEN LF@len LF@s\n"
+        "DEFVAR LF@cond\n"
+        "LT LF@cond LF@i int@0\n"
+        "JUMPIFEQ $subStr_err LF@cond bool@true\n"
+        "LT LF@cond LF@j int@0\n"
+        "JUMPIFEQ $subStr_err LF@cond bool@true\n"
+        "GT LF@cond LF@i LF@j\n"
+        "JUMPIFEQ $subStr_err LF@cond bool@true\n"
+        "LT LF@cond LF@i LF@len\n"
+        "JUMPIFNEQ $subStr_err LF@cond bool@true\n"
+        "GT LF@cond LF@j LF@len\n"
+        "JUMPIFEQ $subStr_err LF@cond bool@true\n"
+        "DEFVAR LF@res\n"
+        "MOVE LF@res string@\n"
+        "DEFVAR LF@k\n"
+        "MOVE LF@k LF@i\n"
+        "DEFVAR LF@char\n"
+        "LABEL $subStr_loop\n"
+        "JUMPIFEQ $subStr_done LF@k LF@j\n"
+        "GETCHAR LF@char LF@s LF@k\n"
+        "CONCAT LF@res LF@res LF@char\n"
+        "ADD LF@k LF@k int@1\n"
+        "JUMP $subStr_loop\n"
+        "LABEL $subStr_err\n"
+        "EXIT int@40\n"
+        "LABEL $subStr_done\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_ord\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@i\n");
-  fprintf(ctx->out, "POPS LF@i\n");
-  fprintf(ctx->out, "DEFVAR LF@s\n");
-  fprintf(ctx->out, "POPS LF@s\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "DEFVAR LF@len\n");
-  fprintf(ctx->out, "STRLEN LF@len LF@s\n");
-  fprintf(ctx->out, "DEFVAR LF@cond\n");
-  fprintf(ctx->out, "LT LF@cond LF@i int@0\n");
-  fprintf(ctx->out, "JUMPIFEQ $ord_invalid LF@cond bool@true\n");
-  fprintf(ctx->out, "LT LF@cond LF@i LF@len\n");
-  fprintf(ctx->out, "JUMPIFEQ $ord_valid LF@cond bool@true\n");
-  fprintf(ctx->out, "LABEL $ord_invalid\n");
-  fprintf(ctx->out, "MOVE LF@res int@-1\n");
-  fprintf(ctx->out, "JUMP $ord_end\n");
-  fprintf(ctx->out, "LABEL $ord_valid\n");
-  fprintf(ctx->out, "STRI2INT LF@res LF@s LF@i\n");
-  fprintf(ctx->out, "LABEL $ord_end\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_ord\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@i\n"
+        "POPS LF@i\n"
+        "DEFVAR LF@s\n"
+        "POPS LF@s\n"
+        "DEFVAR LF@res\n"
+        "DEFVAR LF@len\n"
+        "STRLEN LF@len LF@s\n"
+        "DEFVAR LF@cond\n"
+        "LT LF@cond LF@i int@0\n"
+        "JUMPIFEQ $ord_invalid LF@cond bool@true\n"
+        "LT LF@cond LF@i LF@len\n"
+        "JUMPIFEQ $ord_valid LF@cond bool@true\n"
+        "LABEL $ord_invalid\n"
+        "MOVE LF@res int@-1\n"
+        "JUMP $ord_end\n"
+        "LABEL $ord_valid\n"
+        "STRI2INT LF@res LF@s LF@i\n"
+        "LABEL $ord_end\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_chr\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@i\n");
-  fprintf(ctx->out, "POPS LF@i\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "INT2CHAR LF@res LF@i\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_chr\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@i\n"
+        "POPS LF@i\n"
+        "DEFVAR LF@res\n"
+        "INT2CHAR LF@res LF@i\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_readBoolean\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "READ LF@res bool\n");
-  fprintf(ctx->out, "JUMPIFNEQ $ifj_readBoolean_end LF@res nil@nil\n");
-  fprintf(ctx->out, "MOVE LF@res bool@false\n");
-  fprintf(ctx->out, "LABEL $ifj_readBoolean_end\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_readBoolean\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@res\n"
+        "READ LF@res bool\n"
+        "JUMPIFNEQ $ifj_readBoolean_end LF@res nil@nil\n"
+        "MOVE LF@res bool@false\n"
+        "LABEL $ifj_readBoolean_end\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 
-  fprintf(ctx->out, "LABEL $ifj_floor\n");
-  fprintf(ctx->out, "CREATEFRAME\n");
-  fprintf(ctx->out, "PUSHFRAME\n");
-  fprintf(ctx->out, "DEFVAR LF@val\n");
-  fprintf(ctx->out, "POPS LF@val\n");
-  fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "DEFVAR LF@cond\n");
-  fprintf(ctx->out, "DEFVAR LF@i\n");
-  fprintf(ctx->out, "MOVE LF@res LF@val\n");
-  fprintf(ctx->out, "LT LF@cond LF@val float@0x1p+53\n");
-  fprintf(ctx->out, "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n");
-  fprintf(ctx->out, "SUB LF@i float@0x0p+0 float@0x1p+53\n");
-  fprintf(ctx->out, "GT LF@cond LF@val LF@i\n");
-  fprintf(ctx->out, "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n");
-  fprintf(ctx->out, "FLOAT2INT LF@i LF@val\n");
-  fprintf(ctx->out, "INT2FLOAT LF@res LF@i\n");
-  fprintf(ctx->out, "LT LF@cond LF@val LF@res\n");
-  fprintf(ctx->out, "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n");
-  fprintf(ctx->out, "SUB LF@res LF@res float@0x1p+0\n");
-  fprintf(ctx->out, "LABEL $ifj_floor_end\n");
-  fprintf(ctx->out, "PUSHS LF@res\n");
-  fprintf(ctx->out, "POPFRAME\n");
-  fprintf(ctx->out, "RETURN\n\n");
+  fputs("LABEL $ifj_floor\n"
+        "CREATEFRAME\n"
+        "PUSHFRAME\n"
+        "DEFVAR LF@val\n"
+        "POPS LF@val\n"
+        "DEFVAR LF@res\n"
+        "DEFVAR LF@cond\n"
+        "DEFVAR LF@i\n"
+        "MOVE LF@res LF@val\n"
+        "LT LF@cond LF@val float@0x1p+53\n"
+        "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n"
+        "SUB LF@i float@0x0p+0 float@0x1p+53\n"
+        "GT LF@cond LF@val LF@i\n"
+        "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n"
+        "FLOAT2INT LF@i LF@val\n"
+        "INT2FLOAT LF@res LF@i\n"
+        "LT LF@cond LF@val LF@res\n"
+        "JUMPIFEQ $ifj_floor_end LF@cond bool@false\n"
+        "SUB LF@res LF@res float@0x1p+0\n"
+        "LABEL $ifj_floor_end\n"
+        "PUSHS LF@res\n"
+        "POPFRAME\n"
+        "RETURN\n\n",
+        ctx->out);
 }
 
 /**
@@ -678,6 +690,105 @@ static void emit_var_defs_walk(CodeGenContext *ctx, ASTNode *node,
   }
 }
 
+static void expression_literal(CodeGenContext *ctx, ASTNode *expr,
+                               const char *dest_var) {
+  if (dest_var == NULL) {
+    return;
+  }
+  switch (expr->data_type) {
+  case INT:
+    fprintf(ctx->out, "MOVE LF@%s int@%lld\n", dest_var,
+            expr->data.literal.int_val);
+    break;
+  case DOUBLE:
+    fprintf(ctx->out, "MOVE LF@%s float@%a\n", dest_var,
+            expr->data.literal.dbl_val);
+    break;
+  case STRING:
+    fprintf(ctx->out, "MOVE LF@%s ", dest_var);
+    print_escaped_string(ctx, expr->data.literal.string);
+    fprintf(ctx->out, "\n");
+    break;
+  case BOOLEAN:
+    fprintf(ctx->out, "MOVE LF@%s bool@%s\n", dest_var,
+            expr->data.literal.bool_val ? "true" : "false");
+    break;
+  case UNIT:
+    fprintf(ctx->out, "MOVE LF@%s nil@nil\n", dest_var);
+    break;
+  default:
+    break;
+  }
+}
+
+static void expression_variable_ref(CodeGenContext *ctx, ASTNode *expr,
+                                    const char *dest_var) {
+  if (dest_var != NULL) {
+    const LocalVarEntry *entry =
+        scope_lookup(ctx, expr->data.variable_ref.name);
+    if (entry != NULL) {
+      fprintf(ctx->out, "MOVE LF@%s LF@%s$%d\n", dest_var, entry->name,
+              entry->uid);
+    }
+  }
+}
+
+static void expression_unary_op(CodeGenContext *ctx, ASTNode *expr,
+                                const char *dest_var) {
+  char op_tmp[TMP_VAR_BUF_SIZE];
+  new_tmp_var(ctx, op_tmp);
+
+  generate_expression(ctx, expr->data.unary_op.operand, op_tmp);
+
+  if (dest_var != NULL) {
+    ASTOperator op = expr->data.unary_op.op;
+    if (op == OP_NEG) {
+      const char *zero = (expr->data_type == DOUBLE) ? "float@0x0p+0" : "int@0";
+      fprintf(ctx->out, "SUB LF@%s %s LF@%s\n", dest_var, zero, op_tmp);
+    } else if (op == OP_NOT) {
+      fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, op_tmp);
+    }
+  }
+}
+
+static void expression_function_call(CodeGenContext *ctx, ASTNode *expr,
+                                     const char *dest_var) {
+  ASTFunctionDefNodeData *callee =
+      find_function_def(ctx->program, expr->data.function_call.name);
+  ASTNode *arg = expr->data.function_call.args;
+  size_t arg_idx = 0;
+
+  while (arg != NULL) {
+    char arg_tmp[TMP_VAR_BUF_SIZE];
+    new_tmp_var(ctx, arg_tmp);
+
+    generate_expression(ctx, arg, arg_tmp);
+    if (callee != NULL && arg_idx < callee->param_count &&
+        callee->params[arg_idx].data_type == DOUBLE && arg->data_type == INT) {
+      fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", arg_tmp, arg_tmp);
+    }
+    fprintf(ctx->out, "PUSHS LF@%s\n", arg_tmp);
+    arg = arg->next;
+    arg_idx++;
+  }
+
+  const char *name = expr->data.function_call.name;
+  if (is_builtin_func(name)) {
+    fprintf(ctx->out, "CALL $ifj_%s\n", name);
+  } else {
+    fprintf(ctx->out, "CALL $fn_%s\n", name);
+  }
+
+  if (dest_var != NULL) {
+    fprintf(ctx->out, "POPS LF@%s\n", dest_var);
+  } else {
+    char dummy[TMP_VAR_BUF_SIZE];
+    new_tmp_var(ctx, dummy);
+
+    fprintf(ctx->out, "POPS LF@%s\n", dummy);
+  }
+}
+
 /**
  * @brief Emits IFJcode26 code for binary operations
  * @param ctx Code generator context
@@ -906,108 +1017,24 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
 
   switch (expr->node_type) {
   case NODE_LITERAL:
-    if (dest_var == NULL) {
-      break;
-    }
-    switch (expr->data_type) {
-    case INT:
-      fprintf(ctx->out, "MOVE LF@%s int@%lld\n", dest_var,
-              expr->data.literal.int_val);
-      break;
-    case DOUBLE:
-      fprintf(ctx->out, "MOVE LF@%s float@%a\n", dest_var,
-              expr->data.literal.dbl_val);
-      break;
-    case STRING:
-      fprintf(ctx->out, "MOVE LF@%s ", dest_var);
-      print_escaped_string(ctx, expr->data.literal.string);
-      fprintf(ctx->out, "\n");
-      break;
-    case BOOLEAN:
-      fprintf(ctx->out, "MOVE LF@%s bool@%s\n", dest_var,
-              expr->data.literal.bool_val ? "true" : "false");
-      break;
-    case UNIT:
-      fprintf(ctx->out, "MOVE LF@%s nil@nil\n", dest_var);
-      break;
-    default:
-      break;
-    }
+    expression_literal(ctx, expr, dest_var);
     break;
 
   case NODE_VARIABLE_REF:
-    if (dest_var != NULL) {
-      const LocalVarEntry *entry =
-          scope_lookup(ctx, expr->data.variable_ref.name);
-      if (entry != NULL) {
-        fprintf(ctx->out, "MOVE LF@%s LF@%s$%d\n", dest_var, entry->name,
-                entry->uid);
-      }
-    }
+    expression_variable_ref(ctx, expr, dest_var);
     break;
 
-  case NODE_UNARY_OP: {
-    char op_tmp[TMP_VAR_BUF_SIZE];
-    new_tmp_var(ctx, op_tmp);
-
-    generate_expression(ctx, expr->data.unary_op.operand, op_tmp);
-
-    if (dest_var != NULL) {
-      ASTOperator op = expr->data.unary_op.op;
-      if (op == OP_NEG) {
-        const char *zero =
-            (expr->data_type == DOUBLE) ? "float@0x0p+0" : "int@0";
-        fprintf(ctx->out, "SUB LF@%s %s LF@%s\n", dest_var, zero, op_tmp);
-      } else if (op == OP_NOT) {
-        fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, op_tmp);
-      }
-    }
+  case NODE_UNARY_OP:
+    expression_unary_op(ctx, expr, dest_var);
     break;
-  }
 
-  case NODE_BINARY_OP: {
+  case NODE_BINARY_OP:
     expression_binary_op(ctx, expr, dest_var);
     break;
-  }
 
-  case NODE_FUNCTION_CALL: {
-    ASTFunctionDefNodeData *callee =
-        find_function_def(ctx->program, expr->data.function_call.name);
-    ASTNode *arg = expr->data.function_call.args;
-    size_t arg_idx = 0;
-
-    while (arg != NULL) {
-      char arg_tmp[TMP_VAR_BUF_SIZE];
-      new_tmp_var(ctx, arg_tmp);
-
-      generate_expression(ctx, arg, arg_tmp);
-      if (callee != NULL && arg_idx < callee->param_count &&
-          callee->params[arg_idx].data_type == DOUBLE &&
-          arg->data_type == INT) {
-        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", arg_tmp, arg_tmp);
-      }
-      fprintf(ctx->out, "PUSHS LF@%s\n", arg_tmp);
-      arg = arg->next;
-      arg_idx++;
-    }
-
-    const char *name = expr->data.function_call.name;
-    if (is_builtin_func(name)) {
-      fprintf(ctx->out, "CALL $ifj_%s\n", name);
-    } else {
-      fprintf(ctx->out, "CALL $fn_%s\n", name);
-    }
-
-    if (dest_var != NULL) {
-      fprintf(ctx->out, "POPS LF@%s\n", dest_var);
-    } else {
-      char dummy[TMP_VAR_BUF_SIZE];
-      new_tmp_var(ctx, dummy);
-
-      fprintf(ctx->out, "POPS LF@%s\n", dummy);
-    }
+  case NODE_FUNCTION_CALL:
+    expression_function_call(ctx, expr, dest_var);
     break;
-  }
 
   case NODE_IF:
     expression_if(ctx, expr, dest_var);
@@ -1050,6 +1077,104 @@ static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr) {
   }
 
   fprintf(ctx->out, "PUSHS LF@%s\n", ret_tmp);
+}
+
+static void statement_variable_def(CodeGenContext *ctx, ASTNode *statement) {
+  ASTVarDefNodeData *def = &statement->data.variable_def;
+
+  DataType var_type = UNKNOWN;
+
+  if (def->specified_type != UNKNOWN) {
+    var_type = def->specified_type;
+  } else if (def->expr != NULL) {
+    var_type = def->expr->data_type;
+  }
+
+  int uid = ctx->next_var_uid++;
+  if (def->expr != NULL) {
+    char val_tmp[TMP_VAR_BUF_SIZE];
+    new_tmp_var(ctx, val_tmp);
+
+    generate_expression(ctx, def->expr, val_tmp);
+    if (var_type == DOUBLE && def->expr->data_type == INT) {
+      fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", val_tmp, val_tmp);
+    }
+    fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", def->name, uid, val_tmp);
+  }
+  scope_push_var_with_uid(ctx, def->name, var_type, uid);
+}
+
+static void statement_assign(CodeGenContext *ctx, ASTNode *statement) {
+  ASTAssignNodeData *assign = &statement->data.assign;
+  const LocalVarEntry *entry = scope_lookup(ctx, assign->left);
+
+  if (entry != NULL && assign->right != NULL) {
+    const char *target_name = entry->name;
+    int target_uid = entry->uid;
+    DataType target_type = entry->type;
+    char val_tmp[TMP_VAR_BUF_SIZE];
+    new_tmp_var(ctx, val_tmp);
+
+    generate_expression(ctx, assign->right, val_tmp);
+    if (target_type == DOUBLE && assign->right->data_type == INT) {
+      fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", val_tmp, val_tmp);
+    }
+    fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", target_name, target_uid,
+            val_tmp);
+  }
+}
+
+static void statement_block(CodeGenContext *ctx, ASTNode *statement) {
+  scope_enter(ctx);
+  ASTNode *s = statement->data.block.statements;
+  while (s != NULL) {
+    generate_statement(ctx, s);
+    s = s->next;
+  }
+  scope_leave(ctx);
+}
+
+static void statement_return(CodeGenContext *ctx, ASTNode *statement) {
+  emit_return_expr(ctx, statement->data.return_node.value);
+  fprintf(ctx->out, "POPFRAME\n");
+  fprintf(ctx->out, "RETURN\n");
+}
+
+static void statement_if(CodeGenContext *ctx, ASTNode *statement) {
+  int id = ctx->label_counter++;
+  char cond_tmp[TMP_VAR_BUF_SIZE];
+  new_tmp_var(ctx, cond_tmp);
+
+  generate_expression(ctx, statement->data.if_node.condition, cond_tmp);
+
+  fprintf(ctx->out, "JUMPIFEQ $else_%d LF@%s bool@false\n", id, cond_tmp);
+
+  generate_statement(ctx, statement->data.if_node.then_branch);
+  fprintf(ctx->out, "JUMP $if_end_%d\n", id);
+
+  fprintf(ctx->out, "LABEL $else_%d\n", id);
+  if (statement->data.if_node.else_branch != NULL) {
+    generate_statement(ctx, statement->data.if_node.else_branch);
+  }
+
+  fprintf(ctx->out, "LABEL $if_end_%d\n", id);
+}
+
+static void statement_while(CodeGenContext *ctx, ASTNode *statement) {
+  int id = ctx->label_counter++;
+  char cond_tmp[TMP_VAR_BUF_SIZE];
+  new_tmp_var(ctx, cond_tmp);
+
+  fprintf(ctx->out, "LABEL $while_start_%d\n", id);
+
+  generate_expression(ctx, statement->data.while_node.condition, cond_tmp);
+
+  fprintf(ctx->out, "JUMPIFEQ $while_end_%d LF@%s bool@false\n", id, cond_tmp);
+
+  generate_statement(ctx, statement->data.while_node.body);
+  fprintf(ctx->out, "JUMP $while_start_%d\n", id);
+
+  fprintf(ctx->out, "LABEL $while_end_%d\n", id);
 }
 
 /**
@@ -1146,62 +1271,17 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement) {
   }
 
   switch (statement->node_type) {
-  case NODE_VARIABLE_DEF: {
-    ASTVarDefNodeData *def = &statement->data.variable_def;
-
-    DataType var_type = UNKNOWN;
-
-    if (def->specified_type != UNKNOWN) {
-      var_type = def->specified_type;
-    } else if (def->expr != NULL) {
-      var_type = def->expr->data_type;
-    }
-
-    int uid = ctx->next_var_uid++;
-    if (def->expr != NULL) {
-      char val_tmp[TMP_VAR_BUF_SIZE];
-      new_tmp_var(ctx, val_tmp);
-
-      generate_expression(ctx, def->expr, val_tmp);
-      if (var_type == DOUBLE && def->expr->data_type == INT) {
-        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", val_tmp, val_tmp);
-      }
-      fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", def->name, uid, val_tmp);
-    }
-    scope_push_var_with_uid(ctx, def->name, var_type, uid);
+  case NODE_VARIABLE_DEF:
+    statement_variable_def(ctx, statement);
     break;
-  }
 
-  case NODE_ASSIGN: {
-    ASTAssignNodeData *assign = &statement->data.assign;
-    const LocalVarEntry *entry = scope_lookup(ctx, assign->left);
-    if (entry != NULL && assign->right != NULL) {
-      const char *target_name = entry->name;
-      int target_uid = entry->uid;
-      DataType target_type = entry->type;
-      char val_tmp[TMP_VAR_BUF_SIZE];
-      new_tmp_var(ctx, val_tmp);
-
-      generate_expression(ctx, assign->right, val_tmp);
-      if (target_type == DOUBLE && assign->right->data_type == INT) {
-        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", val_tmp, val_tmp);
-      }
-      fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", target_name, target_uid,
-              val_tmp);
-    }
+  case NODE_ASSIGN:
+    statement_assign(ctx, statement);
     break;
-  }
 
-  case NODE_BLOCK: {
-    scope_enter(ctx);
-    ASTNode *s = statement->data.block.statements;
-    while (s != NULL) {
-      generate_statement(ctx, s);
-      s = s->next;
-    }
-    scope_leave(ctx);
+  case NODE_BLOCK:
+    statement_block(ctx, statement);
     break;
-  }
 
     /* AI Model used: Gemini 4 Hydrogen High
     Prompt:
@@ -1239,6 +1319,22 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement) {
             code has been edited a lot more after prompt
     */
 
+  case NODE_RETURN:
+    statement_return(ctx, statement);
+    break;
+
+  case NODE_IF:
+    statement_if(ctx, statement);
+    break;
+
+  case NODE_WHILE:
+    statement_while(ctx, statement);
+    break;
+
+  case NODE_FOR:
+    statement_for(ctx, statement);
+    break;
+
   case NODE_LITERAL:
   case NODE_VARIABLE_REF:
   case NODE_UNARY_OP:
@@ -1246,56 +1342,6 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement) {
   case NODE_FUNCTION_CALL:
   case NODE_VALMEM_FIELD:
     generate_expression(ctx, statement, NULL);
-    break;
-
-  case NODE_RETURN:
-    emit_return_expr(ctx, statement->data.return_node.value);
-    fprintf(ctx->out, "POPFRAME\n");
-    fprintf(ctx->out, "RETURN\n");
-    break;
-
-  case NODE_IF: {
-    int id = ctx->label_counter++;
-    char cond_tmp[TMP_VAR_BUF_SIZE];
-    new_tmp_var(ctx, cond_tmp);
-
-    generate_expression(ctx, statement->data.if_node.condition, cond_tmp);
-
-    fprintf(ctx->out, "JUMPIFEQ $else_%d LF@%s bool@false\n", id, cond_tmp);
-
-    generate_statement(ctx, statement->data.if_node.then_branch);
-    fprintf(ctx->out, "JUMP $if_end_%d\n", id);
-
-    fprintf(ctx->out, "LABEL $else_%d\n", id);
-    if (statement->data.if_node.else_branch != NULL) {
-      generate_statement(ctx, statement->data.if_node.else_branch);
-    }
-
-    fprintf(ctx->out, "LABEL $if_end_%d\n", id);
-    break;
-  }
-
-  case NODE_WHILE: {
-    int id = ctx->label_counter++;
-    char cond_tmp[TMP_VAR_BUF_SIZE];
-    new_tmp_var(ctx, cond_tmp);
-
-    fprintf(ctx->out, "LABEL $while_start_%d\n", id);
-
-    generate_expression(ctx, statement->data.while_node.condition, cond_tmp);
-
-    fprintf(ctx->out, "JUMPIFEQ $while_end_%d LF@%s bool@false\n", id,
-            cond_tmp);
-
-    generate_statement(ctx, statement->data.while_node.body);
-    fprintf(ctx->out, "JUMP $while_start_%d\n", id);
-
-    fprintf(ctx->out, "LABEL $while_end_%d\n", id);
-    break;
-  }
-
-  case NODE_FOR:
-    statement_for(ctx, statement);
     break;
 
   default:
