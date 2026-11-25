@@ -7,6 +7,7 @@
 
 #include "semantic.h"
 #include "ast.h"
+#include "dynstr.h"
 #include "return.h"
 #include "symbol.h"
 #include "symtable.h"
@@ -16,6 +17,8 @@
 
 // The max amount of params a builtin function has
 #define MAX_BUILTIN_PARAM_COUNT 3
+// Separator between the receiver's type name and the method name
+#define METHOD_KEY_SEPARATOR '&'
 
 /**
  * @brief All the information needed to insert a builtin function to the
@@ -163,6 +166,101 @@ static ReturnCodes symtable_stack_new_var(SymtableStack *stack, char *name,
   }
 
   return ret;
+}
+
+/**
+ * @brief Converts a DataType to type name (used in method keys)
+ * @param type The data type to convert
+ * @return The type name as a string literal, NULL for types without a name
+ */
+static const char *data_type_to_string(DataType type) {
+  switch (type) {
+  case INT:
+    return "Int";
+  case DOUBLE:
+    return "Double";
+  case STRING:
+    return "String";
+  case BOOLEAN:
+    return "Boolean";
+  case UNIT:
+    return "Unit";
+  case ANY:
+  case UNKNOWN:
+  default:
+    return NULL;
+  }
+}
+
+/**
+ * @brief Appends a whole string to the end of a DynStr
+ * @param s DynStr to append to (already initialized with dynstr_init())
+ * @param str The '\0'-terminated string to append
+ * @return RETURN_SUCCESS on success, ERR_INTERNAL if a reallocation fails
+ */
+static ReturnCodes append_string(DynStr *s, const char *str) {
+  for (size_t idx = 0; str[idx] != '\0'; idx++) {
+    ReturnCodes ret = dynstr_append(s, str[idx]);
+    if (ret != RETURN_SUCCESS) {
+      return ret;
+    }
+  }
+
+  return RETURN_SUCCESS;
+}
+
+/**
+ * @brief Builds the symtable key of an EXTKW method, the receiver's type name
+ * and the method name joined by METHOD_KEY_SEPARATOR (e.g. "Int&twice")
+ * @param receiver_type The data type of the method's receiver
+ * @param name The name of the method
+ * @param out Pointer to the resulting key, allocated and owned by the caller
+ * @return RETURN_SUCCESS on success, ERR_INTERNAL if the receiver type has no
+ * name or if an allocation fails
+ */
+static ReturnCodes method_key(DataType receiver_type, const char *name,
+                              char **out) {
+  *out = NULL;
+  const char *data_type_name = data_type_to_string(receiver_type);
+
+  if (data_type_name == NULL) {
+    print_error("Internal error: method key data type doesn't have name!", 0);
+    return ERR_INTERNAL;
+  }
+
+  DynStr key_tmp = {NULL, 0, 0};
+
+  ReturnCodes ret = dynstr_init(&key_tmp);
+  if (ret != RETURN_SUCCESS) {
+    print_error("Internal error: failed allocation in dynstr!", 0);
+    return ret;
+  }
+
+  // appending data type name
+  ret = append_string(&key_tmp, data_type_name);
+  if (ret != RETURN_SUCCESS) {
+    dynstr_free(&key_tmp);
+    print_error("Internal error: failed allocation in dynstr!", 0);
+    return ERR_INTERNAL;
+  }
+  // appending separator
+  ret = dynstr_append(&key_tmp, METHOD_KEY_SEPARATOR);
+  if (ret != RETURN_SUCCESS) {
+    dynstr_free(&key_tmp);
+    print_error("Internal error: failed allocation in dynstr!", 0);
+    return ERR_INTERNAL;
+  }
+  // appending method name
+  ret = append_string(&key_tmp, name);
+  if (ret != RETURN_SUCCESS) {
+    dynstr_free(&key_tmp);
+    print_error("Internal error: failed allocation in dynstr!", 0);
+    return ERR_INTERNAL;
+  }
+
+  *out = dynstr_take(&key_tmp);
+
+  return RETURN_SUCCESS;
 }
 
 /**
@@ -1194,14 +1292,22 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
 
   frame.function->data.function.state = IN_PROGRESS;
 
-  for (size_t param_idx = 0; param_idx < function_data.param_count;
-       param_idx++) {
-    FunctionParam *param = &function_data.params[param_idx];
-    ret = symtable_stack_new_var(&stack, param->name, param->data_type,
-                                 FUNC_PARAM, function->line);
+  if (function_data.receiver.name != NULL) {
+    ret = symtable_stack_new_var(&stack, function_data.receiver.name,
+                                 function_data.receiver.data_type, FUNC_PARAM,
+                                 function->line);
+  }
 
-    if (ret != RETURN_SUCCESS) {
-      break;
+  if (ret == RETURN_SUCCESS) {
+    for (size_t param_idx = 0; param_idx < function_data.param_count;
+         param_idx++) {
+      FunctionParam *param = &function_data.params[param_idx];
+      ret = symtable_stack_new_var(&stack, param->name, param->data_type,
+                                   FUNC_PARAM, function->line);
+
+      if (ret != RETURN_SUCCESS) {
+        break;
+      }
     }
   }
 
