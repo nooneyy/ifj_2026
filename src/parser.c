@@ -2521,7 +2521,8 @@ static bool parse_extension(Parser *parser) {
     return false;
   }
   if (parser->current_token.type != TOKEN_ID) {
-    syntax_error(parser, "Syntactic error: Missing id in extension definition");
+    syntax_error(parser,
+                 "Syntactic error: Missing id in extension definition.");
     return false;
   }
   name = parser->current_token.content.string;
@@ -2532,7 +2533,7 @@ static bool parse_extension(Parser *parser) {
   }
 
   if (!expect(parser, TOKEN_COLON)) {
-    syntax_error(parser, "Syntactic error: Missing : in extension receiver.");
+    syntax_error(parser, "Syntactic error: Missing : in extension reciever.");
     free(name);
     return false;
   }
