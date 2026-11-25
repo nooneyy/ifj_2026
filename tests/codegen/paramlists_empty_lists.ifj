@@ -1,0 +1,36 @@
+/**
+ * @file paramlists_empty_lists.ifj
+ * @brief Calls with empty lists among the others
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: codegen tests for the PARAMLISTS extension (spec 5.10); every
+ * program is compiled by codegen_main, run by ic26int and its output and return
+ * code are compared; derived from the IFJ26 spec as a black box, with the
+ * claimed extensions BOOLTHEN, CONTROL, FUNEXP and VALMEM)
+ */
+// empty lists before, between and after the other lists (spec 5.10) -> 1 + 10 +
+// 7 = 18, abcd
+import ifj26.*
+
+def none()(): Int = 1
+def first()(a: Int): Int = a
+def middle(a: Int)()(b: Int): Int = a - b
+def last(a: String, b: String)(): String = a + b
+
+@main def main(): Unit =
+  print(none()() + first()(10) + middle(10)()(3))
+  print("\n")
+  print(last("ab", "cd")())
+  print("\n")

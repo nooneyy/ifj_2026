@@ -9,6 +9,7 @@
 #include "ast.h"
 #include "return.h"
 #include "symbol.h"
+#include <stddef.h>
 #include <stdlib.h>
 
 ASTNode *ast_init_program(void) {
@@ -45,6 +46,8 @@ ASTNode *ast_init_func_def(char *name, bool is_main, unsigned int line) {
       .name = name,
       .param_count = 0,
       .params = NULL,
+      .list_count = 0,
+      .list_sizes = NULL,
       .return_type = UNKNOWN,
   };
 
@@ -84,6 +87,35 @@ ReturnCodes ast_func_def_add_param(ASTNode *func_def, char *param_name,
 
   func_def->data.function_def.params = temp;
   func_def->data.function_def.param_count++;
+
+  if (func_def->data.function_def.list_count > 0) {
+    func_def->data.function_def
+        .list_sizes[func_def->data.function_def.list_count - 1]++;
+  }
+
+  return RETURN_SUCCESS;
+}
+
+ReturnCodes ast_func_def_add_param_list(ASTNode *func_def) {
+  if (func_def == NULL || func_def->node_type != NODE_FUNCTION_DEF) {
+    print_error("Received NULL pointer or node was not of type FUNCTION_DEF",
+                0);
+    return ERR_INTERNAL;
+  }
+
+  size_t list_count = func_def->data.function_def.list_count;
+  size_t *temp = realloc(func_def->data.function_def.list_sizes,
+                         sizeof(size_t) * (list_count + 1));
+
+  if (temp == NULL) {
+    print_error("Reallocation failed!", 0);
+    return ERR_INTERNAL;
+  }
+
+  temp[list_count] = 0;
+
+  func_def->data.function_def.list_sizes = temp;
+  func_def->data.function_def.list_count++;
 
   return RETURN_SUCCESS;
 }
@@ -281,7 +313,12 @@ ASTNode *ast_init_func_call(char *name, unsigned int line) {
     return NULL;
   }
 
-  ASTFunctionCallNodeData data = {.name = name, .args = NULL};
+  ASTFunctionCallNodeData data = {
+      .name = name,
+      .args = NULL,
+      .arg_list_count = 0,
+      .arg_list_sizes = NULL,
+  };
 
   *func_call = (ASTNode){
       .node_type = NODE_FUNCTION_CALL,
@@ -292,6 +329,61 @@ ASTNode *ast_init_func_call(char *name, unsigned int line) {
   };
 
   return func_call;
+}
+
+ReturnCodes ast_func_call_new_arg_list(ASTNode *func_call) {
+  if (func_call == NULL || func_call->node_type != NODE_FUNCTION_CALL) {
+    ast_free(func_call);
+    print_error("Received NULL pointer or node was not of type FUNCTION_CALL!",
+                0);
+    return ERR_INTERNAL;
+  }
+
+  ASTFunctionCallNodeData *func_call_data = &func_call->data.function_call;
+
+  size_t *temp = realloc(func_call_data->arg_list_sizes,
+                         sizeof(size_t) * (func_call_data->arg_list_count + 1));
+
+  if (temp == NULL) {
+    ast_free(func_call);
+    print_error("Reallocation failed!", 0);
+    return ERR_INTERNAL;
+  }
+
+  func_call_data->arg_list_sizes = temp;
+  func_call_data->arg_list_sizes[func_call_data->arg_list_count] = 0;
+  func_call_data->arg_list_count++;
+
+  return RETURN_SUCCESS;
+}
+
+ReturnCodes ast_func_call_add_arg(ASTNode *func_call, ASTNode *arg) {
+
+  if (func_call == NULL || func_call->node_type != NODE_FUNCTION_CALL ||
+      arg == NULL) {
+    ast_free(func_call);
+    ast_free(arg);
+    print_error("Received func_call or arg NULL pointer or func_call was not "
+                "of type FUNCTION_CALL!",
+                0);
+    return ERR_INTERNAL;
+  }
+
+  ASTFunctionCallNodeData *func_call_data = &func_call->data.function_call;
+
+  if (func_call_data->arg_list_count == 0) {
+    print_error(
+        "Function call argument list count is 0 - nothing to add an arg to!",
+        0);
+    ast_free(arg);
+    ast_free(func_call);
+    return ERR_INTERNAL;
+  }
+
+  ast_ll_append(&func_call_data->args, arg);
+  func_call_data->arg_list_sizes[func_call_data->arg_list_count - 1]++;
+
+  return RETURN_SUCCESS;
 }
 
 ASTNode *ast_init_binary_op(ASTOperator op, ASTNode *left, ASTNode *right,
@@ -442,10 +534,12 @@ void ast_free(ASTNode *node) {
         free(node->data.function_def.params[idx].name);
       }
       free(node->data.function_def.params);
+      free(node->data.function_def.list_sizes);
       ast_free(node->data.function_def.body);
       break;
     case NODE_FUNCTION_CALL:
       free(node->data.function_call.name);
+      free(node->data.function_call.arg_list_sizes);
       ast_free(node->data.function_call.args);
       break;
     case NODE_BLOCK:

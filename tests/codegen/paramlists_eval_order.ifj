@@ -1,0 +1,37 @@
+/**
+ * @file paramlists_eval_order.ifj
+ * @brief Order of evaluation of the argument lists
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: codegen tests for the PARAMLISTS extension (spec 5.10); every
+ * program is compiled by codegen_main, run by ic26int and its output and return
+ * code are compared; derived from the IFJ26 spec as a black box, with the
+ * claimed extensions BOOLTHEN, CONTROL, FUNEXP and VALMEM)
+ */
+// arguments are evaluated from left to right, from the first list to the last,
+// and only then the body runs (spec 5.10) -> abcd|body|10
+import ifj26.*
+
+def tag(label: String)(value: Int): Int =
+  print(label)
+  value
+
+def sum(a: Int)(b: Int, c: Int)(d: Int): Int =
+  print("|body|")
+  a + b + c + d
+
+@main def main(): Unit =
+  print(sum(tag("a")(1))(tag("b")(2), tag("c")(3))(tag("d")(4)))
+  print("\n")

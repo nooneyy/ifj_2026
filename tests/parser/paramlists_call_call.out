@@ -1,0 +1,5 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        CALL readInt (0)(0)

@@ -64,7 +64,7 @@ static const char PREC_TABLE[PREC_TABLE_SIZE][PREC_TABLE_SIZE] = {
         },
     [PREC_RPAREN] =
         {
-            ' ', ' ', ' ', '>', '>', ' ', ' ', '>', '>', '>', '>',
+            ' ', ' ', '=', '>', '>', ' ', ' ', '>', '>', '>', '>',
             '>', '>', '>', '>', '>', '>', '>', '>', '>', '>',
         },
     [PREC_COMMA] =
@@ -385,7 +385,7 @@ static bool parse_defs(Parser *parser);
 /**
  * @brief Parses individual functions
  *
- * RULE 4: DEF -> OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
+ * RULE 4: DEF -> OPT_MAIN KW_DEF ID PARAM_LIST TYPE_DECL = DEF_EX
  *
  * @param parser Parser's current state
  * @return false if an error occured in this or any other called function,
@@ -433,10 +433,23 @@ static bool parse_opt_eol(Parser *parser);
 static bool parse_def_ex(Parser *parser, ASTNode *func);
 
 /**
- * @brief Parses parameters as a whole
+ * @brief Parses all parameter lists in function definition
  *
- * RULE 12: PARAM_BODY -> PARAMS
- * RULE 13: PARAM_BODY -> )
+ * RULE 12: PARAM_LIST -> eps
+ * RULE 13: PARAM_LIST -> ( PARAM_BODY
+ *
+ * @param parser Parser's current state
+ * @param func Function to assign parameters to
+ * @return false if an error occured in this or any other called function,
+ * else true
+ */
+static bool parse_param_list(Parser *parser, ASTNode *func);
+
+/**
+ * @brief Parses one parameter list as a whole
+ *
+ * RULE 14: PARAM_BODY -> PARAMS
+ * RULE 15: PARAM_BODY -> ) PARAM_LIST
  *
  * @param parser Parser's current state
  * @param func Function to assign parameters to
@@ -448,7 +461,7 @@ static bool parse_param_body(Parser *parser, ASTNode *func);
 /**
  * @brief Parses each parameter
  *
- * RULE 14: PARAMS -> ID : TYPE NEXT
+ * RULE 16: PARAMS -> ID : TYPE NEXT
  *
  * @param parser Parser's current state
  * @param func Function to assign parameters to
@@ -460,8 +473,8 @@ static bool parse_params(Parser *parser, ASTNode *func);
 /**
  * @brief Parses , or ) after a parameter
  *
- * RULE 15: NEXT -> , NEXT_CONT
- * RULE 16: NEXT -> )
+ * RULE 17: NEXT -> , NEXT_CONT
+ * RULE 18: NEXT -> ) PARAM_LIST
  *
  * @param parser Parser's current state
  * @param func Function to assign parameters to
@@ -473,8 +486,8 @@ static bool parse_next(Parser *parser, ASTNode *func);
 /**
  * @brief Parses what follow a ,
  *
- * RULE 17: NEXT_CONT -> )
- * RULE 18: NEXT_CONT -> PARAMS
+ * RULE 19: NEXT_CONT -> ) PARAM_LIST
+ * RULE 20: NEXT_CONT -> PARAMS
  *
  * @param parser Parser's current state
  * @param func Function to assign parameters to
@@ -486,7 +499,7 @@ static bool parse_next_cont(Parser *parser, ASTNode *func);
 /**
  * @brief Parses variable declaration
  *
- * RULE 19: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
+ * RULE 21: VAR_DECL -> EDIT_TYPE ID TYPE_DECL = ECC
  *
  * @param parser Parser's current state
  * @param out ASTNode to fill
@@ -498,8 +511,8 @@ static bool parse_var_decl(Parser *parser, ASTNode **out);
 /**
  * @brief Parses Val/Var in Variable declaration
  *
- * RULE 20: EDIT_TYPE -> KW_VAR
- * RULE 21: EDIT_TYPE -> KW_VAL
+ * RULE 22: EDIT_TYPE -> KW_VAR
+ * RULE 23: EDIT_TYPE -> KW_VAL
  *
  * @param parser Parser's current state
  * @param to_set Edit type variable to be set
@@ -511,8 +524,8 @@ static bool parse_edit_type(Parser *parser, VariableType *to_set);
 /**
  * @brief Parses type declaration
  *
- * RULE 22: TYPE_DECL -> : TYPE
- * RULE 23: TYPE_DECL -> eps
+ * RULE 24: TYPE_DECL -> : TYPE
+ * RULE 25: TYPE_DECL -> eps
  *
  * @param parser Parser's current state
  * @param type Where the parsed type is stored
@@ -524,11 +537,11 @@ static bool parse_type_decl(Parser *parser, DataType *type);
 /**
  * @brief Parses TYPE and saves it into its node
  *
- * RULE 24: TYPE -> KW_INT
- * RULE 25: TYPE -> KW_DOUBLE
- * RULE 26: TYPE -> KW_STRING
- * RULE 27: TYPE -> KW_BOOLEAN
- * RULE 28: TYPE -> KW_UNIT
+ * RULE 26: TYPE -> KW_INT
+ * RULE 27: TYPE -> KW_DOUBLE
+ * RULE 28: TYPE -> KW_STRING
+ * RULE 29: TYPE -> KW_BOOLEAN
+ * RULE 30: TYPE -> KW_UNIT
  *
  * @param parser Parser's current state
  * @param type Where the parsed type is stored
@@ -540,8 +553,8 @@ static bool parse_type(Parser *parser, DataType *type);
 /**
  * @brief Parses expression, call or control (ECC (Idk I made that up :D))
  *
- * RULE 29: ECC -> <expr> END     covers expressions and calls EC
- * RULE 30: ECC -> IF_REQ_ELSE    covers control C
+ * RULE 31: ECC -> <expr> END     covers expressions and calls EC
+ * RULE 32: ECC -> IF_REQ_ELSE    covers control C
  *
  * @param parser Parser's current state
  * @param out Node to connect to
@@ -553,8 +566,8 @@ static bool parse_ecc(Parser *parser, ASTNode **out);
 /**
  * @brief Parses end where can't be end of file
  *
- * RULE 31: END -> EOL
- * RULE 32: END -> ;
+ * RULE 33: END -> EOL
+ * RULE 34: END -> ;
  *
  * @param parser Parser's current state
  * @return true if end of line or semicolon, else false
@@ -564,7 +577,7 @@ static bool parse_end(Parser *parser);
 /**
  * @brief Parses assignment to an already declared variable
  *
- * RULE 33: ASSIGN -> ID = ECC
+ * RULE 35: ASSIGN -> ID = ECC
  *
  * @param parser Parser's current state
  * @param out ASTNode to store the whole assignment
@@ -576,7 +589,7 @@ static bool parse_assign(Parser *parser, ASTNode **out);
 /**
  * @brief Parses if that doesnt require else
  *
- * RULE 34: IF -> kw_if <expr> kw_then THEN_ONE
+ * RULE 36: IF -> kw_if <expr> kw_then THEN_ONE
  *
  * @param parser Parser's current state
  * @param out ASTNode to be filled
@@ -588,8 +601,8 @@ static bool parse_if(Parser *parser, ASTNode **out);
 /**
  * @brief Parses THEN's statement if one-line or parses THEN block
  *
- * RULE 35: THEN_ONE -> <expr> ONLY_IF
- * RULE 36: THEN_ONE -> eol BLOCK AFTER_BLOCK
+ * RULE 37: THEN_ONE -> <expr> ONLY_IF
+ * RULE 38: THEN_ONE -> eol BLOCK AFTER_BLOCK
  *
  * @param parser Parser's current state
  * @param then_out AST branch for if then branch
@@ -603,9 +616,9 @@ static bool parse_then_one(Parser *parser, ASTNode **then_out,
 /**
  * @brief Parses whether else branch exists
  *
- * RULE 37: ONLY_IF -> ;
- * RULE 77: ONLY_IF -> EOL AFTER_BLOCK
- * RULE 38: ONLY_IF -> kw_else ELIF
+ * RULE 39: ONLY_IF -> ;
+ * RULE 40: ONLY_IF -> EOL AFTER_BLOCK
+ * RULE 41: ONLY_IF -> kw_else ELIF
  *
  * @param parser Parser's current state
  * @param else_out ASTNode to be filled
@@ -617,8 +630,8 @@ static bool parse_only_if(Parser *parser, ASTNode **else_out);
 /**
  * @brief Parses syntax after IF THEN or ELSE block
  *
- * RULE 39: AFTER_BLOCK -> eps
- * RULE 40: AFTER_BLOCK -> kw_else ELIF
+ * RULE 42: AFTER_BLOCK -> eps
+ * RULE 43: AFTER_BLOCK -> kw_else ELIF
  *
  * @param parser Parser's current state
  * @param out ASTNode to be filled
@@ -630,9 +643,9 @@ static bool parse_after_block(Parser *parser, ASTNode **out);
 /**
  * @brief Parses else and checks if it's else if
  *
- * RULE 41: ELIF -> EOL BLOCK
- * RULE 42: ELIF -> IF
- * RULE 43: ELIF -> <expr> END
+ * RULE 44: ELIF -> EOL BLOCK
+ * RULE 45: ELIF -> IF
+ * RULE 46: ELIF -> <expr> END
  *
  * @param parser Parser's current state
  * @param out ASTNode to be filled
@@ -644,7 +657,7 @@ static bool parse_elif(Parser *parser, ASTNode **out);
 /**
  * @brief Parses if that requires else
  *
- * RULE 44: IF_REQ_ELSE -> kw_if <expr> kw_then THEN_REQ_ELSE
+ * RULE 47: IF_REQ_ELSE -> kw_if <expr> kw_then THEN_REQ_ELSE
  *
  * @param parser Parser's current state
  * @param out ASTNode to store the whole if
@@ -656,8 +669,8 @@ static bool parse_if_req_else(Parser *parser, ASTNode **out);
 /**
  * @brief Parses then statements in if where else is required
  *
- * RULE 45: THEN_REQ_ELSE -> <expr> KW_ELSE IS_REQ_ELIF
- * RULE 46: THEN_REQ_ELSE -> EOL BLOCK AFTER_REQ_BLOCK
+ * RULE 48: THEN_REQ_ELSE -> <expr> KW_ELSE IS_REQ_ELIF
+ * RULE 49: THEN_REQ_ELSE -> EOL BLOCK AFTER_REQ_BLOCK
  *
  * @param parser Parser's current state
  * @param then_out Where to store the then branch
@@ -671,9 +684,9 @@ static bool parse_then_req_else(Parser *parser, ASTNode **then_out,
 /**
  * @brief Parses whether there's else if or just else
  *
- * RULE 47: IS_REQ_ELIF -> IF_REQ_ELSE
- * RULE 48: IS_REQ_ELIF -> <expr> END
- * RULE 49: IS_REQ_ELIF -> EOL BLOCK
+ * RULE 50: IS_REQ_ELIF -> IF_REQ_ELSE
+ * RULE 51: IS_REQ_ELIF -> <expr> END
+ * RULE 52: IS_REQ_ELIF -> EOL BLOCK
  *
  * @param parser Parser's current state
  * @param else_out Where to store the else branch
@@ -685,7 +698,7 @@ static bool parse_is_req_elif(Parser *parser, ASTNode **else_out);
 /**
  * @brief Parses state after if or else block where else is required
  *
- * RULE 50: AFTER_REQ_BLOCK -> kw_else IS_REQ_ELIF
+ * RULE 53: AFTER_REQ_BLOCK -> kw_else IS_REQ_ELIF
  *
  * @param parser Parser's current state
  * @param else_out Where to store the else branch
@@ -697,7 +710,7 @@ static bool parse_after_req_block(Parser *parser, ASTNode **else_out);
 /**
  * @brief Parses while loop
  *
- * RULE 51: WHILE -> KW_WHILE <expr> KW_DO EOL BLOCK
+ * RULE 54: WHILE -> KW_WHILE <expr> KW_DO EOL BLOCK
  *
  * @param parser Parser's current state
  * @param out ASTNode to store the whole while
@@ -709,7 +722,7 @@ static bool parse_while(Parser *parser, ASTNode **out);
 /**
  * @brief Parses for loop
  *
- * RULE 52: FOR -> KW_FOR FOR_SET KW_DO AFTER_DO
+ * RULE 55: FOR -> KW_FOR FOR_SET KW_DO AFTER_DO
  *
  * @param parser Parser's current state
  * @param out ASTNode to store the whole for
@@ -721,8 +734,8 @@ static bool parse_for(Parser *parser, ASTNode **out);
 /**
  * @brief Parses the generator and guards of a for loop
  *
- * RULE 53: FOR_SET -> EOL INDENT ID ARROW <expr> UN_TO EOL GUARDS DEDENT
- * RULE 54: FOR_SET -> ID ARROW <expr> UN_TO ONELINE_GUARDS
+ * RULE 56: FOR_SET -> EOL INDENT ID ARROW <expr> UN_TO EOL GUARDS DEDENT
+ * RULE 57: FOR_SET -> ID ARROW <expr> UN_TO ONELINE_GUARDS
  *
  * @param parser Parser's current state
  * @param gen_name Where to store the name of the generator variable
@@ -741,8 +754,8 @@ static bool parse_for_set(Parser *parser, char **gen_name,
 /**
  * @brief Parses the end of the range after until or to
  *
- * RULE 55: UN_TO -> until <expr>
- * RULE 56: UN_TO -> to <expr> OPT_BY
+ * RULE 58: UN_TO -> until <expr>
+ * RULE 59: UN_TO -> to <expr> OPT_BY
  *
  * @param parser Parser's current state
  * @param range_end Where to store the end of the range
@@ -757,8 +770,8 @@ static bool parse_un_to(Parser *parser, ASTNode **range_end,
 /**
  * @brief Parses optional step of the range after to
  *
- * RULE 57: OPT_BY -> by <expr>
- * RULE 58: OPT_BY -> eps
+ * RULE 60: OPT_BY -> by <expr>
+ * RULE 61: OPT_BY -> eps
  *
  * @param parser Parser's current state
  * @param range_step Where to store the step, stays NULL if there's no by
@@ -770,8 +783,8 @@ static bool parse_opt_by(Parser *parser, ASTNode **range_step);
 /**
  * @brief Parses guards of a for loop
  *
- * RULE 59: GUARDS -> KW_IF <expr> EOL GUARDS
- * RULE 60: GUARDS -> eps
+ * RULE 62: GUARDS -> KW_IF <expr> EOL GUARDS
+ * RULE 63: GUARDS -> eps
  *
  * @param parser Parser's current state
  * @param guards List to add the guards to
@@ -783,8 +796,8 @@ static bool parse_guards(Parser *parser, ASTNode **guards);
 /**
  * @brief Parses guards of a for loop in a one-line syntax
  *
- * RULE 78: ONELINE_GUARDS -> KW_IF <expr> ONELINE_GUARDS
- * RULE 79: ONELINE_GUARDS -> eps
+ * RULE 64: ONELINE_GUARDS -> KW_IF <expr> ONELINE_GUARDS
+ * RULE 65: ONELINE_GUARDS -> eps
  *
  * @param parser Parser's current state
  * @param guards List to add the guards to
@@ -796,8 +809,8 @@ static bool parse_oneline_guards(Parser *parser, ASTNode **guards);
 /**
  * @brief Parses body of a for loop after do
  *
- * RULE 61: AFTER_DO -> EOL BLOCK
- * RULE 62: AFTER_DO -> ECC
+ * RULE 66: AFTER_DO -> EOL BLOCK
+ * RULE 67: AFTER_DO -> ECC
  *
  * @param parser Parser's current state
  * @param body Where to store the body of the for
@@ -809,7 +822,7 @@ static bool parse_after_do(Parser *parser, ASTNode **body);
 /**
  * @brief Parses return statement
  *
- * RULE 63: RETURN -> KW_RETURN OPT_ECC
+ * RULE 68: RETURN -> KW_RETURN OPT_ECC
  *
  * @param parser Parser's current state
  * @param out ASTNode to store the whole return
@@ -821,8 +834,8 @@ static bool parse_return(Parser *parser, ASTNode **out);
 /**
  * @brief Parses optional returned value after return
  *
- * RULE 64: OPT_ECC -> ECC
- * RULE 65: OPT_ECC -> END
+ * RULE 69: OPT_ECC -> ECC
+ * RULE 70: OPT_ECC -> END
  *
  * @param parser Parser's current state
  * @param out ASTNode to fill, stays NULL if there's no returned value
@@ -834,7 +847,7 @@ static bool parse_opt_ecc(Parser *parser, ASTNode **out);
 /**
  * @brief Parses the entry to a Block
  *
- * RULE 66: BLOCK -> INDENT IN_BLOCK DEDENT
+ * RULE 71: BLOCK -> INDENT IN_BLOCK DEDENT
  *
  * @param parser Parser's current state
  * @param out Where to put the block
@@ -846,7 +859,7 @@ static bool parse_block(Parser *parser, ASTNode **out);
 /**
  * @brief Parses the first statement in block
  *
- * RULE 67: IN_BLOCK -> STATEMENT IN_BLOCK2
+ * RULE 72: IN_BLOCK -> STATEMENT IN_BLOCK2
  *
  * @param parser Parser's current state
  * @param block Current block to add statements to
@@ -858,8 +871,8 @@ static bool parse_in_block(Parser *parser, ASTBlockNodeData *block);
 /**
  * @brief Parses block statements except for the first statement
  *
- * RULE 68: IN_BLOCK2 -> STATEMENT IN_BLOCK2
- * RULE 69: IN_BLOCK2 -> eps
+ * RULE 73: IN_BLOCK2 -> STATEMENT IN_BLOCK2
+ * RULE 74: IN_BLOCK2 -> eps
  *
  * @param parser Parser's current state
  * @param block Current block to add statements to
@@ -871,13 +884,13 @@ static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block);
 /**
  * @brief Parses a single statement and appends it to the block
  *
- * RULE 70: STATEMENT -> VAR_DECL
- * RULE 71: STATEMENT -> WHILE
- * RULE 72: STATEMENT -> IF
- * RULE 73: STATEMENT -> <expr> END
- * RULE 74: STATEMENT -> FOR
- * RULE 75: STATEMENT -> ASSIGN
- * RULE 76: STATEMENT -> RETURN
+ * RULE 75: STATEMENT -> VAR_DECL
+ * RULE 76: STATEMENT -> WHILE
+ * RULE 77: STATEMENT -> IF
+ * RULE 78: STATEMENT -> <expr> END
+ * RULE 79: STATEMENT -> FOR
+ * RULE 80: STATEMENT -> ASSIGN
+ * RULE 81: STATEMENT -> RETURN
  *
  * @param parser Parser's current state
  * @param block Current block to add the statement to
@@ -984,45 +997,31 @@ static bool parse_fdef(Parser *parser) {
   if (!parser_advance(parser)) {
     return false;
   }
-
-  if (!expect(parser, TOKEN_OPEN_PAR)) {
-    syntax_error(parser, "Syntactic error: Missing parameters in function "
-                         "declaration.");
+  // OPT_MAIN KW_DEF ID PARAM_LIST
+  // RULES 12, 13
+  correct = parse_param_list(parser, func);
+  if (!correct) {
     return false;
   }
-  // OPT_MAIN KW_DEF ID (
+  correct = parse_type_decl(parser, &func->data.function_def.return_type);
+  if (!correct) {
+    return false;
+  }
+  if (!expect(parser, TOKEN_ASSIGN)) {
+    syntax_error(parser, "Syntactic error: Missing function initialization "
+                         "after declaration.");
+    return false;
+  }
+  // OPT_MAIN KW_DEF ID PARAM_LIST TYPE_DECL =
 
-  if ((parser->current_token.type == TOKEN_CLOSE_PAR) ||
-      parser->current_token.type == TOKEN_ID) {
-    // OPT_MAIN KW_DEF ID ( PARAM_BODY
-    // RULES 12, 13
-    correct = parse_param_body(parser, func);
-    if (!correct) {
-      return false;
-    }
-    correct = parse_type_decl(parser, &func->data.function_def.return_type);
-    if (!correct) {
-      return false;
-    }
-    if (!expect(parser, TOKEN_ASSIGN)) {
-      syntax_error(parser, "Syntactic error: Missing function initialization "
-                           "after declaration.");
-      return false;
-    }
-    // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL =
-
-    if (is_expr_ext_first(parser->current_token.type) ||
-        parser->current_token.type == TOKEN_EOL ||
-        parser->current_token.type == TOKEN_KW_IF) {
-      // OPT_MAIN KW_DEF ID ( PARAM_BODY TYPE_DECL = DEF_EX
-      // RULES 9, 10, 11
-      correct = parse_def_ex(parser, func);
-    } else {
-      syntax_error(parser, "Syntactic error: Invalid function definition.");
-    }
+  if (is_expr_ext_first(parser->current_token.type) ||
+      parser->current_token.type == TOKEN_EOL ||
+      parser->current_token.type == TOKEN_KW_IF) {
+    // OPT_MAIN KW_DEF ID PARAM_LIST TYPE_DECL = DEF_EX
+    // RULES 9, 10, 11
+    correct = parse_def_ex(parser, func);
   } else {
-    syntax_error(
-        parser, "Syntactic error: Missing parameters in function declaration.");
+    syntax_error(parser, "Syntactic error: Invalid function definition.");
   }
 
   return correct;
@@ -1073,7 +1072,7 @@ static bool parse_def_ex(Parser *parser, ASTNode *func) {
   bool correct = false;
   if (parser->current_token.type == TOKEN_KW_IF) {
     // IF_REQ_ELSE
-    // RULE 44
+    // RULE 47
     correct = parse_if_req_else(parser, &func->data.function_def.body);
   } else if (is_expr_ext_first(parser->current_token.type)) {
     // <expr>
@@ -1089,10 +1088,33 @@ static bool parse_def_ex(Parser *parser, ASTNode *func) {
     }
   } else if (expect(parser, TOKEN_EOL)) {
     // EOL
-    // RULE 66
+    // RULE 71
     correct = parse_block(parser, &func->data.function_def.body);
   } else {
     syntax_error(parser, "Syntactic error: Invalid missing expression or if.");
+    correct = false;
+  }
+  return correct;
+}
+
+static bool parse_param_list(Parser *parser, ASTNode *func) {
+  bool correct = false;
+
+  if (parser->current_token.type == TOKEN_ASSIGN ||
+      parser->current_token.type == TOKEN_COLON) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else if (expect(parser, TOKEN_OPEN_PAR)) {
+    // ( PARAM_BODY
+    ReturnCodes rc = ast_func_def_add_param_list(func);
+    if (rc != RETURN_SUCCESS) {
+      parser->rc = ERR_INTERNAL;
+      return false;
+    }
+    correct = parse_param_body(parser, func);
+  } else {
+    syntax_error(parser, "Unexpected syntax in function definition.");
     correct = false;
   }
   return correct;
@@ -1103,10 +1125,16 @@ static bool parse_param_body(Parser *parser, ASTNode *func) {
 
   if (parser->current_token.type == TOKEN_ID) {
     // PARAMS
-    // RULE 14
+    // RULE 16
     correct = parse_params(parser, func);
   } else if (parser->current_token.type == TOKEN_CLOSE_PAR) {
-    correct = parser_advance(parser);
+    if (!parser_advance(parser)) {
+      return false;
+    }
+    correct = parse_param_list(parser, func);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid parameter list in "
+                         "function definition.");
   }
   return correct;
 }
@@ -1160,7 +1188,7 @@ static bool parse_params(Parser *parser, ASTNode *func) {
     return false;
   }
 
-  // RULES 15, 16
+  // RULES 17, 18
   correct = parse_next(parser, func);
   return correct;
 }
@@ -1169,10 +1197,10 @@ static bool parse_next(Parser *parser, ASTNode *func) {
   bool correct = false;
   if (expect(parser, TOKEN_COMMA)) {
     // ,
-    // RULES 17, 18
+    // RULES 19, 20
     correct = parse_next_cont(parser, func);
   } else if (expect(parser, TOKEN_CLOSE_PAR)) {
-    correct = true;
+    correct = parse_param_list(parser, func);
   } else {
     syntax_error(parser, "Syntactic error: Invalid syntax after a parameter.");
     correct = false;
@@ -1187,9 +1215,7 @@ static bool parse_next_cont(Parser *parser, ASTNode *func) {
     // no deeper RULE
     // Must check whether the trailing comma that led to this point is from
     // multi-line parameter declaration.
-    if (parser->current_token.lf_before) {
-      correct = true;
-    } else {
+    if (!parser->current_token.lf_before) {
       // trailing comma in a single-line parameter declaration
       syntax_error(parser, "Syntactic error: Trailing comma in one-line "
                            "parameter definition.");
@@ -1198,9 +1224,10 @@ static bool parse_next_cont(Parser *parser, ASTNode *func) {
     if (!parser_advance(parser)) {
       return false;
     }
+    correct = parse_param_list(parser, func);
   } else if (parser->current_token.type == TOKEN_ID) {
     // PARAMS
-    // RULE 14
+    // RULE 16
     correct = parse_params(parser, func);
   } else {
     syntax_error(parser,
@@ -1297,7 +1324,7 @@ static bool parse_type_decl(Parser *parser, DataType *type) {
 
     if (is_type_first(parser->current_token.type)) {
       // : TYPE
-      // RULES 24, 25, 26, 27, 28
+      // RULES 26, 27, 28, 29, 30
       correct = parse_type(parser, type);
     } else {
       if (parser->current_token.type == TOKEN_ID) {
@@ -1360,7 +1387,7 @@ static bool parse_ecc(Parser *parser, ASTNode **out) {
   bool correct = false;
   if (parser->current_token.type == TOKEN_KW_IF) {
     // IF_REQ_ELSE
-    // RULE 44
+    // RULE 47
     correct = parse_if_req_else(parser, out);
   } else if (is_expr_ext_first(parser->current_token.type)) {
     // <expr> END
@@ -1425,7 +1452,7 @@ static bool parse_assign(Parser *parser, ASTNode **out) {
   }
 
   // ID = ECC
-  // RULES 29, 30
+  // RULES 31, 32
   correct = parse_ecc(parser, &expr);
   if (!correct) {
     ast_free(expr);
@@ -1492,7 +1519,7 @@ static bool parse_then_one(Parser *parser, ASTNode **then_out,
   *else_out = NULL;
   if (is_expr_ext_first(parser->current_token.type)) {
     // <expr> ONLY_IF
-    // RULES 37, 38
+    // RULES 39, 40, 41
     correct = parse_expr(parser, then_out);
     if (!correct) {
       return false;
@@ -1500,8 +1527,8 @@ static bool parse_then_one(Parser *parser, ASTNode **then_out,
     correct = parse_only_if(parser, else_out);
   } else if (expect(parser, TOKEN_EOL)) {
     // eol BLOCK AFTER_BLOCK
-    // RULE 66
-    // RULES 39, 40
+    // RULE 71
+    // RULES 42, 43
     correct = parse_block(parser, then_out);
     if (!correct) {
       return false;
@@ -1524,14 +1551,14 @@ static bool parse_only_if(Parser *parser, ASTNode **else_out) {
     correct = parse_end(parser);
   } else if (parser->current_token.type == TOKEN_EOL) {
     // EOL AFTER_BLOCK
-    // RULES 39, 40
+    // RULES 42, 43
     if (!expect(parser, TOKEN_EOL)) {
       return false;
     }
     correct = parse_after_block(parser, else_out);
   } else if (expect(parser, TOKEN_KW_ELSE)) {
     // kw_else ELIF
-    // RULES 41-43
+    // RULES 44-46
     correct = parse_elif(parser, else_out);
   } else {
     syntax_error(parser,
@@ -1546,7 +1573,7 @@ static bool parse_after_block(Parser *parser, ASTNode **out) {
   *out = NULL;
   if (expect(parser, TOKEN_KW_ELSE)) {
     // kw_else ELIF
-    // RULES 41-43
+    // RULES 44-46
     correct = parse_elif(parser, out);
   } else if (is_statement_first(parser->current_token.type) ||
              parser->current_token.type == TOKEN_DEDENT) {
@@ -1565,15 +1592,15 @@ static bool parse_elif(Parser *parser, ASTNode **out) {
   *out = NULL;
   if (expect(parser, TOKEN_EOL)) {
     // EOL BLOCK
-    // RULE 66
+    // RULE 71
     correct = parse_block(parser, out);
   } else if (parser->current_token.type == TOKEN_KW_IF) {
     // IF
-    // RULE 34
+    // RULE 36
     correct = parse_if(parser, out);
   } else if (is_expr_ext_first(parser->current_token.type)) {
     // <expr> END
-    // RULES 31, 32
+    // RULES 33, 34
     correct = parse_expr(parser, out);
     if (!correct) {
       return false;
@@ -1661,7 +1688,7 @@ static bool parse_is_req_elif(Parser *parser, ASTNode **else_out) {
 
   if (parser->current_token.type == TOKEN_KW_IF) {
     // IF_REQ_ELSE
-    // RULE 44
+    // RULE 47
     correct = parse_if_req_else(parser, else_out);
   } else if (is_expr_ext_first(parser->current_token.type)) {
     // <expr> END
@@ -1728,7 +1755,7 @@ static bool parse_while(Parser *parser, ASTNode **out) {
   // KW_WHILE <expr> KW_DO EOL
 
   // KW_WHILE <expr> KW_DO EOL BLOCK
-  // RULE 66
+  // RULE 71
   correct = parse_block(parser, &body);
   if (!correct) {
     ast_free(condition);
@@ -1763,7 +1790,7 @@ static bool parse_for(Parser *parser, ASTNode **out) {
   // KW_FOR
 
   // KW_FOR FOR_SET
-  // RULES 53, 54
+  // RULES 56, 57
   correct = parse_for_set(parser, &gen_name, &range_start, &range_end,
                           &range_step, &guards, &is_to);
   if (!correct) {
@@ -1787,7 +1814,7 @@ static bool parse_for(Parser *parser, ASTNode **out) {
   // KW_FOR FOR_SET KW_DO
 
   // KW_FOR FOR_SET KW_DO AFTER_DO
-  // RULES 61, 62
+  // RULES 66, 67
   correct = parse_after_do(parser, &body);
   if (!correct) {
     free(gen_name);
@@ -1849,7 +1876,7 @@ static bool parse_for_set(Parser *parser, char **gen_name,
     // EOL INDENT ID ARROW <expr>
 
     // EOL INDENT ID ARROW <expr> UN_TO
-    // RULES 55, 56
+    // RULES 58, 59
     correct = parse_un_to(parser, range_end, range_step, is_to);
     if (!correct) {
       return false;
@@ -1863,7 +1890,7 @@ static bool parse_for_set(Parser *parser, char **gen_name,
     // EOL INDENT ID ARROW <expr> UN_TO EOL
 
     // EOL INDENT ID ARROW <expr> UN_TO EOL GUARDS
-    // RULES 59, 60
+    // RULES 62, 63
     correct = parse_guards(parser, guards);
     if (!correct) {
       return false;
@@ -1896,14 +1923,14 @@ static bool parse_for_set(Parser *parser, char **gen_name,
     // ID ARROW <expr>
 
     // ID ARROW <expr> UN_TO
-    // RULES 55, 56
+    // RULES 58, 59
     correct = parse_un_to(parser, range_end, range_step, is_to);
     if (!correct) {
       return false;
     }
 
     // ID ARROW <expr> UN_TO ONELINE_GUARDS
-    // RULES 78, 79
+    // RULES 64, 65
     correct = parse_oneline_guards(parser, guards);
   } else {
     syntax_error(parser, "Syntactic error: Invalid symbol in for setup.");
@@ -1934,7 +1961,7 @@ static bool parse_un_to(Parser *parser, ASTNode **range_end,
     if (!correct) {
       return false;
     }
-    // RULES 57, 58
+    // RULES 60, 61
     correct = parse_opt_by(parser, range_step);
   } else {
     syntax_error(parser, "Syntactic error: Missing until or to in for setup.");
@@ -1980,7 +2007,7 @@ static bool parse_guards(Parser *parser, ASTNode **guards) {
                    "Syntactic error: Missing end of line after a guard.");
       return false;
     }
-    // RULES 59, 60
+    // RULES 62, 63
     correct = parse_guards(parser, guards);
     if (!correct) {
       return false;
@@ -2000,7 +2027,7 @@ static bool parse_oneline_guards(Parser *parser, ASTNode **guards) {
   bool correct = false;
   ASTNode *guard = NULL;
   if (expect(parser, TOKEN_KW_IF)) {
-    // RULE 78
+    // RULE 64
     // KW_IF <expr> ONELINE_GUARDS
     correct = parse_expr(parser, &guard);
     if (!correct) {
@@ -2012,7 +2039,7 @@ static bool parse_oneline_guards(Parser *parser, ASTNode **guards) {
       return false;
     }
   } else if (parser->current_token.type == TOKEN_KW_DO) {
-    // RULE 79
+    // RULE 65
     // eps
     // no deeper RULE
     correct = true;
@@ -2027,12 +2054,12 @@ static bool parse_after_do(Parser *parser, ASTNode **body) {
   bool correct = false;
   if (expect(parser, TOKEN_EOL)) {
     // EOL BLOCK
-    // RULE 66
+    // RULE 71
     correct = parse_block(parser, body);
   } else if (is_expr_ext_first(parser->current_token.type) ||
              parser->current_token.type == TOKEN_KW_IF) {
     // ECC
-    // RULES 29, 30
+    // RULES 31, 32
     correct = parse_ecc(parser, body);
   } else {
     syntax_error(parser, "Syntactic error: Invalid body of a for loop.");
@@ -2054,7 +2081,7 @@ static bool parse_return(Parser *parser, ASTNode **out) {
   // KW_RETURN
 
   // KW_RETURN OPT_ECC
-  // RULES 64, 65
+  // RULES 69, 70
   correct = parse_opt_ecc(parser, &ret);
   if (!correct) {
     ast_free(ret);
@@ -2074,12 +2101,12 @@ static bool parse_opt_ecc(Parser *parser, ASTNode **out) {
   if (is_expr_ext_first(parser->current_token.type) ||
       parser->current_token.type == TOKEN_KW_IF) {
     // ECC
-    // RULES 29, 30
+    // RULES 31, 32
     correct = parse_ecc(parser, out);
   } else if (parser->current_token.type == TOKEN_EOL ||
              parser->current_token.type == TOKEN_SEMICOLON) {
     // END
-    // RULES 31, 32
+    // RULES 33, 34
     correct = parse_end(parser);
   } else {
     syntax_error(parser, "Syntactic error: Invalid syntax after return.");
@@ -2103,7 +2130,7 @@ static bool parse_block(Parser *parser, ASTNode **out) {
   }
   if (is_statement_first(parser->current_token.type)) {
     // INDENT IN_BLOCK
-    // RULE 67
+    // RULE 72
     correct = parse_in_block(parser, &(*out)->data.block);
     if (!correct) {
       return false;
@@ -2135,7 +2162,7 @@ static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block) {
   bool correct = false;
   if (is_statement_first(parser->current_token.type)) {
     // STATEMENT
-    // RULES 70-76
+    // RULES 75-81
     correct = parse_statement(parser, block);
     if (!correct) {
       return false;
@@ -2158,21 +2185,21 @@ static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
   if (parser->current_token.type == TOKEN_KW_VAL ||
       parser->current_token.type == TOKEN_KW_VAR) {
     // VAR_DECL
-    // RULE 19
+    // RULE 21
     correct = parse_var_decl(parser, &statement);
     if (!correct) {
       return false;
     }
   } else if (parser->current_token.type == TOKEN_KW_WHILE) {
     // WHILE
-    // RULE 51
+    // RULE 54
     correct = parse_while(parser, &statement);
     if (!correct) {
       return false;
     }
   } else if (parser->current_token.type == TOKEN_KW_IF) {
     // IF
-    // RULE 34
+    // RULE 36
     correct = parse_if(parser, &statement);
     if (!correct) {
       return false;
@@ -2180,7 +2207,7 @@ static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
   } else if (is_expr_base_first(parser->current_token.type) &&
              parser->next_token.type != TOKEN_ASSIGN) {
     // <expr> END
-    // RULES 31, 32
+    // RULES 33, 34
     correct = parse_expr(parser, &statement);
     if (!correct) {
       return false;
@@ -2192,7 +2219,7 @@ static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
     }
   } else if (parser->current_token.type == TOKEN_KW_FOR) {
     // FOR
-    // RULE 52
+    // RULE 55
     correct = parse_for(parser, &statement);
     if (!correct) {
       ast_free(statement);
@@ -2201,14 +2228,14 @@ static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
   } else if (parser->current_token.type == TOKEN_ID &&
              parser->next_token.type == TOKEN_ASSIGN) {
     // ASSIGN
-    // RULE 33
+    // RULE 35
     correct = parse_assign(parser, &statement);
     if (!correct) {
       return false;
     }
   } else if (parser->current_token.type == TOKEN_KW_RETURN) {
     // RETURN
-    // RULE 63
+    // RULE 68
     correct = parse_return(parser, &statement);
     if (!correct) {
       return false;
@@ -2596,66 +2623,116 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
       }
     }
   } else if (is_terminal(first_item, PREC_FUNC) && expr_len >= 3) {
-    // E -> func(E, E,...)
-    PrecItem second_item = ps->items[less_idx + 2];
-    PrecItem last_item = ps->items[less_idx + expr_len];
+    // E -> func(E, E,...)(E, E,...)...
+    size_t item_idx = less_idx + 2;
+    size_t last_idx = less_idx + expr_len;
 
-    if (is_terminal(second_item, PREC_LPAREN) &&
-        is_terminal(last_item, PREC_RPAREN)) {
-      // OK: func(___)
-      // left to check: E, E, E,...
+    if (!is_terminal(ps->items[last_idx], PREC_RPAREN)) {
+      syntax_error(
+          parser,
+          "Syntactic error: wrong function call, doesn't end with RPAREN!");
+      return false;
+    }
 
-      size_t arg_len =
-          expr_len - 3; // The length of the arguments inside the parentheses
-
-      for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx++) {
-        PrecItem arg_item = ps->items[arg_idx + less_idx + 3];
-
-        if (arg_idx % 2 == 0) {
-          // Even argument index... must be E
-          if (!is_expr(arg_item)) {
-            syntax_error(parser,
-                         "Syntactic error: wrong arguments inside function "
-                         "call, expected expr, got something else");
-            return false;
-          }
-        } else {
-          // Odd argument index... must be comma
-          if (!is_terminal(arg_item, PREC_COMMA)) {
-            syntax_error(parser,
-                         "Syntactic error: wrong arguments inside "
-                         "function call, expected ',', got something else");
-            return false;
-          }
-        }
-      }
-
-      // Check trailing comma
-      if (arg_len > 0 && arg_len % 2 == 0 &&
-          !last_item.terminal_token.lf_before) {
-        syntax_error(parser, "Syntactic error: trailing comma inside "
-                             "function call not allowed");
+    // Check for correct function call shape
+    while (item_idx <= last_idx) {
+      if (!is_terminal(ps->items[item_idx], PREC_LPAREN)) {
+        // First item is not LPAREN
+        syntax_error(parser, "Syntactic error: wrong function "
+                             "call, expected LPAREN, got something else");
         return false;
       }
+      item_idx++;
 
-      // Function call is OK
-      prec_stack_pop_to_less(ps); // Pop <func(E, E,...) from the stack
+      if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+        // () -> list with no arguments
+        item_idx++;
+        continue; // Skip inner checks
+      }
 
-      expr = ast_init_func_call(first_item.terminal_token.content.string,
-                                first_item.terminal_token.line);
-
-      if (expr != NULL) {
-        for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx += 2) {
-          // for every E, add it as an argument
-          ast_ll_append(&expr->data.function_call.args,
-                        ps->items[arg_idx + less_idx + 3].expr);
+      while (true) {
+        if (!is_expr(ps->items[item_idx])) {
+          // Odd item in arg list is not E
+          syntax_error(parser,
+                       "Syntactic error: wrong arguments inside function "
+                       "call, expected expr, got something else");
+          return false;
         }
-      } else {
-        for (size_t arg_idx = 0; arg_idx < arg_len; arg_idx += 2) {
-          // for every E, free it because allocation failed
-          ast_free(ps->items[arg_idx + less_idx + 3].expr);
+        item_idx++;
+
+        if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+          // ')', list done
+          item_idx++;
+          break;
         }
-        parser->rc = ERR_INTERNAL;
+
+        if (!is_terminal(ps->items[item_idx], PREC_COMMA)) {
+          // Even item in arg list is not comma
+          syntax_error(parser,
+                       "Syntactic error: wrong arguments inside "
+                       "function call, expected ',', got something else");
+          return false;
+        }
+        item_idx++;
+
+        if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+          if (!ps->items[item_idx].terminal_token.lf_before) {
+            // Comma before RPAREN -> LF_BEFORE must be true
+            syntax_error(parser, "Syntactic error: trailing comma inside "
+                                 "function call not allowed");
+            return false;
+          }
+
+          item_idx++;
+          break;
+        }
+      }
+    }
+
+    // Function call is OK
+    prec_stack_pop_to_less(ps); // Pop <func(E, E,...) from the stack
+
+    expr = ast_init_func_call(first_item.terminal_token.content.string,
+                              first_item.terminal_token.line);
+
+    if (expr == NULL) {
+      for (size_t arg_idx = less_idx + 2; arg_idx < less_idx + expr_len;
+           arg_idx++) {
+        // for every E, free it because allocation failed
+        PrecItem maybe_arg_item = ps->items[arg_idx];
+        if (is_expr(maybe_arg_item)) {
+          ast_free(maybe_arg_item.expr);
+        }
+      }
+
+      parser->rc = ERR_INTERNAL;
+      return false;
+    }
+
+    for (item_idx = less_idx + 2; item_idx < less_idx + expr_len; item_idx++) {
+      // Looping from the first item to the last item...
+      ReturnCodes ret = RETURN_SUCCESS;
+
+      PrecItem item = ps->items[item_idx];
+
+      if (is_terminal(item, PREC_LPAREN)) {
+        // '(', start new list
+        ret = ast_func_call_new_arg_list(expr);
+      } else if (is_expr(item)) {
+        // E, add argument
+        ret = ast_func_call_add_arg(expr, item.expr);
+      }
+
+      if (ret != RETURN_SUCCESS) {
+        // Something failed, free the rest of the arguments
+        for (size_t arg_idx = item_idx + 1; arg_idx < less_idx + expr_len;
+             arg_idx++) {
+          PrecItem maybe_arg_item = ps->items[arg_idx];
+          if (is_expr(maybe_arg_item)) {
+            ast_free(maybe_arg_item.expr);
+          }
+        }
+        parser->rc = ret;
         return false;
       }
     }
