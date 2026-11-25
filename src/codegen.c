@@ -51,15 +51,13 @@ static const char *binop_instr_table[] = {
 };
 
 #define BINOP_TABLE_SIZE                                                       \
-(sizeof(binop_instr_table) / sizeof(binop_instr_table[0]))
-
+  (sizeof(binop_instr_table) / sizeof(binop_instr_table[0]))
 
 // Forward declarations
 static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
                                 const char *dest_var);
 
-static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
-                                DataType func_ret_type);
+static void generate_statement(CodeGenContext *ctx, ASTNode *statement);
 // Forward declarations end
 
 /**
@@ -804,7 +802,7 @@ static void expression_if_branch(CodeGenContext *ctx, ASTNode *branch,
           (is_expression_node(s) || s->node_type == NODE_BLOCK)) {
         expression_if_branch(ctx, s, dest_var, expected_type);
       } else {
-        generate_statement(ctx, s, ctx->current_func_ret_type);
+        generate_statement(ctx, s);
         if (s->next == NULL && dest_var != NULL) {
           fprintf(ctx->out, "MOVE LF@%s nil@nil\n", dest_var);
         }
@@ -1032,11 +1030,9 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
  *
  * @param ctx Code generator context
  * @param expr Return value expression
- * @param expected_ret_type Expected return type of the function
  */
-static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr,
-                             DataType expected_ret_type) {
-  if (expr == NULL || expected_ret_type == UNIT) {
+static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr) {
+  if (expr == NULL || ctx->current_func_ret_type == UNIT) {
     if (expr != NULL) {
       generate_expression(ctx, expr, NULL);
     }
@@ -1049,7 +1045,7 @@ static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr,
 
   generate_expression(ctx, expr, ret_tmp);
 
-  if (expected_ret_type == DOUBLE && expr->data_type == INT) {
+  if (ctx->current_func_ret_type == DOUBLE && expr->data_type == INT) {
     fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ret_tmp, ret_tmp);
   }
 
@@ -1060,10 +1056,8 @@ static void emit_return_expr(CodeGenContext *ctx, ASTNode *expr,
  * @brief Emits IFJcode26 code for a for loop
  * @param ctx Code generator context
  * @param statement For loop's AST node
- * @param func_ret_type Return type of the function
  */
-static void statement_for(CodeGenContext *ctx, ASTNode *statement,
-                          DataType func_ret_type) {
+static void statement_for(CodeGenContext *ctx, ASTNode *statement) {
   const ASTForNodeData *for_node = &statement->data.for_node;
   int id = ctx->label_counter++;
 
@@ -1131,7 +1125,7 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
     guard = guard->next;
   }
 
-  generate_statement(ctx, for_node->body, func_ret_type);
+  generate_statement(ctx, for_node->body);
   fprintf(ctx->out, "LABEL $for_step_%d\n", id);
   fprintf(ctx->out, "ADD LF@%s$%d LF@%s$%d LF@%s\n", gen_name, gen_uid,
           gen_name, gen_uid, step_tmp);
@@ -1145,10 +1139,8 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
  * @brief Emits IFJcode26 code for a single statement AST node
  * @param ctx Code generator context
  * @param statement AST node with the statement to emit
- * @param func_ret_type Return type of the statement
  */
-static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
-                               DataType func_ret_type) {
+static void generate_statement(CodeGenContext *ctx, ASTNode *statement) {
   if (statement == NULL) {
     return;
   }
@@ -1204,7 +1196,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
     scope_enter(ctx);
     ASTNode *s = statement->data.block.statements;
     while (s != NULL) {
-      generate_statement(ctx, s, func_ret_type);
+      generate_statement(ctx, s);
       s = s->next;
     }
     scope_leave(ctx);
@@ -1257,7 +1249,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
     break;
 
   case NODE_RETURN:
-    emit_return_expr(ctx, statement->data.return_node.value, func_ret_type);
+    emit_return_expr(ctx, statement->data.return_node.value);
     fprintf(ctx->out, "POPFRAME\n");
     fprintf(ctx->out, "RETURN\n");
     break;
@@ -1271,13 +1263,12 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
 
     fprintf(ctx->out, "JUMPIFEQ $else_%d LF@%s bool@false\n", id, cond_tmp);
 
-    generate_statement(ctx, statement->data.if_node.then_branch, func_ret_type);
+    generate_statement(ctx, statement->data.if_node.then_branch);
     fprintf(ctx->out, "JUMP $if_end_%d\n", id);
 
     fprintf(ctx->out, "LABEL $else_%d\n", id);
     if (statement->data.if_node.else_branch != NULL) {
-      generate_statement(ctx, statement->data.if_node.else_branch,
-                         func_ret_type);
+      generate_statement(ctx, statement->data.if_node.else_branch);
     }
 
     fprintf(ctx->out, "LABEL $if_end_%d\n", id);
@@ -1296,7 +1287,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
     fprintf(ctx->out, "JUMPIFEQ $while_end_%d LF@%s bool@false\n", id,
             cond_tmp);
 
-    generate_statement(ctx, statement->data.while_node.body, func_ret_type);
+    generate_statement(ctx, statement->data.while_node.body);
     fprintf(ctx->out, "JUMP $while_start_%d\n", id);
 
     fprintf(ctx->out, "LABEL $while_end_%d\n", id);
@@ -1304,7 +1295,7 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
   }
 
   case NODE_FOR:
-    statement_for(ctx, statement, func_ret_type);
+    statement_for(ctx, statement);
     break;
 
   default:
@@ -1340,30 +1331,18 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
   ctx->next_var_uid = 0;
   ctx->current_func_ret_type = fn->return_type;
 
-  if (fn->param_count > 0) {
-    int *param_uids = malloc(fn->param_count * sizeof(int));
-    if (param_uids == NULL) {
-      ctx->has_error = true;
+  for (size_t i = 0; i < fn->param_count; i++) {
+    if (scope_push_var(ctx, fn->params[i].name, fn->params[i].data_type) < 0) {
       return;
     }
+  }
 
-    for (size_t i = 0; i < fn->param_count; i++) {
-      param_uids[i] =
-          scope_push_var(ctx, fn->params[i].name, fn->params[i].data_type);
-      if (ctx->has_error) {
-        free(param_uids);
-        return;
-      }
-    }
-
-    for (size_t i = fn->param_count; i > 0; i--) {
-      size_t idx = i - 1;
-      fprintf(ctx->out, "DEFVAR LF@%s$%d\n", fn->params[idx].name,
-              param_uids[idx]);
-      fprintf(ctx->out, "POPS LF@%s$%d\n", fn->params[idx].name,
-              param_uids[idx]);
-    }
-    free(param_uids);
+  for (size_t i = fn->param_count; i > 0; i--) {
+    size_t idx = i - 1;
+    fprintf(ctx->out, "DEFVAR LF@%s$%d\n", fn->params[idx].name,
+            ctx->vars[idx].uid);
+    fprintf(ctx->out, "POPS LF@%s$%d\n", fn->params[idx].name,
+            ctx->vars[idx].uid);
   }
 
   int max_tmps = count_ast_nodes(fn->body) + EXTRA_TMP_SLOTS;
@@ -1377,18 +1356,18 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
   if (fn->body != NULL) {
 
     if (fn->body->node_type != NODE_BLOCK) {
-      emit_return_expr(ctx, fn->body, fn->return_type);
+      emit_return_expr(ctx, fn->body);
     } else {
       ASTNode *s = fn->body->data.block.statements;
 
       if (s == NULL) {
-          fprintf(ctx->out, "PUSHS nil@nil\n");
+        fprintf(ctx->out, "PUSHS nil@nil\n");
       }
       while (s != NULL) {
         if (s->next == NULL && is_expression_node(s)) {
-          emit_return_expr(ctx, s, fn->return_type);
+          emit_return_expr(ctx, s);
         } else {
-          generate_statement(ctx, s, fn->return_type);
+          generate_statement(ctx, s);
           if (s->next == NULL) {
             fprintf(ctx->out, "PUSHS nil@nil\n");
           }
