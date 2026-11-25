@@ -1,0 +1,36 @@
+/**
+ * @file interp_multiline.ifj
+ * @brief Multi-line interpolated strings
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Make new scanner tests for interpolateds. Follow the format of other files
+ * in tests/. Base them on the specification."
+ * (context: scanner tests for the INTERPOLATEDS extension, derived from the
+ * IFJ26 spec, section 5.6, and the lexical errors in section 1.1)
+ */
+// multi-line interpolated strings: the double quote is written literally,
+// line ends belong to the text and lines are still counted -> 0
+import ifj26.*
+@main def main(): Unit =
+  val name = "IFJ"
+  val n = 26
+  print(s"""He said "hello"
+, $name.
+Second line.
+""")
+  val empty = s""""""
+  val quotes = s"""""$name"" ${n}"""
+  val lines = s"""$n
+${n +
+      1}
+$$"""
+  print(name)
