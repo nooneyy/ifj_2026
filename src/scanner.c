@@ -341,6 +341,82 @@ static InterpLevel *interp_top(Scanner *sc) {
 }
 
 /**
+ * @brief Processing '$' in the text of an interpolated string
+ *
+ * Reads the character after '$' from sc->src and decides what follows.
+ * "$$" appends one '$' to str and the text continues.
+ * "${" ends the text, the tokens of an expression follow.
+ * "$id" ends the text, the identifier follows (read from STATE_IDLE).
+ * If there is text before "${" or "$id", the text is filled into token
+ * and the rest follows in the next call.
+ * Anything else after '$' is an error.
+ *
+ * @param sc Scanner struct filled with scanner's current state
+ * @param str DynStr with the text read so far
+ * @param token Token to fill with STRING or INTERP_EXPR_BEGIN
+ * @param state Set to STATE_IDLE if no text is before "$id"
+ * @param token_ready Set to true if token was filled, false if not
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_LEX_ANA in case of an invalid character after '$'
+ *         ERR_INTERNAL in case of an internal error
+ */
+static ReturnCodes interp_dollar(Scanner *sc, DynStr *str, Token *token,
+                                 FsmState *state, bool *token_ready) {
+  ReturnCodes rc = RETURN_SUCCESS;
+  int c = fgetc(sc->src);
+  *token_ready = false;
+
+  if (c == '$') {
+    // $$ - one '$' in the text
+    rc = dynstr_append(str, c);
+    if (rc != RETURN_SUCCESS) {
+      return rc;
+    }
+    return RETURN_SUCCESS;
+  }
+
+  if (c == '{') {
+    // ${ - the text ends, an expression follows
+    sc->interp_text = false;
+    interp_top(sc)->expr = true;
+    sc->parenth_depth++;
+    if (strcmp(str->data, "") == 0) {
+      dynstr_free(str);
+      token->type = TOKEN_INTERP_EXPR_BEGIN;
+    } else {
+      sc->has_pending = true;
+      sc->pending = TOKEN_INTERP_EXPR_BEGIN;
+      token->type = TOKEN_STRING;
+      token->content.string = dynstr_take(str);
+    }
+    token->line = sc->line;
+    *token_ready = true;
+    return RETURN_SUCCESS;
+  }
+
+  if (isalpha(c) || c == '_') {
+    // $id - the text ends, the id follows
+    ungetc(c, sc->src);
+    if (strcmp(str->data, "") == 0) {
+      // no text before $id, the id is read in this call
+      dynstr_free(str);
+      *state = STATE_IDLE;
+      return RETURN_SUCCESS;
+    }
+    // text before $id first, the id is read in the next call
+    sc->interp_id = true;
+    token->type = TOKEN_STRING;
+    token->content.string = dynstr_take(str);
+    token->line = sc->line;
+    *token_ready = true;
+    return RETURN_SUCCESS;
+  }
+
+  print_error("Lexical error: Invalid $ in an interpolated string.", sc->line);
+  return ERR_LEX_ANA;
+}
+
+/**
  * @brief Reading source file and creating a token
  *
  * Reads sc->src char by char and moves through the FSM states
@@ -376,7 +452,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   bool tab_appeared = false;
   bool indent_pending = false;
   bool token_ready = false;
-  if (sc->interp_text) {
+  if (sc->interp_id) {
+    //$id after text, reads id from STATE_IDLE
+    sc->interp_id = false;
+  } else if (sc->interp_text) {
     rc = dynstr_init(&str);
     if (rc != RETURN_SUCCESS) {
       return rc;
@@ -606,7 +685,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isalnum(c) || c == '_') {
         APPEND_OR_ERROR(str, c);
         state = STATE_ID;
-      } else if (strcmp(str.data, "s") == 0 && c == '\"') {
+      } else if (strcmp(str.data, "s") == 0 && c == '\"' && !sc->interp_text) {
         dynstr_free(&str);
         state = STATE_INTERP_1_QUOT;
       } else {
@@ -1062,31 +1141,15 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         return RETURN_SUCCESS;
       }
       if (sc->interp_text && c == '$') {
-        c = fgetc(sc->src);
-        if (c == '$') {
-          APPEND_OR_ERROR(str, c);
-          break;
+        rc = interp_dollar(sc, &str, token_to_fill, &state, &token_ready);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
         }
-        if (c == '{') {
-          sc->interp_text = false;
-          interp_top(sc)->expr = true;
-          sc->parenth_depth++;
-          if (strcmp(str.data, "") == 0) {
-            dynstr_free(&str);
-            token_to_fill->type = TOKEN_INTERP_EXPR_BEGIN;
-          } else {
-            sc->has_pending = true;
-            sc->pending = TOKEN_INTERP_EXPR_BEGIN;
-            token_to_fill->type = TOKEN_STRING;
-            token_to_fill->content.string = dynstr_take(&str);
-          }
-          token_to_fill->line = sc->line;
-          return RETURN_SUCCESS;
+        if (token_ready) {
+          return RETURN_SUCCESS; // STRING or INTERP_EXPR_BEGIN
         }
-        dynstr_free(&str);
-        print_error("Lexical error: Invalid $ in an interpolated string.",
-                    sc->line);
-        return ERR_LEX_ANA;
+        break; // $$ or $id, scanning continues
       }
 
       if (c == '\n' || c == EOF) {
@@ -1119,31 +1182,15 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           sc->line++;
         }
         if (sc->interp_text && c == '$') {
-          c = fgetc(sc->src);
-          if (c == '$') {
-            APPEND_OR_ERROR(str, c);
-            break;
+          rc = interp_dollar(sc, &str, token_to_fill, &state, &token_ready);
+          if (rc != RETURN_SUCCESS) {
+            dynstr_free(&str);
+            return rc;
           }
-          if (c == '{') {
-            sc->interp_text = false;
-            interp_top(sc)->expr = true;
-            sc->parenth_depth++;
-            if (strcmp(str.data, "") == 0) {
-              dynstr_free(&str);
-              token_to_fill->type = TOKEN_INTERP_EXPR_BEGIN;
-            } else {
-              sc->has_pending = true;
-              sc->pending = TOKEN_INTERP_EXPR_BEGIN;
-              token_to_fill->type = TOKEN_STRING;
-              token_to_fill->content.string = dynstr_take(&str);
-            }
-            token_to_fill->line = sc->line;
-            return RETURN_SUCCESS;
+          if (token_ready) {
+            return RETURN_SUCCESS; // STRING or INTERP_EXPR_BEGIN
           }
-          dynstr_free(&str);
-          print_error("Lexical error: Invalid $ in an interpolated string.",
-                      sc->line);
-          return ERR_LEX_ANA;
+          break; // $$ or $id, scanning continues
         }
         APPEND_OR_ERROR(str, c);
       }

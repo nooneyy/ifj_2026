@@ -51,6 +51,8 @@ typedef struct Scanner {
                     // consumed to look ahead
   bool interp_text; // the next token continues the text of an interpolated
                     // string
+  bool interp_id; // the next token is the identifier of $id, after it the text
+                  // of the interpolated string continues
   InterpLevel interp[MAX_INTERP_DEPTH]; // open interpolated strings,
                                         // the innermost is the last one
   int interp_depth;                     // number of open interpolated strings
