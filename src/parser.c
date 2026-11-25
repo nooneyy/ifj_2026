@@ -273,7 +273,7 @@ static void syntax_error(Parser *parser, const char *message) {
 /**
  * @brief Checks whether token's type is in base <expr>'s FIRST()
  *
- * FIRST(base <expr>) = {id, int, string, double, true, false, (}
+ * FIRST(base <expr>) = {id, int, string, double, true, false, (, interp_begin}
  *
  * @param type TokenType of token to check
  * @return true if is in FIRST(), else false
@@ -286,6 +286,7 @@ static bool is_expr_base_first(const TokenType type) {
   case TOKEN_ID:
   case TOKEN_OPEN_PAR:
   case TOKEN_BOOL:
+  case TOKEN_INTERP_BEGIN:
     return true;
   default:
     return false;
@@ -295,7 +296,8 @@ static bool is_expr_base_first(const TokenType type) {
 /**
  * @brief Checks whether token's type is in extended <expr>'s FIRST()
  *
- * FIRST(extended <expr>) = {id, int, double, string, true, false, (, -, !}
+ * FIRST(extended <expr>) = {id, int, double, string, true, false, (, -, !,
+ * interp_begin}
  *
  * @param type TokenType of token to check
  * @return true if is in FIRST(), else false
@@ -338,7 +340,7 @@ static bool is_type_first(const TokenType type) {
  * @brief Checks whether token's type is in STATEMENT's FIRST()
  *
  * FIRST(STATEMENT) = {kw_if, kw_while, kw_for, kw_return, kw_var, kw_val, id,
- * int, double, string, true, false, (}
+ * int, double, string, true, false, (, interp_begin}
  *
  * @param type TokenType of token to check
  * @return true if is in FIRST(), else false
