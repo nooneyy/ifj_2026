@@ -332,57 +332,82 @@ ASTNode *ast_init_func_call(char *name, unsigned int line) {
   return func_call;
 }
 
-ReturnCodes ast_func_call_new_arg_list(ASTNode *func_call) {
-  if (func_call == NULL || func_call->node_type != NODE_FUNCTION_CALL) {
-    ast_free(func_call);
-    print_error("Received NULL pointer or node was not of type FUNCTION_CALL!",
+ReturnCodes ast_func_call_new_arg_list(ASTNode *f_node) {
+  if (f_node == NULL || (f_node->node_type != NODE_FUNCTION_CALL &&
+                         f_node->node_type != NODE_VALMEM_FIELD)) {
+    ast_free(f_node);
+    print_error("Received NULL pointer or node was not of type FUNCTION_CALL "
+                "or VALMEM_FIELD!",
                 0);
     return ERR_INTERNAL;
   }
 
-  ASTFunctionCallNodeData *func_call_data = &func_call->data.function_call;
+  size_t *arg_list_count = NULL;
+  size_t **arg_list_sizes = NULL;
 
-  size_t *temp = realloc(func_call_data->arg_list_sizes,
-                         sizeof(size_t) * (func_call_data->arg_list_count + 1));
+  if (f_node->node_type == NODE_FUNCTION_CALL) {
+    arg_list_count = &f_node->data.function_call.arg_list_count;
+    arg_list_sizes = &f_node->data.function_call.arg_list_sizes;
+  } else {
+    arg_list_count = &f_node->data.valmem_field.arg_list_count;
+    arg_list_sizes = &f_node->data.valmem_field.arg_list_sizes;
+  }
+
+  size_t *temp =
+      realloc(*arg_list_sizes, sizeof(size_t) * (*arg_list_count + 1));
 
   if (temp == NULL) {
-    ast_free(func_call);
+    ast_free(f_node);
     print_error("Reallocation failed!", 0);
     return ERR_INTERNAL;
   }
 
-  func_call_data->arg_list_sizes = temp;
-  func_call_data->arg_list_sizes[func_call_data->arg_list_count] = 0;
-  func_call_data->arg_list_count++;
+  *arg_list_sizes = temp;
+  (*arg_list_sizes)[*arg_list_count] = 0;
+  (*arg_list_count)++;
 
   return RETURN_SUCCESS;
 }
 
-ReturnCodes ast_func_call_add_arg(ASTNode *func_call, ASTNode *arg) {
+ReturnCodes ast_func_call_add_arg(ASTNode *f_node, ASTNode *arg) {
 
-  if (func_call == NULL || func_call->node_type != NODE_FUNCTION_CALL ||
+  if (f_node == NULL ||
+      (f_node->node_type != NODE_FUNCTION_CALL &&
+       f_node->node_type != NODE_VALMEM_FIELD) ||
       arg == NULL) {
-    ast_free(func_call);
+    ast_free(f_node);
     ast_free(arg);
-    print_error("Received func_call or arg NULL pointer or func_call was not "
-                "of type FUNCTION_CALL!",
+    print_error("Received f_node or arg NULL pointer or f_node was not "
+                "of type FUNCTION_CALL or VALMEM_FIELD!",
                 0);
     return ERR_INTERNAL;
   }
 
-  ASTFunctionCallNodeData *func_call_data = &func_call->data.function_call;
+  ASTNode **args = NULL;
+  size_t *arg_list_count = NULL;
+  size_t **arg_list_sizes = NULL;
 
-  if (func_call_data->arg_list_count == 0) {
+  if (f_node->node_type == NODE_FUNCTION_CALL) {
+    args = &f_node->data.function_call.args;
+    arg_list_count = &f_node->data.function_call.arg_list_count;
+    arg_list_sizes = &f_node->data.function_call.arg_list_sizes;
+  } else {
+    args = &f_node->data.valmem_field.args;
+    arg_list_count = &f_node->data.valmem_field.arg_list_count;
+    arg_list_sizes = &f_node->data.valmem_field.arg_list_sizes;
+  }
+
+  if (*arg_list_count == 0) {
     print_error(
         "Function call argument list count is 0 - nothing to add an arg to!",
         0);
     ast_free(arg);
-    ast_free(func_call);
+    ast_free(f_node);
     return ERR_INTERNAL;
   }
 
-  ast_ll_append(&func_call_data->args, arg);
-  func_call_data->arg_list_sizes[func_call_data->arg_list_count - 1]++;
+  ast_ll_append(args, arg);
+  (*arg_list_sizes)[*arg_list_count - 1]++;
 
   return RETURN_SUCCESS;
 }
@@ -488,7 +513,13 @@ ASTNode *ast_init_valmem_field(ASTNode *receiver, char *name,
     return NULL;
   }
 
-  ASTValmemFieldData data = {.receiver = receiver, .name = name};
+  ASTValmemFieldData data = {
+      .receiver = receiver,
+      .name = name,
+      .args = NULL,
+      .arg_list_count = 0,
+      .arg_list_sizes = NULL,
+  };
 
   *valmem_field = (ASTNode){
       .node_type = NODE_VALMEM_FIELD,
@@ -593,6 +624,8 @@ void ast_free(ASTNode *node) {
     case NODE_VALMEM_FIELD:
       ast_free(node->data.valmem_field.receiver);
       free(node->data.valmem_field.name);
+      free(node->data.valmem_field.arg_list_sizes);
+      ast_free(node->data.valmem_field.args);
       break;
     }
 
