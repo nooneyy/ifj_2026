@@ -1,0 +1,33 @@
+/**
+ * @file err_extkw_two_receivers.ifj
+ * @brief Extension with two receivers
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: parser tests for the EXTKW extension, derived from the IFJ26
+ * spec, section 5.9; a method prints as a FUNC_DEF with its receiver in square
+ * brackets, e.g. FUNC_DEF plus [value: Int] (other: Int) : Int; a member call
+ * without an argument list stays a VALMEM_FIELD like in VALMEM, a member call
+ * with argument lists is a VALMEM_FIELD with the argument count of every
+ * list, e.g. VALMEM_FIELD plus (1), its children are the receiver and then
+ * the arguments)
+ */
+// the receiver is a single parameter, not a list of them (spec 5.9) -> 2
+import ifj26.*
+extension (a: Int, b: Int)
+  def sum: Int = a + b
+@main def main(): Unit = ()

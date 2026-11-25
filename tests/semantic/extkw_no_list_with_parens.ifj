@@ -1,0 +1,36 @@
+/**
+ * @file extkw_no_list_with_parens.ifj
+ * @brief Method without a list called with parentheses
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: semantic tests for the EXTKW extension (spec 5.9) - a method is
+ * called only by the member syntax with exactly the argument lists of its
+ * definition, a method that isn't defined for the receiver's type is error 3,
+ * a method name repeated for the same type is error 4, a wrong number of lists
+ * or arguments or an incompatible argument is error 5 like with PARAMLISTS;
+ * derived from the IFJ26 spec as a black box, with the claimed extensions
+ * BOOLTHEN, CONTROL, FUNEXP, VALMEM, PARAMLISTS and INTERPOLATEDS)
+ */
+// a method without a parameter list is called without parentheses,
+// x.twice() has one list too many (spec 5.9) -> 5
+import ifj26.*
+extension (value: Int)
+  def twice: Int = value * 2
+@main def main(): Unit =
+  val x = 6
+  val y = x.twice()

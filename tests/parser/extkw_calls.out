@@ -1,0 +1,80 @@
+PROGRAM
+  FUNC_DEF twice [value: Int] : Int
+    BINARY_OP *
+      VAR_REF value
+      LITERAL Int 2
+  FUNC_DEF foo [value: Int] () : String
+    BINARY_OP +
+      LITERAL String "foo"
+      VALMEM_FIELD toString
+        VAR_REF value
+  FUNC_DEF plus [value: Int] (other: Int) : Int
+    BINARY_OP +
+      VAR_REF value
+      VAR_REF other
+  FUNC_DEF between [value: Int] (lo: Int, hi: Int) : Boolean
+    BINARY_OP &&
+      BINARY_OP <=
+        VAR_REF lo
+        VAR_REF value
+      BINARY_OP <=
+        VAR_REF value
+        VAR_REF hi
+  FUNC_DEF six () : Int
+    LITERAL Int 6
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val x : ?
+        LITERAL Int 6
+      VAR_DEF val a : ?
+        VALMEM_FIELD twice
+          LITERAL Int 6
+      VAR_DEF val b : ?
+        VALMEM_FIELD twice
+          BINARY_OP +
+            VAR_REF x
+            LITERAL Int 1
+      VAR_DEF val c : ?
+        VALMEM_FIELD twice
+          CALL six
+      VAR_DEF val d : ?
+        VALMEM_FIELD plus (1)
+          VAR_REF x
+          BINARY_OP +
+            BINARY_OP *
+              VAR_REF x
+              LITERAL Int 2
+            LITERAL Int 1
+      VAR_DEF val e : ?
+        VALMEM_FIELD between (2)
+          VAR_REF x
+          LITERAL Int 1
+          LITERAL Int 10
+      VAR_DEF val f : ?
+        VALMEM_FIELD twice
+          VALMEM_FIELD twice
+            VAR_REF x
+      VAR_DEF val g : ?
+        VALMEM_FIELD twice
+          VALMEM_FIELD plus (1)
+            VAR_REF x
+            LITERAL Int 1
+      VAR_DEF val h : ?
+        VALMEM_FIELD plus (1)
+          VALMEM_FIELD twice
+            VAR_REF x
+          VALMEM_FIELD twice
+            VAR_REF x
+      VAR_DEF val i : ?
+        VALMEM_FIELD length
+          VALMEM_FIELD foo (0)
+            VAR_REF x
+      VAR_DEF val j : ?
+        VALMEM_FIELD toString
+          VALMEM_FIELD twice
+            VAR_REF x
+      VAR_DEF val k : ?
+        VALMEM_FIELD foo (0)
+          VALMEM_FIELD plus (1)
+            VAR_REF x
+            CALL six

@@ -1,0 +1,49 @@
+/**
+ * @file extkw_spec.ifj
+ * @brief The EXTKW example from the spec
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: parser tests for the EXTKW extension, derived from the IFJ26
+ * spec, section 5.9; a method prints as a FUNC_DEF with its receiver in square
+ * brackets, e.g. FUNC_DEF plus [value: Int] (other: Int) : Int; a member call
+ * without an argument list stays a VALMEM_FIELD like in VALMEM, a member call
+ * with argument lists is a VALMEM_FIELD with the argument count of every
+ * list, e.g. VALMEM_FIELD plus (1), its children are the receiver and then
+ * the arguments)
+ */
+// the example from the spec: a method without a parameter list, with an
+// empty list and with one parameter, called only by the member syntax
+// (spec 5.9) -> 0
+import ifj26.*
+extension (value: Int)
+  // bezparametricka metoda
+  def twice: Int = value * 2
+  // metoda s prazdnym seznamem parametru
+  def foo(): String = "foo" + value.toString
+  // metoda s jednim parametrem
+  def plus(other: Int): Int = value + other
+
+// pouziti
+def someFn() =
+  val x: Int = 6
+  val y = x.twice
+  val z = x.foo()
+  val w = x.plus(12)
+  // pozor, nelze `x.foo` ani `x.twice()`
+
+@main def main(): Unit = someFn()

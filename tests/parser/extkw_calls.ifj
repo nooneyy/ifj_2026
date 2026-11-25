@@ -1,0 +1,54 @@
+/**
+ * @file extkw_calls.ifj
+ * @brief Receivers, arguments and chains of method calls
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: parser tests for the EXTKW extension, derived from the IFJ26
+ * spec, section 5.9; a method prints as a FUNC_DEF with its receiver in square
+ * brackets, e.g. FUNC_DEF plus [value: Int] (other: Int) : Int; a member call
+ * without an argument list stays a VALMEM_FIELD like in VALMEM, a member call
+ * with argument lists is a VALMEM_FIELD with the argument count of every
+ * list, e.g. VALMEM_FIELD plus (1), its children are the receiver and then
+ * the arguments)
+ */
+// a method is called by the member syntax on any receiver: a variable, a
+// literal, an expression in parentheses or a function call; the arguments
+// are expressions and calls chain with each other and with VALMEM members
+// (spec 5.9, 5.4) -> 0
+import ifj26.*
+extension (value: Int)
+  def twice: Int = value * 2
+  def foo(): String = "foo" + value.toString
+  def plus(other: Int): Int = value + other
+  def between(lo: Int, hi: Int): Boolean = lo <= value && value <= hi
+
+def six(): Int = 6
+
+@main def main(): Unit =
+  val x = 6
+  val a = 6.twice
+  val b = (x + 1).twice
+  val c = six().twice
+  val d = x.plus(x * 2 + 1)
+  val e = x.between(1, 10)
+  val f = x.twice.twice
+  val g = x.plus(1).twice
+  val h = x.twice.plus(x.twice)
+  val i = x.foo().length
+  val j = x.twice.toString
+  val k = x.plus(six()).foo()

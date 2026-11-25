@@ -1,0 +1,42 @@
+/**
+ * @file extkw_order_and_names.ifj
+ * @brief Methods used before definition and with the same name for different types
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: codegen tests for the EXTKW extension (spec 5.9); every program
+ * is compiled by codegen_main, run by ic26int and its output and return code
+ * are compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL, FUNEXP, VALMEM, PARAMLISTS and INTERPOLATEDS)
+ */
+// a method is visible in the whole program, the same name can be defined
+// for different types and a method can use another method of its receiver
+// (spec 5.9) -> int 8|string ab
+import ifj26.*
+
+@main def main(): Unit =
+  print(4.describe)
+  print("|")
+  print("ab".describe)
+  print("\n")
+
+extension (n: Int)
+  def describe: String = "int " + n.twice.toString
+  def twice: Int = n * 2
+
+extension (s: String)
+  def describe: String = "string " + s

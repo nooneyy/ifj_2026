@@ -1,0 +1,52 @@
+/**
+ * @file extkw_spec_example.ifj
+ * @brief The EXTKW example from the spec
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: codegen tests for the EXTKW extension (spec 5.9); every program
+ * is compiled by codegen_main, run by ic26int and its output and return code
+ * are compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL, FUNEXP, VALMEM, PARAMLISTS and INTERPOLATEDS)
+ */
+// the example from the spec with the results printed (spec 5.9)
+// -> 12|foo6|18
+import ifj26.*
+
+extension (value: Int)
+  // bezparametricka metoda
+  def twice: Int = value * 2
+  // metoda s prazdnym seznamem parametru
+  def foo(): String = "foo" + value.toString
+  // metoda s jednim parametrem
+  def plus(other: Int): Int = value + other
+
+// pouziti
+def someFn() =
+  val x: Int = 6
+  val y = x.twice
+  val z = x.foo()
+  val w = x.plus(12)
+  // pozor, nelze `x.foo` ani `x.twice()`
+  print(y)
+  print("|")
+  print(z)
+  print("|")
+  print(w)
+  print("\n")
+
+@main def main(): Unit = someFn()

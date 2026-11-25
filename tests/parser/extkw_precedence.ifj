@@ -1,0 +1,47 @@
+/**
+ * @file extkw_precedence.ifj
+ * @brief Precedence of method calls
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: parser tests for the EXTKW extension, derived from the IFJ26
+ * spec, section 5.9; a method prints as a FUNC_DEF with its receiver in square
+ * brackets, e.g. FUNC_DEF plus [value: Int] (other: Int) : Int; a member call
+ * without an argument list stays a VALMEM_FIELD like in VALMEM, a member call
+ * with argument lists is a VALMEM_FIELD with the argument count of every
+ * list, e.g. VALMEM_FIELD plus (1), its children are the receiver and then
+ * the arguments)
+ */
+// a method call binds tighter than every operator like a VALMEM member:
+// -x.twice is -(x.twice), !t.flip is !(t.flip) and 1 + x.plus(2) * 3 is
+// 1 + ((x.plus(2)) * 3) (spec 5.9, 5.4) -> 0
+import ifj26.*
+extension (value: Int)
+  def twice: Int = value * 2
+  def plus(other: Int): Int = value + other
+extension (b: Boolean)
+  def flip: Boolean = !b
+
+@main def main(): Unit =
+  val x = 3
+  val t = true
+  val a = -x.twice
+  val b = 1 + x.plus(2) * 3
+  val c = x.twice - 1
+  val d = !t.flip
+  val e = x.plus(1) == x.twice && t.flip
+  val f = x.twice / 2 < x.plus(1)
