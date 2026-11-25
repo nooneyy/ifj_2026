@@ -378,6 +378,7 @@ static bool parse_program(Parser *parser);
  *
  * RULE 2: DEFS -> DEF DEFS
  * RULE 3: DEFS -> eps
+ * RULE 92: DEFS -> EXTENSION DEFS
  *
  * @param parser Parser's current state
  * @return false if an error occured in this or any other called function,
@@ -945,11 +946,44 @@ static bool parse_interp_parts(Parser *parser, ASTNode **acc);
  */
 static bool parse_interp_part(Parser *parser, ASTNode **part);
 
+/**
+ * @brief Parses methods of one type
+ *
+ * RULE 88: EXTENSION -> KW_EXTENSION ( ID : TYPE ) EOL INDENT EXT_DEF
+ *          EXT_DEFS DEDENT
+ *
+ * @param parser Parser's current state
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
 static bool parse_extension(Parser *parser);
 
+/**
+ * @brief Parses one method of an extension
+ *
+ * RULE 89: EXT_DEF -> KW_DEF ID PARAM_LIST TYPE_DECL = DEF_EX
+ *
+ * @param parser Parser's current state
+ * @param reciever_name Name of the receiver of the extension
+ * @param reciever_type Type of the receiver of the extension
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
 static bool parse_ext_def(Parser *parser, const char *reciever_name,
                           DataType reciever_type);
 
+/**
+ * @brief Parses the rest of the methods of an extension
+ *
+ * RULE 90: EXT_DEFS -> EXT_DEF EXT_DEFS
+ * RULE 91: EXT_DEFS -> eps
+ *
+ * @param parser Parser's current state
+ * @param reciever_name Name of the receiver of the extension
+ * @param reciever_type Type of the receiver of the extension
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
 static bool parse_ext_defs(Parser *parser, const char *reciever_name,
                            DataType reciever_type);
 
@@ -1025,6 +1059,8 @@ static bool parse_defs(Parser *parser) {
   } else if (parser->current_token.type == TOKEN_EOF) {
     correct = true;
   } else if (parser->current_token.type == TOKEN_KW_EXTENSION) {
+    // EXTENSION
+    // RULE 88
     correct = parse_extension(parser);
     if (!correct) {
       return false;
@@ -2520,6 +2556,8 @@ static bool parse_extension(Parser *parser) {
     syntax_error(parser, "Syntactic error: Invalid extension definition.");
     return false;
   }
+  // KW_EXTENSION (
+
   if (parser->current_token.type != TOKEN_ID) {
     syntax_error(parser,
                  "Syntactic error: Missing id in extension definition.");
@@ -2531,13 +2569,17 @@ static bool parse_extension(Parser *parser) {
     free(name);
     return false;
   }
+  // KW_EXTENSION ( ID
 
   if (!expect(parser, TOKEN_COLON)) {
     syntax_error(parser, "Syntactic error: Missing : in extension reciever.");
     free(name);
     return false;
   }
+  // KW_EXTENSION ( ID :
 
+  // KW_EXTENSION ( ID : TYPE
+  // RULES 26, 27, 28, 29, 30
   correct = parse_type(parser, &type);
   if (!correct) {
     free(name);
@@ -2550,12 +2592,18 @@ static bool parse_extension(Parser *parser) {
     syntax_error(parser, "Syntactic error: Invalid extension definition.");
     return false;
   }
+  // KW_EXTENSION ( ID : TYPE ) EOL INDENT
+
+  // KW_EXTENSION ( ID : TYPE ) EOL INDENT EXT_DEF
+  // RULE 89
   correct = parse_ext_def(parser, name, type);
   if (!correct) {
     free(name);
     return false;
   }
 
+  // KW_EXTENSION ( ID : TYPE ) EOL INDENT EXT_DEF EXT_DEFS
+  // RULES 90, 91
   correct = parse_ext_defs(parser, name, type);
   if (!correct) {
     free(name);
@@ -2567,6 +2615,8 @@ static bool parse_extension(Parser *parser) {
                  "Syntactic error: Missing dedent after extension definition.");
     return false;
   }
+  // KW_EXTENSION ( ID : TYPE ) EOL INDENT EXT_DEF EXT_DEFS DEDENT
+
   free(name);
   return correct;
 }
@@ -2583,6 +2633,8 @@ static bool parse_ext_def(Parser *parser, const char *reciever_name,
                  "Syntactic error: Invalid function definition in extension.");
     return false;
   }
+  // KW_DEF ID
+
   method_name = parser->current_token.content.string;
   parser->current_token.content.string = NULL;
   if (!parser_advance(parser)) {
@@ -2606,11 +2658,15 @@ static bool parse_ext_def(Parser *parser, const char *reciever_name,
   method->data.function_def.receiver =
       (FunctionParam){.name = copy, .data_type = reciever_type};
 
+  // KW_DEF ID PARAM_LIST
+  // RULES 12, 13
   correct = parse_param_list(parser, method);
   if (!correct) {
     return false;
   }
 
+  // KW_DEF ID PARAM_LIST TYPE_DECL
+  // RULES 24, 25
   correct = parse_type_decl(parser, &method->data.function_def.return_type);
   if (!correct) {
     return false;
@@ -2620,7 +2676,10 @@ static bool parse_ext_def(Parser *parser, const char *reciever_name,
     syntax_error(parser, "Syntactic error: Missing = in method definition.");
     return false;
   }
+  // KW_DEF ID PARAM_LIST TYPE_DECL =
 
+  // KW_DEF ID PARAM_LIST TYPE_DECL = DEF_EX
+  // RULES 9, 10, 11
   correct = parse_def_ex(parser, method);
 
   return correct;
@@ -2630,12 +2689,16 @@ static bool parse_ext_defs(Parser *parser, const char *reciever_name,
                            DataType reciever_type) {
   bool correct = false;
   if (parser->current_token.type == TOKEN_KW_DEF) {
+    // EXT_DEF
+    // RULE 89
     correct = parse_ext_def(parser, reciever_name, reciever_type);
     if (!correct) {
       return false;
     }
     correct = parse_ext_defs(parser, reciever_name, reciever_type);
   } else if (parser->current_token.type == TOKEN_DEDENT) {
+    // eps
+    // no deeper RULE
     correct = true;
   } else {
     syntax_error(parser,
