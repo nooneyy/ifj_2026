@@ -54,136 +54,13 @@ static const char *const binop_instr_table[] = {
   (sizeof(binop_instr_table) / sizeof(binop_instr_table[0]))
 
 // Forward declarations
+
 static void generate_expression(CodeGenContext *ctx, const ASTNode *expr,
                                 const char *dest_var);
 
 static void generate_statement(CodeGenContext *ctx, const ASTNode *statement);
-// Forward declarations end
 
-/**
- * @brief Searches the AST for the @main function
- * @param program Root AST node of the program
- * @param out Output parameter that gets the main function's name or NULL if it
- * isn't named
- * @return true if main is named
- *         false if main is unnamed
- */
-static bool find_main_function(const ASTNode *program, const char **out) {
-  *out = NULL;
-  const ASTNode *function = program->data.program.functions;
-
-  while (function != NULL) {
-    const ASTFunctionDefNodeData *func_data = &function->data.function_def;
-    if (func_data->is_main) {
-      *out = func_data->name;
-      return true;
-    }
-    function = function->next;
-  }
-
-  return false;
-}
-
-/**
- * @brief Emits the IFJcode26 header, call to the main function and a program
- * exit
- * @param ctx Code generator context
- * @return true on success
- *         false if there is no main function in the AST
- */
-static bool generate_prolog(CodeGenContext *ctx) {
-  const char *main_name = NULL;
-  if (!find_main_function(ctx->program, &main_name)) {
-    return false;
-  }
-
-  fprintf(ctx->out, ".IFJcode26\n");
-  fprintf(ctx->out, "CALL $fn_%s\n", main_name);
-  fprintf(ctx->out, "EXIT int@0\n\n");
-
-  return true;
-}
-
-/**
- * @brief Determines if an AST node produces a value
- * @param node AST node to inspect
- * @return true if node produces a value
- *         false if node is NULL or if the node doesn't produce a value
- */
-static bool is_expression_node(const ASTNode *node) {
-  if (node == NULL) {
-    return false;
-  }
-  switch (node->node_type) {
-  case NODE_LITERAL:
-  case NODE_VARIABLE_REF:
-  case NODE_UNARY_OP:
-  case NODE_BINARY_OP:
-  case NODE_FUNCTION_CALL:
-  case NODE_VALMEM_FIELD:
-    return true;
-  case NODE_IF:
-    return (node->data.if_node.is_expr ||
-            (node->data.if_node.else_branch != NULL &&
-             node->data_type != UNIT && node->data_type != UNKNOWN)) != 0;
-  default:
-    return false;
-  }
-}
-
-/**
- * @brief Checks if a function name refers to an IFJcode26 library function
- * @param name Function name to check
- * @return true if the name matches a library function
- *         false otherwise
- */
-static bool is_builtin_func(const char *name) {
-  static const char *const builtins[] = {
-      "print",     "readLine", "readInt", "readDouble", "toStr",       "toInt",
-      "strLength", "subStr",   "ord",     "chr",        "readBoolean", NULL,
-  };
-
-  for (int i = 0; builtins[i] != NULL; i++) {
-    if (strcmp(name, builtins[i]) == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * @brief Writes an IFJcode26 string literal with required escape codes
- *
- * Escapes characters with ASCII value <= 32, '#' and '\' as \xyz
- *
- * @param ctx Code generator context
- * @param str String content to emit
- */
-static void print_escaped_string(CodeGenContext *ctx, const char *str) {
-  fprintf(ctx->out, "string@");
-  if (str == NULL) {
-    return;
-  }
-
-  for (size_t i = 0; str[i] != '\0'; i++) {
-    unsigned char c = (unsigned char)str[i];
-    if (c <= ' ' || c == '#' || c == '\\') {
-      fprintf(ctx->out, "\\%03d", c);
-    } else {
-      fputc(c, ctx->out);
-    }
-  }
-}
-
-/**
- * @brief Allocates the next unique temporary variable name
- * @param ctx Code generator context
- * @param buf Output buffer for the name
- */
-static void new_tmp_var(CodeGenContext *ctx, char buf[TMP_VAR_BUF_SIZE]) {
-  int id = ctx->tmp_counter++;
-  snprintf(buf, TMP_VAR_BUF_SIZE, "$tmp_%d", id);
-}
+// Scope management
 
 /**
  * @brief Enters a new lexical scope
@@ -259,78 +136,6 @@ static int scope_push_var(CodeGenContext *ctx, const char *name,
 }
 
 /**
- * @brief Estimates how many temporary variables are needed for an AST subtree
- * @param node AST node list to traverse
- * @return Estimated number of temporary variables
- */
-static int count_ast_nodes(const ASTNode *node) {
-  int count = 0;
-  while (node != NULL) {
-    count += TMPS_PER_AST_NODE;
-    switch (node->node_type) {
-
-    case NODE_VARIABLE_DEF:
-      count += count_ast_nodes(node->data.variable_def.expr);
-      break;
-
-    case NODE_ASSIGN:
-      count += count_ast_nodes(node->data.assign.right);
-      break;
-
-    case NODE_UNARY_OP:
-      count += count_ast_nodes(node->data.unary_op.operand);
-      break;
-
-    case NODE_BINARY_OP:
-      count += count_ast_nodes(node->data.binary_op.left);
-      count += count_ast_nodes(node->data.binary_op.right);
-      break;
-
-    case NODE_FUNCTION_CALL:
-      count += count_ast_nodes(node->data.function_call.args);
-      break;
-
-    case NODE_RETURN:
-      count += count_ast_nodes(node->data.return_node.value);
-      break;
-
-    case NODE_BLOCK:
-      count += count_ast_nodes(node->data.block.statements);
-      break;
-
-    case NODE_IF:
-      count += count_ast_nodes(node->data.if_node.condition);
-      count += count_ast_nodes(node->data.if_node.then_branch);
-      count += count_ast_nodes(node->data.if_node.else_branch);
-      break;
-
-    case NODE_WHILE:
-      count += count_ast_nodes(node->data.while_node.condition);
-      count += count_ast_nodes(node->data.while_node.body);
-      break;
-
-    case NODE_FOR:
-      count += TMPS_PER_AST_NODE; // For loop requires additional temp vars
-      count += count_ast_nodes(node->data.for_node.range_start);
-      count += count_ast_nodes(node->data.for_node.range_end);
-      count += count_ast_nodes(node->data.for_node.range_step);
-      count += count_ast_nodes(node->data.for_node.guards);
-      count += count_ast_nodes(node->data.for_node.body);
-      break;
-
-    case NODE_VALMEM_FIELD:
-      count += count_ast_nodes(node->data.valmem_field.receiver);
-      break;
-
-    default:
-      break;
-    }
-    node = node->next;
-  }
-  return count;
-}
-
-/**
  * @brief Looks up the innermost local variable or parameter by name
  *
  * Searches the active stack from newest to oldest to support shadowing
@@ -350,106 +155,43 @@ static const LocalVarEntry *scope_lookup(const CodeGenContext *ctx,
   return NULL;
 }
 
-/**
- * @brief Finds a function's AST data by name
- * @param program Root AST node of program
- * @param name Name of the function to find
- * @return Pointer to the function's ASTFunctionDefNodeData
- *         NULL if not found
- */
-static const ASTFunctionDefNodeData *find_function_def(const ASTNode *program,
-                                                       const char *name) {
-  const ASTNode *fn = program->data.program.functions;
-  while (fn != NULL) {
-    if (fn->node_type == NODE_FUNCTION_DEF &&
-        strcmp(fn->data.function_def.name, name) == 0) {
-      return &fn->data.function_def;
-    }
-    fn = fn->next;
-  }
+// Shared emission helpers
 
-  return NULL;
+/**
+ * @brief Determines if an AST node produces a value
+ * @param node AST node to inspect
+ * @return true if node produces a value
+ *         false if node is NULL or if the node doesn't produce a value
+ */
+static bool is_expression_node(const ASTNode *node) {
+  if (node == NULL) {
+    return false;
+  }
+  switch (node->node_type) {
+  case NODE_LITERAL:
+  case NODE_VARIABLE_REF:
+  case NODE_UNARY_OP:
+  case NODE_BINARY_OP:
+  case NODE_FUNCTION_CALL:
+  case NODE_VALMEM_FIELD:
+    return true;
+  case NODE_IF:
+    return (node->data.if_node.is_expr ||
+            (node->data.if_node.else_branch != NULL &&
+             node->data_type != UNIT && node->data_type != UNKNOWN)) != 0;
+  default:
+    return false;
+  }
 }
 
 /**
- * @brief Emits DEFVAR for all local variables in the function's body
- *
- * Hoists every local variable so IFJcode26 variables are never defined inside
- * loops.
- * Traversal order must stay identical to code generation so UIDs match
- *
+ * @brief Allocates the next unique temporary variable name
  * @param ctx Code generator context
- * @param node Root of the AST subtree to walk
- * @param uid_counter Running UID counter
+ * @param buf Output buffer for the name
  */
-static void emit_var_defs_walk(CodeGenContext *ctx, const ASTNode *node,
-                               int *uid_counter) {
-  while (node != NULL) {
-    switch (node->node_type) {
-
-    case NODE_VARIABLE_DEF:
-      fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.variable_def.name,
-              (*uid_counter)++);
-      if (node->data.variable_def.expr != NULL) {
-        emit_var_defs_walk(ctx, node->data.variable_def.expr, uid_counter);
-      }
-      break;
-
-    case NODE_ASSIGN:
-      emit_var_defs_walk(ctx, node->data.assign.right, uid_counter);
-      break;
-
-    case NODE_UNARY_OP:
-      emit_var_defs_walk(ctx, node->data.unary_op.operand, uid_counter);
-      break;
-
-    case NODE_BINARY_OP:
-      emit_var_defs_walk(ctx, node->data.binary_op.left, uid_counter);
-      emit_var_defs_walk(ctx, node->data.binary_op.right, uid_counter);
-      break;
-
-    case NODE_FUNCTION_CALL:
-      emit_var_defs_walk(ctx, node->data.function_call.args, uid_counter);
-      break;
-
-    case NODE_RETURN:
-      emit_var_defs_walk(ctx, node->data.return_node.value, uid_counter);
-      break;
-
-    case NODE_BLOCK:
-      emit_var_defs_walk(ctx, node->data.block.statements, uid_counter);
-      break;
-
-    case NODE_IF:
-      emit_var_defs_walk(ctx, node->data.if_node.condition, uid_counter);
-      emit_var_defs_walk(ctx, node->data.if_node.then_branch, uid_counter);
-      emit_var_defs_walk(ctx, node->data.if_node.else_branch, uid_counter);
-      break;
-
-    case NODE_WHILE:
-      emit_var_defs_walk(ctx, node->data.while_node.condition, uid_counter);
-      emit_var_defs_walk(ctx, node->data.while_node.body, uid_counter);
-      break;
-
-    case NODE_FOR:
-      emit_var_defs_walk(ctx, node->data.for_node.range_start, uid_counter);
-      emit_var_defs_walk(ctx, node->data.for_node.range_end, uid_counter);
-      emit_var_defs_walk(ctx, node->data.for_node.range_step, uid_counter);
-      fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.for_node.generator_name,
-              (*uid_counter)++);
-      emit_var_defs_walk(ctx, node->data.for_node.guards, uid_counter);
-      emit_var_defs_walk(ctx, node->data.for_node.body, uid_counter);
-      break;
-
-    case NODE_VALMEM_FIELD:
-      emit_var_defs_walk(ctx, node->data.valmem_field.receiver, uid_counter);
-      break;
-
-    default:
-      break;
-    }
-    node = node->next;
-  }
+static void new_tmp_var(CodeGenContext *ctx, char buf[TMP_VAR_BUF_SIZE]) {
+  int id = ctx->tmp_counter++;
+  snprintf(buf, TMP_VAR_BUF_SIZE, "$tmp_%d", id);
 }
 
 /**
@@ -479,6 +221,32 @@ static void pop_result(CodeGenContext *ctx, const char *dest_var) {
     char dummy[TMP_VAR_BUF_SIZE];
     new_tmp_var(ctx, dummy);
     fprintf(ctx->out, "POPS LF@%s\n", dummy);
+  }
+}
+
+// Expressions
+
+/**
+ * @brief Writes an IFJcode26 string literal with required escape codes
+ *
+ * Escapes characters with ASCII value <= 32, '#' and '\' as \xyz
+ *
+ * @param ctx Code generator context
+ * @param str String content to emit
+ */
+static void print_escaped_string(CodeGenContext *ctx, const char *str) {
+  fprintf(ctx->out, "string@");
+  if (str == NULL) {
+    return;
+  }
+
+  for (size_t i = 0; str[i] != '\0'; i++) {
+    unsigned char c = (unsigned char)str[i];
+    if (c <= ' ' || c == '#' || c == '\\') {
+      fprintf(ctx->out, "\\%03d", c);
+    } else {
+      fputc(c, ctx->out);
+    }
   }
 }
 
@@ -562,6 +330,47 @@ static void expression_unary_op(CodeGenContext *ctx, const ASTNode *expr,
       fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, op_tmp);
     }
   }
+}
+
+/**
+ * @brief Checks if a function name refers to an IFJcode26 library function
+ * @param name Function name to check
+ * @return true if the name matches a library function
+ *         false otherwise
+ */
+static bool is_builtin_func(const char *name) {
+  static const char *const builtins[] = {
+      "print",     "readLine", "readInt", "readDouble", "toStr",       "toInt",
+      "strLength", "subStr",   "ord",     "chr",        "readBoolean", NULL,
+  };
+
+  for (int i = 0; builtins[i] != NULL; i++) {
+    if (strcmp(name, builtins[i]) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Finds a function's AST data by name
+ * @param program Root AST node of program
+ * @param name Name of the function to find
+ * @return Pointer to the function's ASTFunctionDefNodeData
+ *         NULL if not found
+ */
+static const ASTFunctionDefNodeData *find_function_def(const ASTNode *program,
+                                                       const char *name) {
+  const ASTNode *fn = program->data.program.functions;
+  while (fn != NULL) {
+    if (fn->node_type == NODE_FUNCTION_DEF &&
+        strcmp(fn->data.function_def.name, name) == 0) {
+      return &fn->data.function_def;
+    }
+    fn = fn->next;
+  }
+
+  return NULL;
 }
 
 /**
@@ -868,6 +677,8 @@ static void generate_expression(CodeGenContext *ctx, const ASTNode *expr,
   }
 }
 
+// Statements
+
 /**
  * @brief Evaluates a return expression and pushes it onto the stack
  *
@@ -1041,6 +852,7 @@ static void statement_for(CodeGenContext *ctx, const ASTNode *statement) {
   new_tmp_var(ctx, step_tmp);
   new_tmp_var(ctx, cond_tmp);
 
+  // Evaluate range bounds and step
   generate_expression(ctx, for_node->range_start, start_tmp);
   generate_expression(ctx, for_node->range_end, end_tmp);
   if (for_node->range_step != NULL) {
@@ -1062,6 +874,7 @@ static void statement_for(CodeGenContext *ctx, const ASTNode *statement) {
   const char *gen_name = for_node->generator_name;
   fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", gen_name, gen_uid, start_tmp);
 
+  // Check loop termination for positive or negative step
   fprintf(ctx->out, "LABEL $for_start_%d\n", id);
   fprintf(ctx->out, "LT LF@%s LF@%s int@0\n", cond_tmp, step_tmp);
   fprintf(ctx->out, "JUMPIFEQ $for_neg_%d LF@%s bool@true\n", id, cond_tmp);
@@ -1088,6 +901,7 @@ static void statement_for(CodeGenContext *ctx, const ASTNode *statement) {
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@false\n", id, cond_tmp);
   }
 
+  // Evaluate loop guards
   fprintf(ctx->out, "LABEL $for_guards_%d\n", id);
   ASTNode *guard = for_node->guards;
   while (guard != NULL) {
@@ -1096,6 +910,7 @@ static void statement_for(CodeGenContext *ctx, const ASTNode *statement) {
     guard = guard->next;
   }
 
+  // Evaluate loop body
   generate_statement(ctx, for_node->body);
   fprintf(ctx->out, "LABEL $for_step_%d\n", id);
   fprintf(ctx->out, "ADD LF@%s$%d LF@%s$%d LF@%s\n", gen_name, gen_uid,
@@ -1192,6 +1007,161 @@ static void generate_statement(CodeGenContext *ctx, const ASTNode *statement) {
 
   default:
     break;
+  }
+}
+
+// Functions
+
+/**
+ * @brief Estimates how many temporary variables are needed for an AST subtree
+ * @param node AST node list to traverse
+ * @return Estimated number of temporary variables
+ */
+static int count_ast_nodes(const ASTNode *node) {
+  int count = 0;
+  while (node != NULL) {
+    count += TMPS_PER_AST_NODE;
+    switch (node->node_type) {
+
+    case NODE_VARIABLE_DEF:
+      count += count_ast_nodes(node->data.variable_def.expr);
+      break;
+
+    case NODE_ASSIGN:
+      count += count_ast_nodes(node->data.assign.right);
+      break;
+
+    case NODE_UNARY_OP:
+      count += count_ast_nodes(node->data.unary_op.operand);
+      break;
+
+    case NODE_BINARY_OP:
+      count += count_ast_nodes(node->data.binary_op.left);
+      count += count_ast_nodes(node->data.binary_op.right);
+      break;
+
+    case NODE_FUNCTION_CALL:
+      count += count_ast_nodes(node->data.function_call.args);
+      break;
+
+    case NODE_RETURN:
+      count += count_ast_nodes(node->data.return_node.value);
+      break;
+
+    case NODE_BLOCK:
+      count += count_ast_nodes(node->data.block.statements);
+      break;
+
+    case NODE_IF:
+      count += count_ast_nodes(node->data.if_node.condition);
+      count += count_ast_nodes(node->data.if_node.then_branch);
+      count += count_ast_nodes(node->data.if_node.else_branch);
+      break;
+
+    case NODE_WHILE:
+      count += count_ast_nodes(node->data.while_node.condition);
+      count += count_ast_nodes(node->data.while_node.body);
+      break;
+
+    case NODE_FOR:
+      count += TMPS_PER_AST_NODE; // For loop requires additional temp vars
+      count += count_ast_nodes(node->data.for_node.range_start);
+      count += count_ast_nodes(node->data.for_node.range_end);
+      count += count_ast_nodes(node->data.for_node.range_step);
+      count += count_ast_nodes(node->data.for_node.guards);
+      count += count_ast_nodes(node->data.for_node.body);
+      break;
+
+    case NODE_VALMEM_FIELD:
+      count += count_ast_nodes(node->data.valmem_field.receiver);
+      break;
+
+    default:
+      break;
+    }
+    node = node->next;
+  }
+  return count;
+}
+
+/**
+ * @brief Emits DEFVAR for all local variables in the function's body
+ *
+ * Hoists every local variable so IFJcode26 variables are never defined inside
+ * loops.
+ * Traversal order must stay identical to code generation so UIDs match
+ *
+ * @param ctx Code generator context
+ * @param node Root of the AST subtree to walk
+ * @param uid_counter Running UID counter
+ */
+static void emit_var_defs_walk(CodeGenContext *ctx, const ASTNode *node,
+                               int *uid_counter) {
+  while (node != NULL) {
+    switch (node->node_type) {
+
+    case NODE_VARIABLE_DEF:
+      fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.variable_def.name,
+              (*uid_counter)++);
+      if (node->data.variable_def.expr != NULL) {
+        emit_var_defs_walk(ctx, node->data.variable_def.expr, uid_counter);
+      }
+      break;
+
+    case NODE_ASSIGN:
+      emit_var_defs_walk(ctx, node->data.assign.right, uid_counter);
+      break;
+
+    case NODE_UNARY_OP:
+      emit_var_defs_walk(ctx, node->data.unary_op.operand, uid_counter);
+      break;
+
+    case NODE_BINARY_OP:
+      emit_var_defs_walk(ctx, node->data.binary_op.left, uid_counter);
+      emit_var_defs_walk(ctx, node->data.binary_op.right, uid_counter);
+      break;
+
+    case NODE_FUNCTION_CALL:
+      emit_var_defs_walk(ctx, node->data.function_call.args, uid_counter);
+      break;
+
+    case NODE_RETURN:
+      emit_var_defs_walk(ctx, node->data.return_node.value, uid_counter);
+      break;
+
+    case NODE_BLOCK:
+      emit_var_defs_walk(ctx, node->data.block.statements, uid_counter);
+      break;
+
+    case NODE_IF:
+      emit_var_defs_walk(ctx, node->data.if_node.condition, uid_counter);
+      emit_var_defs_walk(ctx, node->data.if_node.then_branch, uid_counter);
+      emit_var_defs_walk(ctx, node->data.if_node.else_branch, uid_counter);
+      break;
+
+    case NODE_WHILE:
+      emit_var_defs_walk(ctx, node->data.while_node.condition, uid_counter);
+      emit_var_defs_walk(ctx, node->data.while_node.body, uid_counter);
+      break;
+
+    case NODE_FOR:
+      emit_var_defs_walk(ctx, node->data.for_node.range_start, uid_counter);
+      emit_var_defs_walk(ctx, node->data.for_node.range_end, uid_counter);
+      emit_var_defs_walk(ctx, node->data.for_node.range_step, uid_counter);
+      fprintf(ctx->out, "DEFVAR LF@%s$%d\n", node->data.for_node.generator_name,
+              (*uid_counter)++);
+      emit_var_defs_walk(ctx, node->data.for_node.guards, uid_counter);
+      emit_var_defs_walk(ctx, node->data.for_node.body, uid_counter);
+      break;
+
+    case NODE_VALMEM_FIELD:
+      emit_var_defs_walk(ctx, node->data.valmem_field.receiver, uid_counter);
+      break;
+
+    default:
+      break;
+    }
+    node = node->next;
   }
 }
 
@@ -1296,6 +1266,8 @@ static void generate_function(CodeGenContext *ctx, const ASTNode *fn_node) {
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
 }
+
+// Built in Library
 
 /**
  * @brief Emits the $ifj_print built-in function
@@ -1619,6 +1591,52 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   builtin_chr(ctx);
   builtin_readBoolean(ctx);
   builtin_floor(ctx);
+}
+
+// Entry point
+
+/**
+ * @brief Searches the AST for the @main function
+ * @param program Root AST node of the program
+ * @param out Output parameter that gets the main function's name or NULL if it
+ * isn't named
+ * @return true if main is named
+ *         false if main is unnamed
+ */
+static bool find_main_function(const ASTNode *program, const char **out) {
+  *out = NULL;
+  const ASTNode *function = program->data.program.functions;
+
+  while (function != NULL) {
+    const ASTFunctionDefNodeData *func_data = &function->data.function_def;
+    if (func_data->is_main) {
+      *out = func_data->name;
+      return true;
+    }
+    function = function->next;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Emits the IFJcode26 header, call to the main function and a program
+ * exit
+ * @param ctx Code generator context
+ * @return true on success
+ *         false if there is no main function in the AST
+ */
+static bool generate_prolog(CodeGenContext *ctx) {
+  const char *main_name = NULL;
+  if (!find_main_function(ctx->program, &main_name)) {
+    return false;
+  }
+
+  fprintf(ctx->out, ".IFJcode26\n");
+  fprintf(ctx->out, "CALL $fn_%s\n", main_name);
+  fprintf(ctx->out, "EXIT int@0\n\n");
+
+  return true;
 }
 
 ReturnCodes generate_code(ASTNode *program, FILE *out) {
