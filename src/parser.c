@@ -13,6 +13,7 @@
 #include "scanner.h"
 #include "symbol.h"
 #include "tokens.h"
+#include <_stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -944,6 +945,14 @@ static bool parse_interp_parts(Parser *parser, ASTNode **acc);
  */
 static bool parse_interp_part(Parser *parser, ASTNode **part);
 
+static bool parse_extension(Parser *parser);
+
+static bool parse_ext_def(Parser *parser, const char *reciever_name,
+                          DataType reciever_type);
+
+static bool parse_ext_defs(Parser *parser, const char *reciever_name,
+                           DataType reciever_type);
+
 /**
  * @brief Builds a call of toStr with one argument
  *
@@ -1015,6 +1024,12 @@ static bool parse_defs(Parser *parser) {
 
   } else if (parser->current_token.type == TOKEN_EOF) {
     correct = true;
+  } else if (parser->current_token.type == TOKEN_KW_EXTENSION) {
+    correct = parse_extension(parser);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_defs(parser);
   } else {
     syntax_error(parser, "Syntactic error: Invalid function definition.");
   }
@@ -2492,6 +2507,138 @@ static bool parse_interp_part(Parser *parser, ASTNode **part) {
     syntax_error(parser,
                  "Syntactic error: Invalid syntax inside expression in an "
                  "interpolated string.");
+  }
+  return correct;
+}
+
+static bool parse_extension(Parser *parser) {
+  bool correct = false;
+  char *name = NULL;
+  DataType type = UNKNOWN;
+
+  if (!(expect(parser, TOKEN_KW_EXTENSION) && expect(parser, TOKEN_OPEN_PAR))) {
+    syntax_error(parser, "Syntactic error: Invalid extension definition.");
+    return false;
+  }
+  if (parser->current_token.type != TOKEN_ID) {
+    syntax_error(parser, "Syntactic error: Missing id in extension definition");
+    return false;
+  }
+  name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+  if (!parser_advance(parser)) {
+    free(name);
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_COLON)) {
+    syntax_error(parser, "Syntactic error: Missing : in extension receiver.");
+    free(name);
+    return false;
+  }
+
+  correct = parse_type(parser, &type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+
+  if (!(expect(parser, TOKEN_CLOSE_PAR) && expect(parser, TOKEN_EOL) &&
+        expect(parser, TOKEN_INDENT))) {
+    free(name);
+    syntax_error(parser, "Syntactic error: Invalid extension definition.");
+    return false;
+  }
+  correct = parse_ext_def(parser, name, type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+
+  correct = parse_ext_defs(parser, name, type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+  if (!expect(parser, TOKEN_DEDENT)) {
+    free(name);
+    syntax_error(parser,
+                 "Syntactic error: Missing dedent after extension definition.");
+    return false;
+  }
+  free(name);
+  return correct;
+}
+
+static bool parse_ext_def(Parser *parser, const char *reciever_name,
+                          DataType reciever_type) {
+  bool correct = false;
+  char *method_name = NULL;
+  const unsigned int line = parser->current_token.line;
+
+  if (!(expect(parser, TOKEN_KW_DEF) &&
+        parser->current_token.type == TOKEN_ID)) {
+    syntax_error(parser,
+                 "Syntactic error: Invalid function definition in extension.");
+    return false;
+  }
+  method_name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+  if (!parser_advance(parser)) {
+    free(method_name);
+    return false;
+  }
+
+  ASTNode *method = ast_init_func_def(method_name, false, line);
+  if (method == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  ast_ll_append(&parser->program->data.program.functions, method);
+
+  char *copy = malloc(strlen(reciever_name) + 1);
+  if (copy == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  strcpy(copy, reciever_name);
+  method->data.function_def.receiver =
+      (FunctionParam){.name = copy, .data_type = reciever_type};
+
+  correct = parse_param_list(parser, method);
+  if (!correct) {
+    return false;
+  }
+
+  correct = parse_type_decl(parser, &method->data.function_def.return_type);
+  if (!correct) {
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_ASSIGN)) {
+    syntax_error(parser, "Syntactic error: Missing = in method definition.");
+    return false;
+  }
+
+  correct = parse_def_ex(parser, method);
+
+  return correct;
+}
+
+static bool parse_ext_defs(Parser *parser, const char *reciever_name,
+                           DataType reciever_type) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_KW_DEF) {
+    correct = parse_ext_def(parser, reciever_name, reciever_type);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_ext_defs(parser, reciever_name, reciever_type);
+  } else if (parser->current_token.type == TOKEN_DEDENT) {
+    correct = true;
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Missing dedent after extension definition.");
   }
   return correct;
 }
