@@ -733,7 +733,7 @@ static void expression_binary_op(CodeGenContext *ctx, ASTNode *expr,
   generate_expression(ctx, bin->left, left_tmp);
   generate_expression(ctx, bin->right, right_tmp);
 
-  if (dest_var == NULL) {
+  if (dest_var == NULL && op != OP_DIV) { // if the OP_DIV check wasn't here the code would sometimes not run into divide by zero errors since if dest_var == NULL it would be skipped
     return;
   }
 
@@ -755,8 +755,9 @@ static void expression_binary_op(CodeGenContext *ctx, ASTNode *expr,
             right_tmp);
     break;
   case OP_DIV: {
+    const char *target = (dest_var != NULL) ? dest_var : left_tmp; // second part of dest_var == NULL divide by zero skipping
     inst = (expr->data_type == INT) ? "IDIV" : "DIV";
-    fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, dest_var, left_tmp,
+    fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, target, left_tmp,
             right_tmp);
     break;
   }
