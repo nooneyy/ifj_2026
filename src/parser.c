@@ -967,6 +967,13 @@ static bool build_to_str(Parser *parser, ASTNode *arg, unsigned int line,
  */
 static bool parse_expr(Parser *parser, ASTNode **out);
 
+static bool parse_interpolateds(Parser *parser, ASTNode **out) {
+  // placeholder
+  *out = NULL;
+  syntax_error(parser, "unimplemented");
+  return false;
+}
+
 static bool parse_program(Parser *parser) {
   bool correct = false;
   if (!expect(parser, TOKEN_KW_IMPORT)) {
@@ -3113,6 +3120,29 @@ static bool parse_expr(Parser *parser, ASTNode **out) {
       }
 
       ret = prec_stack_push(ps, (PrecItem){.type = PREC_EXPR, .expr = if_node});
+
+      if (ret != RETURN_SUCCESS) {
+        parser->rc = ERR_INTERNAL;
+        prec_stack_free(ps);
+        return false;
+      }
+
+      prev_terminal = PREC_OPERAND;
+      continue;
+    }
+
+    if (parser->current_token.type == TOKEN_INTERP_BEGIN) {
+      // INTERPOLATEDS extension
+      ASTNode *interpolateds_node = NULL;
+      bool correct = parse_interpolateds(parser, &interpolateds_node);
+
+      if (!correct) {
+        prec_stack_free(ps);
+        return false;
+      }
+
+      ret = prec_stack_push(
+          ps, (PrecItem){.type = PREC_EXPR, .expr = interpolateds_node});
 
       if (ret != RETURN_SUCCESS) {
         parser->rc = ERR_INTERNAL;
