@@ -1,0 +1,40 @@
+/**
+ * @file interp_places.ifj
+ * @brief Interpolated strings in places of an expression
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create parser tests for INTERPOLATED extension from the specification.
+ * Format of the tests must be the same as with all other files in tests/. Base
+ * the tests entirely on the specification and other tests."
+ * (context: parser tests for the INTERPOLATEDS extension, derived from the
+ * IFJ26 spec, section 5.6; an interpolated string is built as a concatenation
+ * of its parts with +, every $id and ${expr} is wrapped in a call of toStr,
+ * as the spec converts every inserted value the same way as toStr does)
+ */
+// an interpolated string is an expression, so it can be anywhere an
+// expression can: initialization, assignment, function body, return,
+// argument, operand, parentheses, if-expression branch (spec 5.6) -> 0
+import ifj26.*
+def greet(name: String): String = s"Hello $name"
+def label(n: Int): String =
+  return s"n = $n"
+@main def main(): Unit =
+  val n = 26
+  var t: String = s"first"
+  t = s"second $n"
+  print(greet(s"IFJ$n"))
+  val sum = s"$n" + s"${n + 1}" + "plain"
+  val par = (s"in $n") + t
+  val cond = if n > 1 then s"big $n" else s"small"
+  if s"$n" == "26" then
+    print(s"equal")
+  print(label(n))

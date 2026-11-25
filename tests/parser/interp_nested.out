@@ -1,0 +1,41 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val x : ?
+        LITERAL Int 1
+      CALL print
+        BINARY_OP +
+          BINARY_OP +
+            LITERAL String "outer "
+            CALL toStr
+              BINARY_OP +
+                LITERAL String "inner "
+                CALL toStr
+                  VAR_REF x
+          LITERAL String " outer"
+      CALL print
+        BINARY_OP +
+          BINARY_OP +
+            LITERAL String "a "
+            CALL toStr
+              BINARY_OP +
+                LITERAL String "b "
+                CALL toStr
+                  BINARY_OP +
+                    LITERAL String "c "
+                    CALL toStr
+                      VAR_REF x
+          LITERAL String " d"
+      CALL print
+        CALL toStr
+          LITERAL String ""
+      CALL print
+        BINARY_OP +
+          BINARY_OP +
+            LITERAL String "multi "
+            CALL toStr
+              BINARY_OP +
+                LITERAL String "one "
+                CALL toStr
+                  VAR_REF x
+          LITERAL String " line"

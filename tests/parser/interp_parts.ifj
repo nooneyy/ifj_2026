@@ -1,0 +1,38 @@
+/**
+ * @file interp_parts.ifj
+ * @brief Parts of an interpolated string and how they are joined
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create parser tests for INTERPOLATED extension from the specification.
+ * Format of the tests must be the same as with all other files in tests/. Base
+ * the tests entirely on the specification and other tests."
+ * (context: parser tests for the INTERPOLATEDS extension, derived from the
+ * IFJ26 spec, section 5.6; an interpolated string is built as a concatenation
+ * of its parts with +, every $id and ${expr} is wrapped in a call of toStr,
+ * as the spec converts every inserted value the same way as toStr does)
+ */
+// text, $id, ${expr} and $$ in every order: a string without parts is "",
+// one part stays alone, more parts are joined with + from the left (spec 5.6)
+// -> 0
+import ifj26.*
+@main def main(): Unit =
+  val x = 1
+  val empty = s""
+  val text = s"just text"
+  val dollar = s"$$"
+  val id = s"$x"
+  val expr = s"${x}"
+  val front = s"$x is first"
+  val back = s"last is $x"
+  val middle = s"a $x b"
+  val glued = s"$x$x${x}"
+  val dollars = s"$$$x$$"
