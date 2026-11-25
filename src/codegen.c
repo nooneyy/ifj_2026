@@ -1383,6 +1383,10 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
     } else {
       ASTNode *s = fn->body->data.block.statements;
       while (s != NULL) {
+        if (s == NULL) {
+          fprintf(ctx->out, "PUSHS nil@nil\n");
+        }
+
         if (s->next == NULL && is_expression_node(s)) {
           emit_return_expr(ctx, s, fn->return_type);
         } else {
@@ -1424,8 +1428,10 @@ ReturnCodes generate_code(ASTNode *program, FILE *out) {
     function = function->next;
   }
 
-  generate_builtin_library(&ctx);
-
+  if (!ctx.has_error) {
+    generate_builtin_library(&ctx);
+  }
+  
   free(ctx.vars);
   return ctx.has_error ? ERR_INTERNAL : RETURN_SUCCESS;
 }
