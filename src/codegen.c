@@ -1393,11 +1393,11 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
       emit_return_expr(ctx, fn->body, fn->return_type);
     } else {
       ASTNode *s = fn->body->data.block.statements;
-      while (s != NULL) {
-        if (s == NULL) {
-          fprintf(ctx->out, "PUSHS nil@nil\n");
-        }
 
+      if (s == NULL) {
+          fprintf(ctx->out, "PUSHS nil@nil\n");
+      }
+      while (s != NULL) {
         if (s->next == NULL && is_expression_node(s)) {
           emit_return_expr(ctx, s, fn->return_type);
         } else {
@@ -1434,7 +1434,7 @@ ReturnCodes generate_code(ASTNode *program, FILE *out) {
   }
 
   ASTNode *function = program->data.program.functions;
-  while (function != NULL) {
+  while (function != NULL && !ctx.has_error) {
     generate_function(&ctx, function);
     function = function->next;
   }
