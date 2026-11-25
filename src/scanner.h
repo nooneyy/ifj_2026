@@ -20,6 +20,19 @@
 #define MAX_INDENT_LEVELS 64
 
 /**
+ * @brief Maximum number of nested interpolated strings
+ */
+#define MAX_INTERP_DEPTH 16
+
+/**
+ * @brief State of one open interpolated string (INTERPOLATEDS)
+ */
+typedef struct InterpLevel {
+  bool ml;   // s""" (multi-line) or s" (one-line)
+  bool expr; // currently inside ${ ... }
+} InterpLevel;
+
+/**
  * @brief Scanner's own state, surviving between calls
  */
 typedef struct Scanner {
@@ -38,10 +51,11 @@ typedef struct Scanner {
                     // consumed to look ahead
   bool interp_text; // the next token continues the text of an interpolated
                     // string
-  bool interp_ml;   // ...of a multi-line one (s""")
-  bool has_pending; // A flag that determines whether a token decided earlier
-                    // must be returned right away
-  bool interp_expr; // inside ${ ... } of an interpolated string
+  InterpLevel interp[MAX_INTERP_DEPTH]; // open interpolated strings,
+                                        // the innermost is the last one
+  int interp_depth;                     // number of open interpolated strings
+  bool has_pending;  // A flag that determines whether a token decided earlier
+                     // must be returned right away
   TokenType pending; // The token to return when has_pending is set
   unsigned int line; // Line the scanner is currently on
 } Scanner;

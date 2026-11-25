@@ -310,6 +310,37 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
 }
 
 /**
+ * @brief Opens a new interpolated string level (s" or s""")
+ *
+ * @param sc Scanner struct filled with scanner's current state
+ * @param ml true for a multi-line interpolated string (s"""), else false
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_INTERNAL if there are too many nested interpolated strings
+ */
+static ReturnCodes interp_push(Scanner *sc, bool ml) {
+  if (sc->interp_depth == MAX_INTERP_DEPTH) {
+    print_error("Too deeply nested interpolated strings.", sc->line);
+    return ERR_INTERNAL;
+  }
+  sc->interp[sc->interp_depth] = (InterpLevel){.ml = ml, .expr = false};
+  sc->interp_depth++;
+  return RETURN_SUCCESS;
+}
+
+/**
+ * @brief Returns the innermost open interpolated string
+ *
+ * Must be called only if at least one interpolated string is open
+ * (sc->interp_depth > 0).
+ *
+ * @param sc Scanner struct filled with scanner's current state
+ * @return Pointer to the innermost open interpolated string's level
+ */
+static InterpLevel *interp_top(Scanner *sc) {
+  return &sc->interp[sc->interp_depth - 1];
+}
+
+/**
  * @brief Reading source file and creating a token
  *
  * Reads sc->src char by char and moves through the FSM states
@@ -350,7 +381,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
     if (rc != RETURN_SUCCESS) {
       return rc;
     }
-    if (sc->interp_ml) {
+    if (interp_top(sc)->ml) {
       state = STATE_STR_ML;
     } else {
       state = STATE_STR;
@@ -497,8 +528,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_CLOSE_PAR;
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
-      } else if (c == '}' && sc->interp_expr) {
-        sc->interp_expr = false;
+      } else if (c == '}' && sc->interp_depth > 0 && interp_top(sc)->expr) {
+        interp_top(sc)->expr = false;
         sc->interp_text = true;
         if (sc->parenth_depth > 0) {
           sc->parenth_depth--;
@@ -535,7 +566,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == EOF) {
-        if (sc->interp_expr) {
+        if (sc->interp_depth > 0) {
           print_error("Lexical error: Unterminated interpolated string.",
                       sc->line);
           return ERR_LEX_ANA;
@@ -1014,9 +1045,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
             dynstr_free(&str);
             sc->interp_text = false;
             token_to_fill->type = TOKEN_INTERP_END;
+            sc->interp_depth--;
           } else {
             sc->has_pending = true;
             sc->pending = TOKEN_INTERP_END;
+            sc->interp_depth--;
             sc->interp_text = false;
             token_to_fill->type = TOKEN_STRING;
             token_to_fill->content.string = dynstr_take(&str);
@@ -1036,7 +1069,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         if (c == '{') {
           sc->interp_text = false;
-          sc->interp_expr = true;
+          interp_top(sc)->expr = true;
           sc->parenth_depth++;
           if (strcmp(str.data, "") == 0) {
             dynstr_free(&str);
@@ -1093,7 +1126,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
           }
           if (c == '{') {
             sc->interp_text = false;
-            sc->interp_expr = true;
+            interp_top(sc)->expr = true;
             sc->parenth_depth++;
             if (strcmp(str.data, "") == 0) {
               dynstr_free(&str);
@@ -1147,9 +1180,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
             dynstr_free(&str);
             sc->interp_text = false;
             token_to_fill->type = TOKEN_INTERP_END;
+            sc->interp_depth--;
           } else {
             sc->has_pending = true;
             sc->pending = TOKEN_INTERP_END;
+            sc->interp_depth--;
             sc->interp_text = false;
             token_to_fill->type = TOKEN_STRING;
             token_to_fill->content.string = dynstr_take(&str);
@@ -1238,7 +1273,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == '\"') {
         state = STATE_INTERP_2_QUOT;
       } else {
-        sc->interp_ml = false;
+        rc = interp_push(sc, false);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
         sc->interp_text = true;
         token_to_fill->type = TOKEN_INTERP_BEGIN;
         token_to_fill->line = sc->line;
@@ -1251,7 +1289,10 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (c == '\"') {
         token_to_fill->type = TOKEN_INTERP_BEGIN;
         token_to_fill->line = sc->line;
-        sc->interp_ml = true;
+        rc = interp_push(sc, true);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
         sc->interp_text = true;
         return RETURN_SUCCESS;
       } else {

@@ -71,7 +71,7 @@ typedef enum TokenType {
   TOKEN_INTERP_BEGIN, // s" or s"""
   TOKEN_INTERP_END,   // " after s" or """ after s"""
   TOKEN_INTERP_EXPR_BEGIN, // ${ inside an interpolated string
-  TOKEN_INTERP_EXPR_END, // } closing ${
+  TOKEN_INTERP_EXPR_END,   // } closing ${
 } TokenType;
 
 /**
