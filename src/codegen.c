@@ -17,8 +17,6 @@
 #define INITIAL_VAR_CAP 16
 #define TMPS_PER_AST_NODE 2
 #define EXTRA_TMP_SLOTS 4
-#define IFJ_PREFIX "ifj."
-#define IFJ_PREFIX_LEN (sizeof(IFJ_PREFIX) - 1)
 
 /**
  * @brief Represents a local variable
@@ -52,20 +50,16 @@ static const char *binop_instr_table[] = {
     [OP_LT] = "LT",   [OP_GT] = "GT",
 };
 
-static const char *unop_instr_table[] = {
-    [OP_NOT] = "NOT",
-};
-
 #define BINOP_TABLE_SIZE                                                       \
-  (sizeof(binop_instr_table) / sizeof(binop_instr_table[0]))
-#define UNOP_TABLE_SIZE (sizeof(unop_instr_table) / sizeof(unop_instr_table[0]))
+(sizeof(binop_instr_table) / sizeof(binop_instr_table[0]))
+
 
 // Forward declarations
 static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
                                 const char *dest_var);
 
 static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
-                               DataType func_ret_type);
+                                DataType func_ret_type);
 // Forward declarations end
 
 /**
@@ -186,11 +180,8 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "DEFVAR LF@type\n");
   fprintf(ctx->out, "TYPE LF@type LF@val\n");
   fprintf(ctx->out, "DEFVAR LF@res\n");
-  fprintf(ctx->out, "DEFVAR LF@cond\n");
-  fprintf(ctx->out, "EQ LF@cond LF@type string@int\n");
-  fprintf(ctx->out, "JUMPIFEQ $toStr_int LF@cond bool@true\n");
-  fprintf(ctx->out, "EQ LF@cond LF@type string@float\n");
-  fprintf(ctx->out, "JUMPIFEQ $toStr_float LF@cond bool@true\n");
+  fprintf(ctx->out, "JUMPIFEQ $toStr_int LF@type string@int\n");
+  fprintf(ctx->out, "JUMPIFEQ $toStr_float LF@type string@float\n");
   fprintf(ctx->out, "JUMPIFEQ $ifj_toStr_unit LF@type string@nil\n");
   fprintf(ctx->out, "JUMPIFEQ $ifj_toStr_bool LF@type string@bool\n");
   fprintf(ctx->out, "MOVE LF@res LF@val\n");
@@ -257,8 +248,7 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "MOVE LF@k LF@i\n");
   fprintf(ctx->out, "DEFVAR LF@char\n");
   fprintf(ctx->out, "LABEL $subStr_loop\n");
-  fprintf(ctx->out, "EQ LF@cond LF@k LF@j\n");
-  fprintf(ctx->out, "JUMPIFEQ $subStr_done LF@cond bool@true\n");
+  fprintf(ctx->out, "JUMPIFEQ $subStr_done LF@k LF@j\n");
   fprintf(ctx->out, "GETCHAR LF@char LF@s LF@k\n");
   fprintf(ctx->out, "CONCAT LF@res LF@res LF@char\n");
   fprintf(ctx->out, "ADD LF@k LF@k int@1\n");
@@ -970,9 +960,8 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
         const char *zero =
             (expr->data_type == DOUBLE) ? "float@0x0p+0" : "int@0";
         fprintf(ctx->out, "SUB LF@%s %s LF@%s\n", dest_var, zero, op_tmp);
-      } else if (op < UNOP_TABLE_SIZE && unop_instr_table[op] != NULL) {
-        fprintf(ctx->out, "%s LF@%s LF@%s\n", unop_instr_table[op], dest_var,
-                op_tmp);
+      } else if (op == OP_NOT) {
+        fprintf(ctx->out, "NOT LF@%s LF@%s\n", dest_var, op_tmp);
       }
     }
     break;
@@ -1005,9 +994,7 @@ static void generate_expression(CodeGenContext *ctx, ASTNode *expr,
     }
 
     const char *name = expr->data.function_call.name;
-    if (strncmp(name, IFJ_PREFIX, IFJ_PREFIX_LEN) == 0) {
-      fprintf(ctx->out, "CALL $ifj_%s\n", name + IFJ_PREFIX_LEN);
-    } else if (is_builtin_func(name)) {
+    if (is_builtin_func(name)) {
       fprintf(ctx->out, "CALL $ifj_%s\n", name);
     } else {
       fprintf(ctx->out, "CALL $fn_%s\n", name);
