@@ -144,7 +144,7 @@ static const char PREC_TABLE[PREC_TABLE_SIZE][PREC_TABLE_SIZE] = {
         },
     [PREC_DOT] =
         {
-            '=', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+            '=', '=', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
             ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
         },
     [PREC_DELIM] =
@@ -2882,6 +2882,113 @@ static bool is_expr(PrecItem item) {
 }
 
 /**
+ * @brief Verifies whether the function/method call starting from item_idx and
+ * ending at last_idx is the correct shape
+ * @param parser Pointer to the Parser struct
+ * @param ps Pointer to the Precedence stack
+ * @param item_idx The precedence item that starts the arguments ['(']
+ * @param last_idx The precedence item that ends the call
+ * @return true on success, else false with the syntax error already reported
+ */
+static bool prec_verify_call_args(Parser *parser, PrecStack *ps,
+                                  size_t item_idx, size_t last_idx) {
+  while (item_idx <= last_idx) {
+    if (!is_terminal(ps->items[item_idx], PREC_LPAREN)) {
+      // First item is not LPAREN
+      syntax_error(parser, "Syntactic error: wrong function "
+                           "call, expected LPAREN, got something else");
+      return false;
+    }
+    item_idx++;
+
+    if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+      // () -> list with no arguments
+      item_idx++;
+      continue; // Skip inner checks
+    }
+
+    while (true) {
+      if (!is_expr(ps->items[item_idx])) {
+        // Odd item in arg list is not E
+        syntax_error(parser, "Syntactic error: wrong arguments inside function "
+                             "call, expected expr, got something else");
+        return false;
+      }
+      item_idx++;
+
+      if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+        // ')', list done
+        item_idx++;
+        break;
+      }
+
+      if (!is_terminal(ps->items[item_idx], PREC_COMMA)) {
+        // Even item in arg list is not comma
+        syntax_error(parser, "Syntactic error: wrong arguments inside "
+                             "function call, expected ',', got something else");
+        return false;
+      }
+      item_idx++;
+
+      if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+        if (!ps->items[item_idx].terminal_token.lf_before) {
+          // Comma before RPAREN -> LF_BEFORE must be true
+          syntax_error(parser, "Syntactic error: trailing comma inside "
+                               "function call not allowed");
+          return false;
+        }
+
+        item_idx++;
+        break;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * @brief Adds the parsed arg lists to the function/method call node
+ * @param f_node Pointer to the function call/valmem field node to add the args
+ * into
+ * @param ps Pointer to the precedence stack
+ * @param first_idx The precedence item that starts the arguments ['(']
+ * @param last_idx The precedence item that ends the call
+ * @return RETURN_SUCCESS on success, or ERR_INTERNAL in case of wrong nodes
+ * passed in/memory allocation etc. (args and f_node get freed)
+ */
+static ReturnCodes prec_add_arg_lists(ASTNode *f_node, PrecStack *ps,
+                                      size_t first_idx, size_t last_idx) {
+  ReturnCodes ret = RETURN_SUCCESS;
+
+  for (size_t item_idx = first_idx; item_idx < last_idx; item_idx++) {
+    // Looping from the first item to the last item...
+
+    PrecItem item = ps->items[item_idx];
+
+    if (is_terminal(item, PREC_LPAREN)) {
+      // '(', start new list
+      ret = ast_func_call_new_arg_list(f_node);
+    } else if (is_expr(item)) {
+      // E, add argument
+      ret = ast_func_call_add_arg(f_node, item.expr);
+    }
+
+    if (ret != RETURN_SUCCESS) {
+      // Something failed, free the rest of the arguments
+      for (size_t arg_idx = item_idx + 1; arg_idx < last_idx; arg_idx++) {
+        PrecItem maybe_arg_item = ps->items[arg_idx];
+        if (is_expr(maybe_arg_item)) {
+          ast_free(maybe_arg_item.expr);
+        }
+      }
+      return ret;
+    }
+  }
+  return ret;
+}
+
+/**
  * @brief Reduces the items from the top of the stack into an expression
  * until the '<' terminal, then pushes the result onto the stack
  * @param parser Pointer to the parser struct
@@ -3093,58 +3200,8 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
     }
 
     // Check for correct function call shape
-    while (item_idx <= last_idx) {
-      if (!is_terminal(ps->items[item_idx], PREC_LPAREN)) {
-        // First item is not LPAREN
-        syntax_error(parser, "Syntactic error: wrong function "
-                             "call, expected LPAREN, got something else");
-        return false;
-      }
-      item_idx++;
-
-      if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
-        // () -> list with no arguments
-        item_idx++;
-        continue; // Skip inner checks
-      }
-
-      while (true) {
-        if (!is_expr(ps->items[item_idx])) {
-          // Odd item in arg list is not E
-          syntax_error(parser,
-                       "Syntactic error: wrong arguments inside function "
-                       "call, expected expr, got something else");
-          return false;
-        }
-        item_idx++;
-
-        if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
-          // ')', list done
-          item_idx++;
-          break;
-        }
-
-        if (!is_terminal(ps->items[item_idx], PREC_COMMA)) {
-          // Even item in arg list is not comma
-          syntax_error(parser,
-                       "Syntactic error: wrong arguments inside "
-                       "function call, expected ',', got something else");
-          return false;
-        }
-        item_idx++;
-
-        if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
-          if (!ps->items[item_idx].terminal_token.lf_before) {
-            // Comma before RPAREN -> LF_BEFORE must be true
-            syntax_error(parser, "Syntactic error: trailing comma inside "
-                                 "function call not allowed");
-            return false;
-          }
-
-          item_idx++;
-          break;
-        }
-      }
+    if (!prec_verify_call_args(parser, ps, item_idx, last_idx)) {
+      return false;
     }
 
     // Function call is OK
@@ -3167,32 +3224,11 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
       return false;
     }
 
-    for (item_idx = less_idx + 2; item_idx < less_idx + expr_len; item_idx++) {
-      // Looping from the first item to the last item...
-      ReturnCodes ret = RETURN_SUCCESS;
+    ReturnCodes ret = prec_add_arg_lists(expr, ps, item_idx, last_idx);
 
-      PrecItem item = ps->items[item_idx];
-
-      if (is_terminal(item, PREC_LPAREN)) {
-        // '(', start new list
-        ret = ast_func_call_new_arg_list(expr);
-      } else if (is_expr(item)) {
-        // E, add argument
-        ret = ast_func_call_add_arg(expr, item.expr);
-      }
-
-      if (ret != RETURN_SUCCESS) {
-        // Something failed, free the rest of the arguments
-        for (size_t arg_idx = item_idx + 1; arg_idx < less_idx + expr_len;
-             arg_idx++) {
-          PrecItem maybe_arg_item = ps->items[arg_idx];
-          if (is_expr(maybe_arg_item)) {
-            ast_free(maybe_arg_item.expr);
-          }
-        }
-        parser->rc = ret;
-        return false;
-      }
+    if (ret != RETURN_SUCCESS) {
+      parser->rc = ret;
+      return false;
     }
   }
 
