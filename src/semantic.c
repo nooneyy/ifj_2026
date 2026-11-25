@@ -13,6 +13,7 @@
 #include "symtable.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 // The max amount of params a builtin function has
@@ -264,6 +265,48 @@ static ReturnCodes method_key(DataType receiver_type, const char *name,
 }
 
 /**
+ * @brief Finds the global symtable symbol of a function or method definition. A
+ * plain function is looked up by its name, an EXTKW method by its method key
+ * @param global_sym Pointer to the global symtable struct
+ * @param def Data of the Function Definition node
+ * @param out Pointer to the found symbol (owned by the symtable, never NULL on
+ * success), set to NULL on error
+ * @return RETURN_SUCCESS on success
+ */
+static ReturnCodes function_def_symbol(Symtable *global_sym,
+                                       const ASTFunctionDefNodeData *def,
+                                       Symbol **out) {
+  *out = NULL;
+  char *key = NULL;
+  Symbol *found = NULL;
+  ReturnCodes ret = RETURN_SUCCESS;
+
+  // symbol is a basic function
+  if (def->receiver.name == NULL) {
+    found = symtable_get(global_sym, def->name);
+  } else {
+    // symbol is a method, e.g. "Int&twice"
+    ret = method_key(def->receiver.data_type, def->name, &key);
+    if (ret != RETURN_SUCCESS) {
+      return ret;
+    }
+
+    found = symtable_get(global_sym, key);
+    free(key);
+  }
+
+  if (found == NULL) {
+    print_error("Internal error: symbol of a function definition not found!",
+                0);
+    return ERR_INTERNAL;
+  }
+
+  *out = found;
+
+  return RETURN_SUCCESS;
+}
+
+/**
  * @brief The first pass of the semantic analysis - registers functions to the
  * symtable, checks for @main definition(s)
  * @param symtable Pointer to the symtable struct
@@ -278,6 +321,9 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
   while (function != NULL) {
     // Iterating through the program functions...
     ASTFunctionDefNodeData *function_data = &function->data.function_def;
+    ReturnCodes ret = RETURN_SUCCESS;
+    char *key = NULL;
+    char *sym_name = function_data->name;
 
     if (function_data->is_main) {
       main_count++;
@@ -305,9 +351,19 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
       }
     }
 
+    if (function_data->receiver.name != NULL) {
+      ret = method_key(function_data->receiver.data_type, function_data->name,
+                       &key);
+      if (ret != RETURN_SUCCESS) {
+        return ret;
+      }
+      sym_name = key;
+    }
     Symbol *func_sym = init_function_symbol(
-        function_data->name, function_data->return_type,
+        sym_name, function_data->return_type,
         function_data->return_type != UNKNOWN, false, function_data->is_main);
+
+    free(key);
 
     if (func_sym == NULL) {
       return ERR_INTERNAL;
@@ -317,8 +373,7 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
          param_idx++) {
       // Iterating through the function params...
       FunctionParam *param = &function_data->params[param_idx];
-      ReturnCodes ret =
-          add_function_param(func_sym, param->name, param->data_type);
+      ret = add_function_param(func_sym, param->name, param->data_type);
 
       if (ret != RETURN_SUCCESS) {
         free_symbol(func_sym);
@@ -326,7 +381,7 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
       }
     }
 
-    ReturnCodes ret = symtable_insert(global_sym, func_sym);
+    ret = symtable_insert(global_sym, func_sym);
 
     if (ret == ERR_SEM_RED) {
       print_error("Semantic error: redefinition of function with the "
@@ -1272,7 +1327,12 @@ static ReturnCodes check_statement_list(SemanticContext *context,
 }
 
 static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
-  ReturnCodes ret = RETURN_SUCCESS;
+  Symbol *function_sym = NULL;
+  ReturnCodes ret = function_def_symbol(
+      context->global_sym, &function->data.function_def, &function_sym);
+  if (ret != RETURN_SUCCESS) {
+    return ret;
+  }
   Symtable *function_symtable = symtable_init();
 
   if (function_symtable == NULL) {
@@ -1284,7 +1344,7 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
   ASTFunctionDefNodeData function_data = function->data.function_def;
 
   CallStack frame = {
-      .function = symtable_get(context->global_sym, function_data.name),
+      .function = function_sym,
       .caller = context->top,
   };
 
@@ -1370,8 +1430,13 @@ static ReturnCodes semantic_body_pass(Symtable *global_sym, ASTNode *program) {
   context.program = program;
 
   while (function != NULL) {
-    Symbol *function_sym =
-        symtable_get(global_sym, function->data.function_def.name);
+    Symbol *function_sym = NULL;
+    ret = function_def_symbol(global_sym, &function->data.function_def,
+                              &function_sym);
+    if (ret != RETURN_SUCCESS) {
+      break;
+    }
+
     if (function_sym->data.function.state == UNCHECKED) {
       ret = check_function(&context, function);
     }
