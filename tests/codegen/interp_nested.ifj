@@ -1,0 +1,32 @@
+/**
+ * @file interp_nested.ifj
+ * @brief Nested interpolated strings
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create codegen tests for INTERPOLATEDS extension from the specification.
+ * Format of the tests must be the same as with all other files in tests/. Base
+ * the tests entirely on the specification and other tests."
+ * (context: codegen tests for the INTERPOLATEDS extension (spec 5.6); every
+ * program is compiled by codegen_main, run by ic26int and its output and return
+ * code are compared; every inserted value is converted the same way as by
+ * toStr, so a Double is written with "%.2f" (spec 4, 5.6))
+ */
+// an interpolated string can be inside ${ } of another one, its value is
+// inserted like any other String (spec 5.6) -> a b c 1 d|in 2 out|1|
+import ifj26.*
+
+@main def main(): Unit =
+  val x = 1
+  print(s"a ${s"b ${s"c $x"}"} d|")
+  print(s"in ${s"${x + 1}"} out|")
+  print(s"${s""}$x|")
+  print("\n")

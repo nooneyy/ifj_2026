@@ -30,7 +30,5 @@ import ifj26.*
   // IFJ27 costs $0
   print(s"$name${n + 1} costs $$0")
   // He said "hello", IFJ.[novy radek]Second line.
-  print(s"""He said "hello"
-, $name.
-Second line.
-""")
+  print(s"""He said "hello", $name.
+Second line.""")

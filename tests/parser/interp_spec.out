@@ -18,7 +18,7 @@ PROGRAM
       CALL print
         BINARY_OP +
           BINARY_OP +
-            LITERAL String "He said \"hello\"\n, "
+            LITERAL String "He said \"hello\", "
             CALL toStr
               VAR_REF name
-          LITERAL String ".\nSecond line.\n"
+          LITERAL String ".\nSecond line."
