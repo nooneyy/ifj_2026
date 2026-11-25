@@ -14,7 +14,6 @@
 #include <string.h>
 
 #define TMP_VAR_BUF_SIZE 32
-#define IR_NAME_BUF_SIZE 128
 #define INITIAL_VAR_CAP 16
 #define TMPS_PER_AST_NODE 2
 #define EXTRA_TMP_SLOTS 4
@@ -1102,29 +1101,28 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
     return;
   }
 
-  char gen_ir[IR_NAME_BUF_SIZE];
-  snprintf(gen_ir, sizeof(gen_ir), "%s$%d", for_node->generator_name, gen_uid);
-  fprintf(ctx->out, "MOVE LF@%s LF@%s\n", gen_ir, start_tmp);
+  const char *gen_name = for_node->generator_name;
+  fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", gen_name, gen_uid, start_tmp);
 
   fprintf(ctx->out, "LABEL $for_start_%d\n", id);
   fprintf(ctx->out, "LT LF@%s LF@%s int@0\n", cond_tmp, step_tmp);
   fprintf(ctx->out, "JUMPIFEQ $for_neg_%d LF@%s bool@true\n", id, cond_tmp);
 
   if (for_node->includes_end) {
-    fprintf(ctx->out, "GT LF@%s LF@%s LF@%s\n", cond_tmp, gen_ir, end_tmp);
+    fprintf(ctx->out, "GT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid, end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@true\n", id, cond_tmp);
   } else {
-    fprintf(ctx->out, "LT LF@%s LF@%s LF@%s\n", cond_tmp, gen_ir, end_tmp);
+    fprintf(ctx->out, "LT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid, end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@false\n", id, cond_tmp);
   }
   fprintf(ctx->out, "JUMP $for_guards_%d\n", id);
 
   fprintf(ctx->out, "LABEL $for_neg_%d\n", id);
   if (for_node->includes_end) {
-    fprintf(ctx->out, "LT LF@%s LF@%s LF@%s\n", cond_tmp, gen_ir, end_tmp);
+    fprintf(ctx->out, "LT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid, end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@true\n", id, cond_tmp);
   } else {
-    fprintf(ctx->out, "GT LF@%s LF@%s LF@%s\n", cond_tmp, gen_ir, end_tmp);
+    fprintf(ctx->out, "GT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid, end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@false\n", id, cond_tmp);
   }
 
@@ -1138,7 +1136,7 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
 
   generate_statement(ctx, for_node->body, func_ret_type);
   fprintf(ctx->out, "LABEL $for_step_%d\n", id);
-  fprintf(ctx->out, "ADD LF@%s LF@%s LF@%s\n", gen_ir, gen_ir, step_tmp);
+  fprintf(ctx->out, "ADD LF@%s$%d LF@%s$%d LF@%s\n", gen_name, gen_uid, gen_name, gen_uid, step_tmp);
   fprintf(ctx->out, "JUMP $for_start_%d\n", id);
 
   fprintf(ctx->out, "LABEL $for_end_%d\n", id);
@@ -1170,13 +1168,15 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
     }
 
     int uid = ctx->next_var_uid++;
-    char ir_name[IR_NAME_BUF_SIZE];
-    snprintf(ir_name, sizeof(ir_name), "%s$%d", def->name, uid);
+    if (def->expr != NULL) {
+      char val_tmp[TMP_VAR_BUF_SIZE];
+      new_tmp_var(ctx, val_tmp);
 
-    generate_expression(ctx, def->expr, ir_name);
-    if (var_type == DOUBLE && def->expr != NULL &&
-        def->expr->data_type == INT) {
-      fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ir_name, ir_name);
+      generate_expression(ctx, def->expr, val_tmp);
+      if (var_type == DOUBLE && def->expr->data_type == INT) {
+        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", val_tmp, val_tmp);
+      }
+      fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", def->name, uid, val_tmp);
     }
     scope_push_var_with_uid(ctx, def->name, var_type, uid);
     break;
@@ -1185,15 +1185,19 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
   case NODE_ASSIGN: {
     ASTAssignNodeData *assign = &statement->data.assign;
     const LocalVarEntry *entry = scope_lookup(ctx, assign->left);
-    if (entry != NULL) {
+    if (entry != NULL && assign->right != NULL) {
+      const char *target_name = entry->name;
+      int target_uid = entry->uid;
       DataType target_type = entry->type;
-      char ir_name[IR_NAME_BUF_SIZE];
-      snprintf(ir_name, sizeof(ir_name), "%s$%d", entry->name, entry->uid);
-      generate_expression(ctx, assign->right, ir_name);
-      if (target_type == DOUBLE && assign->right != NULL &&
-          assign->right->data_type == INT) {
-        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ir_name, ir_name);
+      char val_tmp[TMP_VAR_BUF_SIZE];
+      new_tmp_var(ctx, val_tmp);
+
+      generate_expression(ctx, assign->right, val_tmp);
+      if (target_type == DOUBLE && assign->right->data_type == INT) {
+        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", val_tmp, val_tmp);
       }
+      fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", target_name, target_uid,
+              val_tmp);
     }
     break;
   }
