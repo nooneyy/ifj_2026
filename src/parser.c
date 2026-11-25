@@ -3230,6 +3230,51 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
       parser->rc = ret;
       return false;
     }
+  } else if (is_expr(first_item) && expr_len >= 5) {
+    PrecItem second_item = ps->items[less_idx + 2];
+    PrecItem third_item = ps->items[less_idx + 3];
+
+    if (is_terminal(second_item, PREC_DOT) &&
+        is_terminal(third_item, PREC_FUNC)) {
+      // E -> E . func(E, E, ...)(E, E, ...)... [EXTKW]
+
+      size_t call_args_start = less_idx + 4;
+      size_t call_args_end = less_idx + expr_len;
+
+      // Verify shape of method call args
+      if (!prec_verify_call_args(parser, ps, call_args_start, call_args_end)) {
+        return false;
+      }
+
+      // Method call is OK
+      prec_stack_pop_to_less(ps); // Pop <E . func(E, E,...) from the stack
+
+      expr = ast_init_valmem_field(first_item.expr,
+                                   third_item.terminal_token.content.string,
+                                   first_item.expr->line);
+
+      if (expr == NULL) {
+        for (size_t arg_idx = less_idx + 4; arg_idx < call_args_end;
+             arg_idx++) {
+          // for every E, free it because allocation failed
+          PrecItem maybe_arg_item = ps->items[arg_idx];
+          if (is_expr(maybe_arg_item)) {
+            ast_free(maybe_arg_item.expr);
+          }
+        }
+
+        parser->rc = ERR_INTERNAL;
+        return false;
+      }
+
+      ReturnCodes ret =
+          prec_add_arg_lists(expr, ps, call_args_start, call_args_end);
+
+      if (ret != RETURN_SUCCESS) {
+        parser->rc = ret;
+        return false;
+      }
+    }
   }
 
   if (expr == NULL) {
