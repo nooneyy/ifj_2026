@@ -732,7 +732,10 @@ static void expression_binary_op(CodeGenContext *ctx, ASTNode *expr,
   generate_expression(ctx, bin->left, left_tmp);
   generate_expression(ctx, bin->right, right_tmp);
 
-  if (dest_var == NULL && op != OP_DIV) { // if the OP_DIV check wasn't here the code would sometimes not run into divide by zero errors since if dest_var == NULL it would be skipped
+  if (dest_var == NULL &&
+      op != OP_DIV) { // if the OP_DIV check wasn't here the code would
+                      // sometimes not run into divide by zero errors since if
+                      // dest_var == NULL it would be skipped
     return;
   }
 
@@ -754,7 +757,10 @@ static void expression_binary_op(CodeGenContext *ctx, ASTNode *expr,
             right_tmp);
     break;
   case OP_DIV: {
-    const char *target = (dest_var != NULL) ? dest_var : left_tmp; // second part of dest_var == NULL divide by zero skipping
+    const char *target = (dest_var != NULL)
+                             ? dest_var
+                             : left_tmp; // second part of dest_var == NULL
+                                         // divide by zero skipping
     inst = (expr->data_type == INT) ? "IDIV" : "DIV";
     fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, target, left_tmp,
             right_tmp);
@@ -1109,20 +1115,24 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
   fprintf(ctx->out, "JUMPIFEQ $for_neg_%d LF@%s bool@true\n", id, cond_tmp);
 
   if (for_node->includes_end) {
-    fprintf(ctx->out, "GT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid, end_tmp);
+    fprintf(ctx->out, "GT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid,
+            end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@true\n", id, cond_tmp);
   } else {
-    fprintf(ctx->out, "LT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid, end_tmp);
+    fprintf(ctx->out, "LT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid,
+            end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@false\n", id, cond_tmp);
   }
   fprintf(ctx->out, "JUMP $for_guards_%d\n", id);
 
   fprintf(ctx->out, "LABEL $for_neg_%d\n", id);
   if (for_node->includes_end) {
-    fprintf(ctx->out, "LT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid, end_tmp);
+    fprintf(ctx->out, "LT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid,
+            end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@true\n", id, cond_tmp);
   } else {
-    fprintf(ctx->out, "GT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid, end_tmp);
+    fprintf(ctx->out, "GT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid,
+            end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@false\n", id, cond_tmp);
   }
 
@@ -1136,7 +1146,8 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
 
   generate_statement(ctx, for_node->body, func_ret_type);
   fprintf(ctx->out, "LABEL $for_step_%d\n", id);
-  fprintf(ctx->out, "ADD LF@%s$%d LF@%s$%d LF@%s\n", gen_name, gen_uid, gen_name, gen_uid, step_tmp);
+  fprintf(ctx->out, "ADD LF@%s$%d LF@%s$%d LF@%s\n", gen_name, gen_uid,
+          gen_name, gen_uid, step_tmp);
   fprintf(ctx->out, "JUMP $for_start_%d\n", id);
 
   fprintf(ctx->out, "LABEL $for_end_%d\n", id);
@@ -1431,7 +1442,7 @@ ReturnCodes generate_code(ASTNode *program, FILE *out) {
   if (!ctx.has_error) {
     generate_builtin_library(&ctx);
   }
-  
+
   free(ctx.vars);
   return ctx.has_error ? ERR_INTERNAL : RETURN_SUCCESS;
 }
