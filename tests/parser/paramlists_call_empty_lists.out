@@ -1,0 +1,28 @@
+PROGRAM
+  FUNC_DEF none ()() : Int
+    LITERAL Int 1
+  FUNC_DEF first ()(a: Int) : Int
+    VAR_REF a
+  FUNC_DEF middle (a: Int)()(b: Int) : Int
+    BINARY_OP +
+      VAR_REF a
+      VAR_REF b
+  FUNC_DEF last (a: Int, b: Int)() : Int
+    BINARY_OP -
+      VAR_REF a
+      VAR_REF b
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val w : ?
+        CALL none (0)(0)
+      VAR_DEF val x : ?
+        CALL first (0)(1)
+          LITERAL Int 1
+      VAR_DEF val y : ?
+        CALL middle (1)(0)(1)
+          LITERAL Int 1
+          LITERAL Int 2
+      VAR_DEF val z : ?
+        CALL last (2)(0)
+          LITERAL Int 1
+          LITERAL Int 2

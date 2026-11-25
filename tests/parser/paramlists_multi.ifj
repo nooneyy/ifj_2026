@@ -1,0 +1,28 @@
+/**
+ * @file paramlists_multi.ifj
+ * @brief Several parameter lists, empty lists among them (PARAMLISTS)
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Using the test format in tests/ create tests for parser for the paramalists
+ * extension from the specification."
+ * (context: parser tests for the PARAMLISTS extension, derived from the IFJ26
+ * spec, section 5.10 and the trailing comma rule in section 1.2)
+ */
+// functions without a list, with one empty list, with several lists and
+// empty lists between or before other lists (spec example included) -> 0
+import ifj26.*
+def answer: Int = 42
+def answerWithParens(): Int = 42
+def add(a: Int)(b: Int)(c: Int): Int = a + b + c
+def offset()(value: Int): Int = value + 1
+def mixed(a: Int, b: String)()(c: Double): Int = a
+@main def run(): Unit = ()

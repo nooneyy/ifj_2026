@@ -521,6 +521,32 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
     Symbol *var_sym = symtable_stack_get(&stack, var_ref_data.name);
 
     if (var_sym == NULL) {
+      Symbol *fun_sym = symtable_get(context->global_sym, var_ref_data.name);
+      if (fun_sym != NULL) {
+        size_t list_count = 1;
+        if (!fun_sym->data.function.is_builtin) {
+          ASTNode *def = find_function_def(context->program, var_ref_data.name);
+          if (def == NULL) {
+            print_error(
+                "Internal error: definition of referenced function not found!",
+                0);
+            return ERR_INTERNAL;
+          }
+          list_count = def->data.function_def.list_count;
+        }
+        if (list_count != 0) {
+          print_error("Semantic error: function with parameter lists used "
+                      "without its argument lists!",
+                      expr->line);
+          return ERR_SEM_ARG;
+        }
+        expr->node_type = NODE_FUNCTION_CALL;
+        expr->data.function_call.name = var_ref_data.name;
+        expr->data.function_call.args = NULL;
+        expr->data.function_call.arg_list_sizes = NULL;
+        expr->data.function_call.arg_list_count = 0;
+        return check_expr(context, expr, stack, out);
+      }
       print_error("Semantic error: undefined variable!", expr->line);
       return ERR_SEM_UNDEF;
     }
@@ -618,6 +644,36 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
             break;
           }
         }
+      }
+    }
+
+    size_t expected_list_count = 1;
+    const size_t *expected_list_sizes = &fun_sym->data.function.param_count;
+
+    if (!fun_sym->data.function.is_builtin) {
+      ASTNode *def_node =
+          find_function_def(context->program, fun_call_data.name);
+      if (def_node == NULL) {
+        print_error("Internal error: definition of called function not found!",
+                    0);
+        return ERR_INTERNAL;
+      }
+      expected_list_count = def_node->data.function_def.list_count;
+      expected_list_sizes = def_node->data.function_def.list_sizes;
+    }
+
+    if (fun_call_data.arg_list_count != expected_list_count) {
+      print_error("Semantic error: wrong number of argument lists!",
+                  expr->line);
+      return ERR_SEM_ARG;
+    }
+
+    for (size_t list_idx = 0; list_idx < expected_list_count; list_idx++) {
+      if (fun_call_data.arg_list_sizes[list_idx] !=
+          expected_list_sizes[list_idx]) {
+        print_error("Semantic error: wrong number of arguments in a list!",
+                    expr->line);
+        return ERR_SEM_ARG;
       }
     }
 

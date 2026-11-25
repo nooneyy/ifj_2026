@@ -1,0 +1,76 @@
+/**
+ * @file paramlists_places.ifj
+ * @brief Calls with several lists or without a list in every place of a call
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: codegen tests for the PARAMLISTS extension (spec 5.10); every
+ * program is compiled by codegen_main, run by ic26int and its output and return
+ * code are compared; derived from the IFJ26 spec as a black box, with the
+ * claimed extensions BOOLTHEN, CONTROL, FUNEXP and VALMEM)
+ */
+// calls with several lists and without a list everywhere a call can stand:
+// initialization, assignment, statement, return, conditions, for bounds,
+// arguments, operands, member receiver, if-expression and one-line function
+// bodies (spec 2.3, 5.1, 5.3, 5.4, 5.10) -> statement, hello, if, 0, 123, 45,
+// -125, 342, 2, 4, 6, 55
+import ifj26.*
+
+def answer: Int = 42
+def hello: Unit =
+  print("hello\n")
+def add(a: Int)(b: Int): Int = a + b
+def positive()(n: Int): Boolean = n > 0
+def twice(a: Int)(b: Int) = add(a)(b) * 2
+def early(a: Int)(b: Int): Int =
+  if a > b then
+    return add(a)(0)
+  b
+def show(s: String)(): Unit =
+  print(s)
+  print("\n")
+
+@main def main(): Unit =
+  val a = add(1)(2)
+  var b = answer
+  b = add(b)(answer)
+  show("statement")()
+  hello
+  answer
+  if positive()(b) then
+    show("if")()
+  var n = 3
+  while positive()(n) && answer > 0 do
+    n = n - 1
+  print(n)
+  print("\n")
+  for i <- add(0)(1) to add(1)(2) do
+    print(i)
+  print("\n")
+  print(add(add(1)(2))(answer))
+  print("\n")
+  print(-add(1)(2) * answer + 1)
+  print("\n")
+  print(add(1)(2).toString + answer.toString)
+  print("\n")
+  print(answer.toString.length)
+  print("\n")
+  val f = if positive()(a) then add(a)(1) else answer
+  print(f)
+  print("\n")
+  print(twice(1)(2))
+  print("\n")
+  print(early(5)(1))
+  print(early(1)(5))
+  print("\n")

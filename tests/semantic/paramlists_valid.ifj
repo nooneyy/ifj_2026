@@ -1,0 +1,45 @@
+/**
+ * @file paramlists_valid.ifj
+ * @brief Calls matching the definitions list by list
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 24.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: semantic tests for the PARAMLISTS extension (spec 5.10) - a wrong
+ * number of lists, a wrong argument count in any list or an incompatible
+ * argument type is error 5, a parameter name repeated across the lists is error
+ * 4; derived from the IFJ26 spec as a black box, with the claimed extensions
+ * BOOLTHEN, CONTROL, FUNEXP and VALMEM)
+ */
+// calls matching the definition list by list, before the definition too, with
+// Int arguments widened to Double and inferred return types (spec 1.3, 2.3,
+// 5.10) -> 0
+import ifj26.*
+
+@main def run(): Unit =
+  val x = answer
+  val y = answerWithParens()
+  val sum = add(x)(y)(1)
+  val result = offset()(sum)
+  val d: Double = scale(2)(3)
+  val s: String = greeting + "!"
+  val n: Int = inferred(1)(2) * answer
+  print(result)
+
+def answer: Int = 42
+def answerWithParens(): Int = 42
+def add(a: Int)(b: Int)(c: Int): Int = a + b + c
+def offset()(value: Int): Int = value + 1
+def scale(x: Double)(factor: Double): Double = x * factor
+def greeting = "hi"
+def inferred(a: Int)(b: Int) = a + b

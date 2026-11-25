@@ -33,6 +33,20 @@
  * call - the member name, then the receiver indented under it)
  */
 
+/**
+ * Disclaimer!
+ * The argument lists in the NODE_FUNCTION_CALL case of print_node were added
+ * by Claude Opus 5.5 AI model.
+ *
+ * Prompt:
+ * "Please extend the current paramlists tests with not only definitions, but
+ * also calls and test in all the possible places (semantic, codegen...)
+ * thanks!!!"
+ * (context: a call with exactly one argument list keeps printing as
+ * CALL name, any other count prints the argument count of every list, e.g.
+ * CALL add (1)(1)(1), so the existing parser tests keep their output)
+ */
+
 #include "../src/ast.h"
 #include "../src/parser.h"
 #include "../src/return.h"
@@ -216,6 +230,9 @@ static void print_slot(const char *label, const ASTNode *node, int depth) {
  * @node: NODE_FUNCTION_DEF node to print
  *
  * Format: FUNC_DEF name [@main] (param: Type, ...) : ReturnType
+ * With PARAMLISTS every list has its own parentheses, e.g.
+ * FUNC_DEF add (a: Int)(b: Int) : Int, and a function without a parameter
+ * list has none: FUNC_DEF answer : Int
  */
 static void print_func_def(const ASTNode *node) {
   const ASTFunctionDefNodeData *def = &node->data.function_def;
@@ -223,14 +240,21 @@ static void print_func_def(const ASTNode *node) {
   if (def->is_main) {
     fputs(" @main", stdout);
   }
-  fputs(" (", stdout);
-  for (size_t i = 0; i < def->param_count; i++) {
-    if (i > 0) {
-      fputs(", ", stdout);
+  // every parameter list in its own parentheses (PARAMLISTS), none if the
+  // function has no parameter list
+  size_t param_idx = 0;
+  for (size_t list_idx = 0; list_idx < def->list_count; list_idx++) {
+    fputs(list_idx == 0 ? " (" : "(", stdout);
+    for (size_t i = 0; i < def->list_sizes[list_idx]; i++, param_idx++) {
+      if (i > 0) {
+        fputs(", ", stdout);
+      }
+      printf("%s: %s", def->params[param_idx].name,
+             type_name(def->params[param_idx].data_type));
     }
-    printf("%s: %s", def->params[i].name, type_name(def->params[i].data_type));
+    fputs(")", stdout);
   }
-  printf(") : %s", type_name(def->return_type));
+  printf(" : %s", type_name(def->return_type));
 }
 
 /**
@@ -261,10 +285,20 @@ static void print_node(const ASTNode *node, int depth) {
     print_node(node->data.function_def.body, depth + 1);
     break;
 
-  case NODE_FUNCTION_CALL:
-    printf("CALL %s\n", node->data.function_call.name);
-    print_list(node->data.function_call.args, depth + 1);
+  case NODE_FUNCTION_CALL: {
+    const ASTFunctionCallNodeData *call = &node->data.function_call;
+    printf("CALL %s", call->name);
+    // PARAMLISTS: the argument count of every list, unless there's just one
+    if (call->arg_list_count != 1) {
+      putchar(' ');
+      for (size_t i = 0; i < call->arg_list_count; i++) {
+        printf("(%zu)", call->arg_list_sizes[i]);
+      }
+    }
+    putchar('\n');
+    print_list(call->args, depth + 1);
     break;
+  }
 
   case NODE_BLOCK:
     puts("BLOCK");

@@ -1,0 +1,11 @@
+PROGRAM
+  FUNC_DEF answer : ?
+    LITERAL Int 42
+  FUNC_DEF add (a: Int)(b: Int) : ?
+    BINARY_OP +
+      VAR_REF a
+      VAR_REF b
+  FUNC_DEF empty ()() : ?
+    LITERAL Int 1
+  FUNC_DEF run @main () : Unit
+    LITERAL Unit

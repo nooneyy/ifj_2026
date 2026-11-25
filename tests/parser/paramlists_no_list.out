@@ -1,0 +1,5 @@
+PROGRAM
+  FUNC_DEF f : Int
+    LITERAL Int 1
+  FUNC_DEF main @main () : Unit
+    LITERAL Unit
