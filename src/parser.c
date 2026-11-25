@@ -963,13 +963,13 @@ static bool parse_extension(Parser *parser);
  * RULE 89: EXT_DEF -> KW_DEF ID PARAM_LIST TYPE_DECL = DEF_EX
  *
  * @param parser Parser's current state
- * @param reciever_name Name of the receiver of the extension
- * @param reciever_type Type of the receiver of the extension
+ * @param receiver_name Name of the receiver of the extension
+ * @param receiver_type Type of the receiver of the extension
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_ext_def(Parser *parser, const char *reciever_name,
-                          DataType reciever_type);
+static bool parse_ext_def(Parser *parser, const char *receiver_name,
+                          DataType receiver_type);
 
 /**
  * @brief Parses the rest of the methods of an extension
@@ -978,13 +978,13 @@ static bool parse_ext_def(Parser *parser, const char *reciever_name,
  * RULE 91: EXT_DEFS -> eps
  *
  * @param parser Parser's current state
- * @param reciever_name Name of the receiver of the extension
- * @param reciever_type Type of the receiver of the extension
+ * @param receiver_name Name of the receiver of the extension
+ * @param receiver_type Type of the receiver of the extension
  * @return false if an error occured in this or any other called function, else
  * true
  */
-static bool parse_ext_defs(Parser *parser, const char *reciever_name,
-                           DataType reciever_type);
+static bool parse_ext_defs(Parser *parser, const char *receiver_name,
+                           DataType receiver_type);
 
 /**
  * @brief Builds a call of toStr with one argument
@@ -2571,7 +2571,7 @@ static bool parse_extension(Parser *parser) {
   // KW_EXTENSION ( ID
 
   if (!expect(parser, TOKEN_COLON)) {
-    syntax_error(parser, "Syntactic error: Missing : in extension reciever.");
+    syntax_error(parser, "Syntactic error: Missing : in extension receiver.");
     free(name);
     return false;
   }
@@ -2620,8 +2620,8 @@ static bool parse_extension(Parser *parser) {
   return correct;
 }
 
-static bool parse_ext_def(Parser *parser, const char *reciever_name,
-                          DataType reciever_type) {
+static bool parse_ext_def(Parser *parser, const char *receiver_name,
+                          DataType receiver_type) {
   bool correct = false;
   char *method_name = NULL;
   const unsigned int line = parser->current_token.line;
@@ -2648,14 +2648,14 @@ static bool parse_ext_def(Parser *parser, const char *reciever_name,
   }
   ast_ll_append(&parser->program->data.program.functions, method);
 
-  char *copy = malloc(strlen(reciever_name) + 1);
+  char *copy = malloc(strlen(receiver_name) + 1);
   if (copy == NULL) {
     parser->rc = ERR_INTERNAL;
     return false;
   }
-  strcpy(copy, reciever_name);
+  strcpy(copy, receiver_name);
   method->data.function_def.receiver =
-      (FunctionParam){.name = copy, .data_type = reciever_type};
+      (FunctionParam){.name = copy, .data_type = receiver_type};
 
   // KW_DEF ID PARAM_LIST
   // RULES 12, 13
@@ -2684,17 +2684,17 @@ static bool parse_ext_def(Parser *parser, const char *reciever_name,
   return correct;
 }
 
-static bool parse_ext_defs(Parser *parser, const char *reciever_name,
-                           DataType reciever_type) {
+static bool parse_ext_defs(Parser *parser, const char *receiver_name,
+                           DataType receiver_type) {
   bool correct = false;
   if (parser->current_token.type == TOKEN_KW_DEF) {
     // EXT_DEF
     // RULE 89
-    correct = parse_ext_def(parser, reciever_name, reciever_type);
+    correct = parse_ext_def(parser, receiver_name, receiver_type);
     if (!correct) {
       return false;
     }
-    correct = parse_ext_defs(parser, reciever_name, reciever_type);
+    correct = parse_ext_defs(parser, receiver_name, receiver_type);
   } else if (parser->current_token.type == TOKEN_DEDENT) {
     // eps
     // no deeper RULE
