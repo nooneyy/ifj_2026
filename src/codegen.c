@@ -1,6 +1,6 @@
 /**
  * @file codegen.c
- * @brief Implementation of the IFJcode2026 code generator
+ * @brief Implementation of the IFJcode26 code generator
  * @author Tadeáš Čupr <xcuprta00@stud.fit.vut.cz>
  * @date 04.11.2026
  */
@@ -132,7 +132,7 @@ static bool is_expression_node(const ASTNode *node) {
 }
 
 /**
- * @brief Checks if a function name refers to an IFJcode2026 library function
+ * @brief Checks if a function name refers to an IFJcode26 library function
  * @param name Function name to check
  * @return true if the name matches a library function
  *         false otherwise
@@ -152,7 +152,7 @@ static bool is_builtin_func(const char *name) {
 }
 
 /**
- * @brief Writes an IFJcode2026 string literal with required escape codes
+ * @brief Writes an IFJcode26 string literal with required escape codes
  *
  * Escapes characters with ASCII value <= 32, '#' and '\' as \xyz
  *
@@ -192,7 +192,7 @@ static void new_tmp_var(CodeGenContext *ctx, char buf[TMP_VAR_BUF_SIZE]) {
 static void scope_enter(CodeGenContext *ctx) { ctx->scope_depth++; }
 
 /**
- * @brief Exits the correct lexical scope and pops all variables in it
+ * @brief Exits the current lexical scope and pops all variables in it
  * @param ctx Code generator context
  */
 static void scope_leave(CodeGenContext *ctx) {
@@ -310,7 +310,7 @@ static int count_ast_nodes(const ASTNode *node) {
       break;
 
     case NODE_FOR:
-      count += TMPS_PER_AST_NODE; // For loop required additional temp vars
+      count += TMPS_PER_AST_NODE; // For loop requires additional temp vars
       count += count_ast_nodes(node->data.for_node.range_start);
       count += count_ast_nodes(node->data.for_node.range_end);
       count += count_ast_nodes(node->data.for_node.range_step);
@@ -375,7 +375,8 @@ static const ASTFunctionDefNodeData *find_function_def(const ASTNode *program,
  * @brief Emits DEFVAR for all local variables in the function's body
  *
  * Hoists every local variable so IFJcode26 variables are never defined inside
- * loops
+ * loops.
+ * Traversal order must stay identical to code generation so UIDs match
  *
  * @param ctx Code generator context
  * @param node Root of the AST subtree to walk
@@ -451,6 +452,14 @@ static void emit_var_defs_walk(CodeGenContext *ctx, const ASTNode *node,
   }
 }
 
+/**
+ * @brief Emits INT2FLOAT in place when widening an INT value to DOUBLE if
+ * needed
+ * @param ctx Code generator context
+ * @param var Name of the LF variable to convert in place
+ * @param actual Actual data type of the value
+ * @param expected Expected target data type
+ */
 static void int_to_float(CodeGenContext *ctx, const char *var, DataType actual,
                          DataType expected) {
   if (expected == DOUBLE && actual == INT) {
@@ -458,6 +467,11 @@ static void int_to_float(CodeGenContext *ctx, const char *var, DataType actual,
   }
 }
 
+/**
+ * @brief Pops a call return value from the data stack into dest_var or a dummy
+ * @param ctx Code generator context
+ * @param dest_var Destination LF variable name or NULL to discard
+ */
 static void pop_result(CodeGenContext *ctx, const char *dest_var) {
   if (dest_var != NULL) {
     fprintf(ctx->out, "POPS LF@%s\n", dest_var);
@@ -468,6 +482,12 @@ static void pop_result(CodeGenContext *ctx, const char *dest_var) {
   }
 }
 
+/**
+ * @brief Emits IFJcode26 code for a literal expression
+ * @param ctx Code generator context
+ * @param expr AST node of the literal
+ * @param dest_var Destination LF variable name or NULL to discard
+ */
 static void expression_literal(CodeGenContext *ctx, const ASTNode *expr,
                                const char *dest_var) {
   if (dest_var == NULL) {
@@ -502,6 +522,12 @@ static void expression_literal(CodeGenContext *ctx, const ASTNode *expr,
   }
 }
 
+/**
+ * @brief Emits IFJcode26 code for a local variable reference
+ * @param ctx Code generator context
+ * @param expr AST node of the variable reference
+ * @param dest_var Destination LF variable name or NULL to discard
+ */
 static void expression_variable_ref(CodeGenContext *ctx, const ASTNode *expr,
                                     const char *dest_var) {
   if (dest_var != NULL) {
@@ -514,6 +540,12 @@ static void expression_variable_ref(CodeGenContext *ctx, const ASTNode *expr,
   }
 }
 
+/**
+ * @brief Emits IFJcode26 code for a unary operation
+ * @param ctx Code generator context
+ * @param expr AST node of the unary expression
+ * @param dest_var Destination LF variable name or NULL to discard
+ */
 static void expression_unary_op(CodeGenContext *ctx, const ASTNode *expr,
                                 const char *dest_var) {
   char op_tmp[TMP_VAR_BUF_SIZE];
@@ -532,6 +564,12 @@ static void expression_unary_op(CodeGenContext *ctx, const ASTNode *expr,
   }
 }
 
+/**
+ * @brief Emits IFJcode26 code for a function call
+ * @param ctx Code generator context
+ * @param expr AST node of the function call
+ * @param dest_var Destination LF variable name or NULL to discard
+ */
 static void expression_function_call(CodeGenContext *ctx, const ASTNode *expr,
                                      const char *dest_var) {
   const ASTFunctionDefNodeData *callee =
@@ -564,6 +602,12 @@ static void expression_function_call(CodeGenContext *ctx, const ASTNode *expr,
   pop_result(ctx, dest_var);
 }
 
+/**
+ * @brief Emits short circuit IFJcode26 code for && and ||
+ * @param ctx Code generator context
+ * @param bin Binary operation AST data
+ * @param dest_var Destination LF variable name or NULL to discard
+ */
 static void short_circuit(CodeGenContext *ctx, const ASTBinaryOpNodeData *bin,
                           const char *dest_var) {
   int id = ctx->label_counter++;
@@ -611,10 +655,8 @@ static void expression_binary_op(CodeGenContext *ctx, const ASTNode *expr,
   generate_expression(ctx, bin->left, left_tmp);
   generate_expression(ctx, bin->right, right_tmp);
 
-  if (dest_var == NULL &&
-      op != OP_DIV) { // if the OP_DIV check wasn't here the code would
-                      // sometimes not run into divide by zero errors since if
-                      // dest_var == NULL it would be skipped
+  // Required so division by zero fails at runtime
+  if (dest_var == NULL && op != OP_DIV) {
     return;
   }
 
@@ -630,10 +672,8 @@ static void expression_binary_op(CodeGenContext *ctx, const ASTNode *expr,
             right_tmp);
     break;
   case OP_DIV: {
-    const char *target = (dest_var != NULL)
-                             ? dest_var
-                             : left_tmp; // second part of dest_var == NULL
-                                         // divide by zero skipping
+    // Reusing the left_tmp as a sink when the result is discarded
+    const char *target = (dest_var != NULL) ? dest_var : left_tmp;
     inst = (expr->data_type == INT) ? "IDIV" : "DIV";
     fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, target, left_tmp,
             right_tmp);
@@ -661,7 +701,7 @@ static void expression_binary_op(CodeGenContext *ctx, const ASTNode *expr,
 }
 
 /**
- * @brief Emits IFJcode26 code for one branch of an if branch into dest_var
+ * @brief Emits IFJcode26 code for one branch of an if expression into dest_var
  * @param ctx Code generator context
  * @param branch AST node of the then/else branch
  * @param dest_var Name of the variable where the result is stored
@@ -707,7 +747,7 @@ static void expression_if_branch(CodeGenContext *ctx, const ASTNode *branch,
 /**
  * @brief Emits IFJcode26 code for an if node
  * @param ctx Code generator context
- * @param expr AST node of the if branch
+ * @param expr AST node of the if expression
  * @param dest_var Name of the variable where the result is stored
  */
 static void expression_if(CodeGenContext *ctx, const ASTNode *expr,
@@ -729,6 +769,12 @@ static void expression_if(CodeGenContext *ctx, const ASTNode *expr,
   fprintf(ctx->out, "LABEL $if_end_%d\n", id);
 }
 
+/**
+ * @brief Maps a VALMEM field name to its built in IFJcode26 label
+ * @param name VALMEM field name
+ * @return Built-in callee label
+ *         NULL if unsupported
+ */
 static const char *valmem_callee_name(const char *name) {
   if (strcmp(name, "toInt") == 0) {
     return "$ifj_toInt";
@@ -776,10 +822,7 @@ static void expression_valmem_field(CodeGenContext *ctx, const ASTNode *expr,
 }
 
 /**
- * @brief Emits IFJcode26 code for expressions
- *
- * Handles implicit INT to DOUBLE retyping
- *
+ * @brief Emits IFJcode26 code for expression nodes
  * @param ctx Code generator context
  * @param expr Expression's AST node
  * @param dest_var Name of the variable to store the result in
@@ -853,6 +896,11 @@ static void emit_return_expr(CodeGenContext *ctx, const ASTNode *expr) {
   fprintf(ctx->out, "PUSHS LF@%s\n", ret_tmp);
 }
 
+/**
+ * @brief Emits IFJcode26 code for a local variable definition (val/var)
+ * @param ctx Code generator context
+ * @param statement Variable definition AST node
+ */
 static void statement_variable_def(CodeGenContext *ctx,
                                    const ASTNode *statement) {
   const ASTVarDefNodeData *def = &statement->data.variable_def;
@@ -877,11 +925,18 @@ static void statement_variable_def(CodeGenContext *ctx,
   scope_push_var_with_uid(ctx, def->name, var_type, uid);
 }
 
+/**
+ * @brief Emits IFJcode26 code for a variable assignment
+ * @param ctx Code generator context
+ * @param statement Assignment AST node
+ */
 static void statement_assign(CodeGenContext *ctx, const ASTNode *statement) {
   const ASTAssignNodeData *assign = &statement->data.assign;
   const LocalVarEntry *entry = scope_lookup(ctx, assign->left);
 
   if (entry != NULL && assign->right != NULL) {
+    // Copying the entry fields before evaluating the right hand side because if
+    // expressions could reallocate them
     const char *target_name = entry->name;
     int target_uid = entry->uid;
     DataType target_type = entry->type;
@@ -895,6 +950,11 @@ static void statement_assign(CodeGenContext *ctx, const ASTNode *statement) {
   }
 }
 
+/**
+ * @brief Emits IFJcode26 code for a scoped statement block
+ * @param ctx Code generator context
+ * @param statement Block AST node
+ */
 static void statement_block(CodeGenContext *ctx, const ASTNode *statement) {
   scope_enter(ctx);
   ASTNode *s = statement->data.block.statements;
@@ -905,12 +965,22 @@ static void statement_block(CodeGenContext *ctx, const ASTNode *statement) {
   scope_leave(ctx);
 }
 
+/**
+ * @brief Emits IFJcode26 code for a return statement
+ * @param ctx Code generator context
+ * @param statement Return AST node
+ */
 static void statement_return(CodeGenContext *ctx, const ASTNode *statement) {
   emit_return_expr(ctx, statement->data.return_node.value);
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n");
 }
 
+/**
+ * @brief Emits IFJcode26 code for an if statement
+ * @param ctx Code generator context
+ * @param statement If AST node
+ */
 static void statement_if(CodeGenContext *ctx, const ASTNode *statement) {
   int id = ctx->label_counter++;
   char cond_tmp[TMP_VAR_BUF_SIZE];
@@ -931,6 +1001,11 @@ static void statement_if(CodeGenContext *ctx, const ASTNode *statement) {
   fprintf(ctx->out, "LABEL $if_end_%d\n", id);
 }
 
+/**
+ * @brief Emits IFJcode26 code for a while loop
+ * @param ctx Code generator context
+ * @param statement While AST node
+ */
 static void statement_while(CodeGenContext *ctx, const ASTNode *statement) {
   int id = ctx->label_counter++;
   char cond_tmp[TMP_VAR_BUF_SIZE];
@@ -1120,6 +1195,13 @@ static void generate_statement(CodeGenContext *ctx, const ASTNode *statement) {
   }
 }
 
+/**
+ * @brief Registers function parameters in scope and pops them from the stack
+ * @param ctx Code generator context
+ * @param fn Function definition AST data
+ * @return true on success
+ *         false on allocation failure
+ */
 static bool function_params(CodeGenContext *ctx,
                             const ASTFunctionDefNodeData *fn) {
   for (size_t i = 0; i < fn->param_count; i++) {
@@ -1137,6 +1219,11 @@ static bool function_params(CodeGenContext *ctx,
   return true;
 }
 
+/**
+ * @brief Emits IFJcode26 code for a function body and its return value
+ * @param ctx Code generator context
+ * @param body Function body AST node
+ */
 static void function_body(CodeGenContext *ctx, const ASTNode *body) {
   if (body == NULL) {
     fprintf(ctx->out, "PUSHS nil@nil\n");
@@ -1210,6 +1297,10 @@ static void generate_function(CodeGenContext *ctx, const ASTNode *fn_node) {
   fprintf(ctx->out, "RETURN\n\n");
 }
 
+/**
+ * @brief Emits the $ifj_print built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_print(CodeGenContext *ctx) {
   fputs("LABEL $ifj_print\n"
         "CREATEFRAME\n"
@@ -1228,6 +1319,10 @@ static void builtin_print(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_readLine built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_readLine(CodeGenContext *ctx) {
   fputs("LABEL $ifj_readLine\n"
         "CREATEFRAME\n"
@@ -1240,6 +1335,10 @@ static void builtin_readLine(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_readInt built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_readInt(CodeGenContext *ctx) {
   fputs("LABEL $ifj_readInt\n"
         "CREATEFRAME\n"
@@ -1255,6 +1354,10 @@ static void builtin_readInt(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_readDouble built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_readDouble(CodeGenContext *ctx) {
   fputs("LABEL $ifj_readDouble\n"
         "CREATEFRAME\n"
@@ -1270,6 +1373,10 @@ static void builtin_readDouble(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_strLength built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_strLength(CodeGenContext *ctx) {
   fputs("LABEL $ifj_strLength\n"
         "CREATEFRAME\n"
@@ -1284,6 +1391,10 @@ static void builtin_strLength(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_toStr built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_toStr(CodeGenContext *ctx) {
   fputs("LABEL $ifj_toStr\n"
         "CREATEFRAME\n"
@@ -1319,6 +1430,10 @@ static void builtin_toStr(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_toInt built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_toInt(CodeGenContext *ctx) {
   fputs("LABEL $ifj_toInt\n"
         "CREATEFRAME\n"
@@ -1338,6 +1453,10 @@ static void builtin_toInt(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_subStr built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_subStr(CodeGenContext *ctx) {
   fputs("LABEL $ifj_subStr\n"
         "CREATEFRAME\n"
@@ -1381,6 +1500,10 @@ static void builtin_subStr(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_ord built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_ord(CodeGenContext *ctx) {
   fputs("LABEL $ifj_ord\n"
         "CREATEFRAME\n"
@@ -1409,6 +1532,10 @@ static void builtin_ord(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_chr built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_chr(CodeGenContext *ctx) {
   fputs("LABEL $ifj_chr\n"
         "CREATEFRAME\n"
@@ -1423,6 +1550,10 @@ static void builtin_chr(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_readBoolean built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_readBoolean(CodeGenContext *ctx) {
   fputs("LABEL $ifj_readBoolean\n"
         "CREATEFRAME\n"
@@ -1438,6 +1569,10 @@ static void builtin_readBoolean(CodeGenContext *ctx) {
         ctx->out);
 }
 
+/**
+ * @brief Emits the $ifj_floor built-in function
+ * @param ctx Code generator context
+ */
 static void builtin_floor(CodeGenContext *ctx) {
   fputs("LABEL $ifj_floor\n"
         "CREATEFRAME\n"
