@@ -69,6 +69,8 @@ typedef enum FsmState {
   STATE_AND,             // "&" is first in the sequence
   STATE_OR,              // "|" is first in the sequence
   STATE_PAREN_NEWLINE,   // Newline inside of parenthesis
+  STATE_INTERP_1_QUOT,   // s" start of an interpolated string
+  STATE_INTERP_2_QUOT,   // s"" empty interp string or start of ml interp string
 } FsmState;
 
 /**
@@ -308,6 +310,113 @@ static ReturnCodes indent_compare(Scanner *sc, int indent_cnt, Token *token,
 }
 
 /**
+ * @brief Opens a new interpolated string level (s" or s""")
+ *
+ * @param sc Scanner struct filled with scanner's current state
+ * @param ml true for a multi-line interpolated string (s"""), else false
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_INTERNAL if there are too many nested interpolated strings
+ */
+static ReturnCodes interp_push(Scanner *sc, bool ml) {
+  if (sc->interp_depth == MAX_INTERP_DEPTH) {
+    print_error("Too deeply nested interpolated strings.", sc->line);
+    return ERR_INTERNAL;
+  }
+  sc->interp[sc->interp_depth] = (InterpLevel){.ml = ml, .expr = false};
+  sc->interp_depth++;
+  return RETURN_SUCCESS;
+}
+
+/**
+ * @brief Returns the innermost open interpolated string
+ *
+ * Must be called only if at least one interpolated string is open
+ * (sc->interp_depth > 0).
+ *
+ * @param sc Scanner struct filled with scanner's current state
+ * @return Pointer to the innermost open interpolated string's level
+ */
+static InterpLevel *interp_top(Scanner *sc) {
+  return &sc->interp[sc->interp_depth - 1];
+}
+
+/**
+ * @brief Processing '$' in the text of an interpolated string
+ *
+ * Reads the character after '$' from sc->src and decides what follows.
+ * "$$" appends one '$' to str and the text continues.
+ * "${" ends the text, the tokens of an expression follow.
+ * "$id" ends the text, the identifier follows (read from STATE_IDLE).
+ * If there is text before "${" or "$id", the text is filled into token
+ * and the rest follows in the next call.
+ * Anything else after '$' is an error.
+ *
+ * @param sc Scanner struct filled with scanner's current state
+ * @param str DynStr with the text read so far
+ * @param token Token to fill with STRING or INTERP_EXPR_BEGIN
+ * @param state Set to STATE_IDLE if no text is before "$id"
+ * @param token_ready Set to true if token was filled, false if not
+ * @return RETURN_SUCCESS in case of a success
+ *         ERR_LEX_ANA in case of an invalid character after '$'
+ *         ERR_INTERNAL in case of an internal error
+ */
+static ReturnCodes interp_dollar(Scanner *sc, DynStr *str, Token *token,
+                                 FsmState *state, bool *token_ready) {
+  ReturnCodes rc = RETURN_SUCCESS;
+  int c = fgetc(sc->src);
+  *token_ready = false;
+
+  if (c == '$') {
+    // $$ - one '$' in the text
+    rc = dynstr_append(str, c);
+    if (rc != RETURN_SUCCESS) {
+      return rc;
+    }
+    return RETURN_SUCCESS;
+  }
+
+  if (c == '{') {
+    // ${ - the text ends, an expression follows
+    sc->interp_text = false;
+    interp_top(sc)->expr = true;
+    sc->parenth_depth++;
+    if (strcmp(str->data, "") == 0) {
+      dynstr_free(str);
+      token->type = TOKEN_INTERP_EXPR_BEGIN;
+    } else {
+      sc->has_pending = true;
+      sc->pending = TOKEN_INTERP_EXPR_BEGIN;
+      token->type = TOKEN_STRING;
+      token->content.string = dynstr_take(str);
+    }
+    token->line = sc->line;
+    *token_ready = true;
+    return RETURN_SUCCESS;
+  }
+
+  if (isalpha(c) || c == '_') {
+    // $id - the text ends, the id follows
+    ungetc(c, sc->src);
+    if (strcmp(str->data, "") == 0) {
+      // no text before $id, the id is read in this call
+      dynstr_free(str);
+      *state = STATE_IDLE;
+      return RETURN_SUCCESS;
+    }
+    // text before $id first, the id is read in the next call
+    sc->interp_id = true;
+    token->type = TOKEN_STRING;
+    token->content.string = dynstr_take(str);
+    token->line = sc->line;
+    *token_ready = true;
+    return RETURN_SUCCESS;
+  }
+
+  print_error("Lexical error: Invalid $ in an interpolated string.", sc->line);
+  return ERR_LEX_ANA;
+}
+
+/**
  * @brief Reading source file and creating a token
  *
  * Reads sc->src char by char and moves through the FSM states
@@ -343,6 +452,20 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
   bool tab_appeared = false;
   bool indent_pending = false;
   bool token_ready = false;
+  if (sc->interp_id) {
+    //$id after text, reads id from STATE_IDLE
+    sc->interp_id = false;
+  } else if (sc->interp_text) {
+    rc = dynstr_init(&str);
+    if (rc != RETURN_SUCCESS) {
+      return rc;
+    }
+    if (interp_top(sc)->ml) {
+      state = STATE_STR_ML;
+    } else {
+      state = STATE_STR;
+    }
+  }
   while (1) {
 
     int c = fgetc(sc->src);
@@ -354,6 +477,14 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         ungetc(c, sc->src);
         sc->emit_dot = false;
         token_to_fill->type = TOKEN_DOT;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
+      }
+
+      if (sc->has_pending) {
+        ungetc(c, sc->src);
+        sc->has_pending = false;
+        token_to_fill->type = sc->pending;
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
@@ -476,6 +607,15 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->type = TOKEN_CLOSE_PAR;
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
+      } else if (c == '}' && sc->interp_depth > 0 && interp_top(sc)->expr) {
+        interp_top(sc)->expr = false;
+        sc->interp_text = true;
+        if (sc->parenth_depth > 0) {
+          sc->parenth_depth--;
+        }
+        token_to_fill->type = TOKEN_INTERP_EXPR_END;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
       } else if (c == '!') {
         state = STATE_EXCL;
       } else if (c == '=') {
@@ -505,6 +645,11 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       } else if (c == EOF) {
+        if (sc->interp_depth > 0) {
+          print_error("Lexical error: Unterminated interpolated string.",
+                      sc->line);
+          return ERR_LEX_ANA;
+        }
         if (sc->emit_eol_eof) {
           token_to_fill->type = TOKEN_EOL;
           sc->emit_eol_eof = false;
@@ -540,6 +685,9 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       if (isalnum(c) || c == '_') {
         APPEND_OR_ERROR(str, c);
         state = STATE_ID;
+      } else if (strcmp(str.data, "s") == 0 && c == '\"' && !sc->interp_text) {
+        dynstr_free(&str);
+        state = STATE_INTERP_1_QUOT;
       } else {
         ungetc(c, sc->src); // for the next token to read
         token_to_fill->type = id_or_keyword(str.data);
@@ -971,10 +1119,37 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
 
     case STATE_STR:
       if (c == '"') {
-        token_to_fill->type = TOKEN_STRING;
-        token_to_fill->content.string = dynstr_take(&str);
+        if (sc->interp_text) {
+          if (strcmp(str.data, "") == 0) {
+            dynstr_free(&str);
+            sc->interp_text = false;
+            token_to_fill->type = TOKEN_INTERP_END;
+            sc->interp_depth--;
+          } else {
+            sc->has_pending = true;
+            sc->pending = TOKEN_INTERP_END;
+            sc->interp_depth--;
+            sc->interp_text = false;
+            token_to_fill->type = TOKEN_STRING;
+            token_to_fill->content.string = dynstr_take(&str);
+          }
+        } else {
+          token_to_fill->type = TOKEN_STRING;
+          token_to_fill->content.string = dynstr_take(&str);
+        }
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
+      }
+      if (sc->interp_text && c == '$') {
+        rc = interp_dollar(sc, &str, token_to_fill, &state, &token_ready);
+        if (rc != RETURN_SUCCESS) {
+          dynstr_free(&str);
+          return rc;
+        }
+        if (token_ready) {
+          return RETURN_SUCCESS; // STRING or INTERP_EXPR_BEGIN
+        }
+        break; // $$ or $id, scanning continues
       }
 
       if (c == '\n' || c == EOF) {
@@ -1006,6 +1181,17 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         if (c == '\n') {
           sc->line++;
         }
+        if (sc->interp_text && c == '$') {
+          rc = interp_dollar(sc, &str, token_to_fill, &state, &token_ready);
+          if (rc != RETURN_SUCCESS) {
+            dynstr_free(&str);
+            return rc;
+          }
+          if (token_ready) {
+            return RETURN_SUCCESS; // STRING or INTERP_EXPR_BEGIN
+          }
+          break; // $$ or $id, scanning continues
+        }
         APPEND_OR_ERROR(str, c);
       }
       break;
@@ -1018,11 +1204,8 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         print_error("Unterminated multiline string.", sc->line);
         return ERR_LEX_ANA;
       } else {
-        if (c == '\n') {
-          sc->line++;
-        }
         APPEND_OR_ERROR(str, '"');
-        APPEND_OR_ERROR(str, c);
+        ungetc(c, sc->src);
         state = STATE_STR_ML;
       }
       break;
@@ -1038,8 +1221,25 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
             break;
           }
         }
-        token_to_fill->type = TOKEN_STRING;
-        token_to_fill->content.string = dynstr_take(&str);
+
+        if (sc->interp_text) {
+          if (strcmp(str.data, "") == 0) {
+            dynstr_free(&str);
+            sc->interp_text = false;
+            token_to_fill->type = TOKEN_INTERP_END;
+            sc->interp_depth--;
+          } else {
+            sc->has_pending = true;
+            sc->pending = TOKEN_INTERP_END;
+            sc->interp_depth--;
+            sc->interp_text = false;
+            token_to_fill->type = TOKEN_STRING;
+            token_to_fill->content.string = dynstr_take(&str);
+          }
+        } else {
+          token_to_fill->type = TOKEN_STRING;
+          token_to_fill->content.string = dynstr_take(&str);
+        }
         token_to_fill->line = sc->line;
         return RETURN_SUCCESS;
       }
@@ -1051,10 +1251,7 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
       for (int i = 0; i < 2; i++) {
         APPEND_OR_ERROR(str, '"');
       }
-      if (c == '\n') {
-        sc->line++;
-      }
-      APPEND_OR_ERROR(str, c);
+      ungetc(c, sc->src);
       state = STATE_STR_ML;
 
       break;
@@ -1116,6 +1313,42 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         print_error("Not enough indentation inside parentheses.", sc->line);
         // This is a syntax error according to the trial submission feedback
         return ERR_SYN_ANA;
+      }
+      break;
+
+    case STATE_INTERP_1_QUOT:
+      if (c == '\"') {
+        state = STATE_INTERP_2_QUOT;
+      } else {
+        rc = interp_push(sc, false);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        sc->interp_text = true;
+        token_to_fill->type = TOKEN_INTERP_BEGIN;
+        token_to_fill->line = sc->line;
+        ungetc(c, sc->src);
+        return RETURN_SUCCESS;
+      }
+      break;
+
+    case STATE_INTERP_2_QUOT:
+      if (c == '\"') {
+        token_to_fill->type = TOKEN_INTERP_BEGIN;
+        token_to_fill->line = sc->line;
+        rc = interp_push(sc, true);
+        if (rc != RETURN_SUCCESS) {
+          return rc;
+        }
+        sc->interp_text = true;
+        return RETURN_SUCCESS;
+      } else {
+        ungetc(c, sc->src);
+        sc->has_pending = true;
+        sc->pending = TOKEN_INTERP_END;
+        token_to_fill->type = TOKEN_INTERP_BEGIN;
+        token_to_fill->line = sc->line;
+        return RETURN_SUCCESS;
       }
       break;
     }

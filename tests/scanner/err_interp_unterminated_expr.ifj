@@ -1,0 +1,25 @@
+/**
+ * @file err_interp_unterminated_expr.ifj
+ * @brief Unterminated ${ in an interpolated string
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Make new scanner tests for interpolateds. Follow the format of other files
+ * in tests/. Base them on the specification."
+ * (context: scanner tests for the INTERPOLATEDS extension, derived from the
+ * IFJ26 spec, section 5.6, and the lexical errors in section 1.1)
+ */
+// ${ without the closing } leaves the interpolated string unterminated
+// -> lexical error 1
+import ifj26.*
+@main def main(): Unit =
+  val x = 1
+  print(s"value ${x

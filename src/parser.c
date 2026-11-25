@@ -273,7 +273,7 @@ static void syntax_error(Parser *parser, const char *message) {
 /**
  * @brief Checks whether token's type is in base <expr>'s FIRST()
  *
- * FIRST(base <expr>) = {id, int, string, double, true, false, (}
+ * FIRST(base <expr>) = {id, int, string, double, true, false, (, interp_begin}
  *
  * @param type TokenType of token to check
  * @return true if is in FIRST(), else false
@@ -286,6 +286,7 @@ static bool is_expr_base_first(const TokenType type) {
   case TOKEN_ID:
   case TOKEN_OPEN_PAR:
   case TOKEN_BOOL:
+  case TOKEN_INTERP_BEGIN:
     return true;
   default:
     return false;
@@ -295,7 +296,8 @@ static bool is_expr_base_first(const TokenType type) {
 /**
  * @brief Checks whether token's type is in extended <expr>'s FIRST()
  *
- * FIRST(extended <expr>) = {id, int, double, string, true, false, (, -, !}
+ * FIRST(extended <expr>) = {id, int, double, string, true, false, (, -, !,
+ * interp_begin}
  *
  * @param type TokenType of token to check
  * @return true if is in FIRST(), else false
@@ -338,7 +340,7 @@ static bool is_type_first(const TokenType type) {
  * @brief Checks whether token's type is in STATEMENT's FIRST()
  *
  * FIRST(STATEMENT) = {kw_if, kw_while, kw_for, kw_return, kw_var, kw_val, id,
- * int, double, string, true, false, (}
+ * int, double, string, true, false, (, interp_begin}
  *
  * @param type TokenType of token to check
  * @return true if is in FIRST(), else false
@@ -898,6 +900,65 @@ static bool parse_in_block2(Parser *parser, ASTBlockNodeData *block);
  * true
  */
 static bool parse_statement(Parser *parser, ASTBlockNodeData *block);
+
+/**
+ * @brief Parses an interpolated string
+ *
+ * RULE 82: INTERPOLATEDS -> INTERP_BEGIN INTERP_PARTS INTERP_END
+ *
+ * The string is built as a concatenation of its parts,
+ * s"a $x ${e}" -> "a " + toStr(x) + " " + toStr(e),
+ * s"" -> ""
+ *
+ * @param parser Parser's current state
+ * @param out ASTNode to store the whole interpolated string
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_interpolateds(Parser *parser, ASTNode **out);
+
+/**
+ * @brief Parses parts of an interpolated string and joins them with +
+ *
+ * RULE 83: INTERP_PARTS -> INTERP_PART INTERP_PARTS
+ * RULE 84: INTERP_PARTS -> eps
+ *
+ * @param parser Parser's current state
+ * @param acc Parts joined so far, NULL before the first part
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_interp_parts(Parser *parser, ASTNode **acc);
+
+/**
+ * @brief Parses one part of an interpolated string
+ *
+ * RULE 85: INTERP_PART -> STRING
+ * RULE 86: INTERP_PART -> ID
+ * RULE 87: INTERP_PART -> INTERP_EXPR_BEGIN <expr> INTERP_EXPR_END
+ *
+ * @param parser Parser's current state
+ * @param part ASTNode to store the part, ID and <expr> are wrapped in toStr
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_interp_part(Parser *parser, ASTNode **part);
+
+/**
+ * @brief Builds a call of toStr with one argument
+ *
+ * Used for $id and ${expr} parts of an interpolated string.
+ * arg is always taken over, on success it's inside *out,
+ * on an error it gets freed.
+ *
+ * @param parser Parser's current state
+ * @param arg Argument of the call
+ * @param line Line of the interpolated part
+ * @param out Set to the built function call node, NULL on an error
+ * @return false if an allocation failed, else true
+ */
+static bool build_to_str(Parser *parser, ASTNode *arg, unsigned int line,
+                         ASTNode **out);
 
 /**
  * @brief Parses an expression
@@ -2248,6 +2309,192 @@ static bool parse_statement(Parser *parser, ASTBlockNodeData *block) {
   return correct;
 }
 
+static bool parse_interpolateds(Parser *parser, ASTNode **out) {
+  bool correct = false;
+  *out = NULL;
+  const unsigned int line = parser->current_token.line;
+
+  if (!expect(parser, TOKEN_INTERP_BEGIN)) {
+    syntax_error(parser,
+                 "Syntactic error: Missing dollar sign for interpolation.");
+    return false;
+  }
+  // INTERP_BEGIN
+
+  // INTERP_BEGIN INTERP_PARTS
+  // RULES 83, 84
+  correct = parse_interp_parts(parser, out);
+  if (!correct) {
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_INTERP_END)) {
+    syntax_error(parser, "Syntactic error: Missing interpolation end.");
+    ast_free(*out);
+    *out = NULL;
+    return false;
+  }
+  // INTERP_BEGIN INTERP_PARTS INTERP_END
+
+  if (*out == NULL) {
+    // s"" has no parts, it's an empty string literal
+    char *empty = malloc(1);
+    if (empty == NULL) {
+      parser->rc = ERR_INTERNAL;
+      print_error("Internal error: Failed to allocate memory.", line);
+      return false;
+    }
+    empty[0] = '\0';
+    *out =
+        ast_init_literal(STRING, (ASTLiteralNodeData){.string = empty}, line);
+    if (*out == NULL) {
+      parser->rc = ERR_INTERNAL;
+      return false;
+    }
+  }
+  return correct;
+}
+
+static bool parse_interp_parts(Parser *parser, ASTNode **acc) {
+  bool correct = false;
+  ASTNode *part = NULL;
+  const unsigned int line = parser->current_token.line;
+  if (parser->current_token.type == TOKEN_INTERP_END) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else if (parser->current_token.type == TOKEN_STRING ||
+             parser->current_token.type == TOKEN_ID ||
+             parser->current_token.type == TOKEN_INTERP_EXPR_BEGIN) {
+    // INTERP_PART
+    // RULES 85, 86, 87
+    correct = parse_interp_part(parser, &part);
+    if (!correct) {
+      ast_free(*acc);
+      *acc = NULL;
+      return false;
+    }
+    if (*acc == NULL) {
+      // first part, nothing to join it with yet
+      *acc = part;
+    } else {
+      // parts joined so far + part
+      *acc = ast_init_binary_op(OP_ADD, *acc, part, line);
+      if (*acc == NULL) {
+        parser->rc = ERR_INTERNAL;
+        return false;
+      }
+    }
+    // INTERP_PART INTERP_PARTS
+    // RULES 83, 84
+    correct = parse_interp_parts(parser, acc);
+  } else {
+    syntax_error(parser, "Syntactic error: Invalid interpolation in string.");
+    ast_free(*acc);
+    *acc = NULL;
+    return false;
+  }
+  return correct;
+}
+
+static bool build_to_str(Parser *parser, ASTNode *arg, const unsigned int line,
+                         ASTNode **out) {
+  *out = NULL;
+
+  char *name = malloc(sizeof("toStr"));
+  if (name == NULL) {
+    ast_free(arg);
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  strcpy(name, "toStr");
+
+  *out = ast_init_func_call(name, line);
+  if (*out == NULL) {
+    ast_free(arg);
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+
+  ReturnCodes rc = ast_func_call_new_arg_list(*out);
+  if (rc != RETURN_SUCCESS) {
+    *out = NULL;
+    ast_free(arg);
+    parser->rc = rc;
+    return false;
+  }
+
+  rc = ast_func_call_add_arg(*out, arg);
+  if (rc != RETURN_SUCCESS) {
+    *out = NULL;
+    parser->rc = rc;
+    return false;
+  }
+  return true;
+}
+
+static bool parse_interp_part(Parser *parser, ASTNode **part) {
+  bool correct = false;
+  *part = NULL;
+  const unsigned int line = parser->current_token.line;
+  if (parser->current_token.type == TOKEN_STRING) {
+    // STRING
+    // no deeper RULE
+    char *text = parser->current_token.content.string;
+    parser->current_token.content.string = NULL;
+    *part =
+        ast_init_literal(STRING, (ASTLiteralNodeData){.string = text}, line);
+    if (*part == NULL) {
+      parser->rc = ERR_INTERNAL;
+      return false;
+    }
+    correct = expect(parser, TOKEN_STRING);
+    if (!correct) {
+      ast_free(*part);
+      *part = NULL;
+      return false;
+    }
+  } else if (parser->current_token.type == TOKEN_ID) {
+    // ID
+    // no deeper RULE
+    char *name = parser->current_token.content.string;
+    parser->current_token.content.string = NULL;
+    ASTNode *var = ast_init_var_ref(name, line);
+    if (var == NULL) {
+      parser->rc = ERR_INTERNAL;
+      return false;
+    }
+    if (!expect(parser, TOKEN_ID)) {
+      ast_free(var);
+      return false;
+    }
+    correct = build_to_str(parser, var, line, part);
+  } else if (expect(parser, TOKEN_INTERP_EXPR_BEGIN)) {
+    // INTERP_EXPR_BEGIN
+
+    // INTERP_EXPR_BEGIN <expr>
+    // PRECEDENCE ANALYSIS
+    ASTNode *expr = NULL;
+    correct = parse_expr(parser, &expr);
+    if (!correct) {
+      return false;
+    }
+    if (!expect(parser, TOKEN_INTERP_EXPR_END)) {
+      syntax_error(parser,
+                   "Syntactic error: Missing } in interpolated string.");
+      ast_free(expr);
+      return false;
+    }
+    // INTERP_EXPR_BEGIN <expr> INTERP_EXPR_END
+    correct = build_to_str(parser, expr, line, part);
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Invalid syntax inside expression in an "
+                 "interpolated string.");
+  }
+  return correct;
+}
+
 /**
  * @brief Parses the whole program and builds its AST
  *
@@ -2867,6 +3114,29 @@ static bool parse_expr(Parser *parser, ASTNode **out) {
       }
 
       ret = prec_stack_push(ps, (PrecItem){.type = PREC_EXPR, .expr = if_node});
+
+      if (ret != RETURN_SUCCESS) {
+        parser->rc = ERR_INTERNAL;
+        prec_stack_free(ps);
+        return false;
+      }
+
+      prev_terminal = PREC_OPERAND;
+      continue;
+    }
+
+    if (parser->current_token.type == TOKEN_INTERP_BEGIN) {
+      // INTERPOLATEDS extension
+      ASTNode *interpolateds_node = NULL;
+      bool correct = parse_interpolateds(parser, &interpolateds_node);
+
+      if (!correct) {
+        prec_stack_free(ps);
+        return false;
+      }
+
+      ret = prec_stack_push(
+          ps, (PrecItem){.type = PREC_EXPR, .expr = interpolateds_node});
 
       if (ret != RETURN_SUCCESS) {
         parser->rc = ERR_INTERNAL;

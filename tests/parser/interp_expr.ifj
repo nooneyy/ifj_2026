@@ -1,0 +1,37 @@
+/**
+ * @file interp_expr.ifj
+ * @brief Expressions inside ${ } of an interpolated string
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create parser tests for INTERPOLATED extension from the specification.
+ * Format of the tests must be the same as with all other files in tests/. Base
+ * the tests entirely on the specification and other tests."
+ * (context: parser tests for the INTERPOLATEDS extension, derived from the
+ * IFJ26 spec, section 5.6; an interpolated string is built as a concatenation
+ * of its parts with +, every $id and ${expr} is wrapped in a call of toStr,
+ * as the spec converts every inserted value the same way as toStr does)
+ */
+// ${ } holds any expression the compiler supports: operators, parentheses,
+// unary operators, literals, function calls (FUNEXP) and if (CONTROL)
+// (spec 5.6) -> 0
+import ifj26.*
+def twice(a: Int): Int = a * 2
+@main def main(): Unit =
+  val a = 1
+  val b = 3
+  print(s"sum ${a + b * (a - 3)}")
+  print(s"neg ${-a} and not ${!(a < 2)}")
+  print(s"cmp ${a <= 2 && a != 0}")
+  print(s"lit ${1.2345} ${"text"} ${true}")
+  print(s"call ${twice(a)} ${toStr(a)}")
+  print(s"if ${if a > 0 then a else 0}")
+  print(s"spaced ${ a } out")

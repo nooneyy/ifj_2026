@@ -1,0 +1,50 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val x : ?
+        LITERAL Int 1
+      VAR_DEF val empty : ?
+        LITERAL String ""
+      VAR_DEF val text : ?
+        LITERAL String "just text"
+      VAR_DEF val dollar : ?
+        LITERAL String "$"
+      VAR_DEF val id : ?
+        CALL toStr
+          VAR_REF x
+      VAR_DEF val expr : ?
+        CALL toStr
+          VAR_REF x
+      VAR_DEF val front : ?
+        BINARY_OP +
+          CALL toStr
+            VAR_REF x
+          LITERAL String " is first"
+      VAR_DEF val back : ?
+        BINARY_OP +
+          LITERAL String "last is "
+          CALL toStr
+            VAR_REF x
+      VAR_DEF val middle : ?
+        BINARY_OP +
+          BINARY_OP +
+            LITERAL String "a "
+            CALL toStr
+              VAR_REF x
+          LITERAL String " b"
+      VAR_DEF val glued : ?
+        BINARY_OP +
+          BINARY_OP +
+            CALL toStr
+              VAR_REF x
+            CALL toStr
+              VAR_REF x
+          CALL toStr
+            VAR_REF x
+      VAR_DEF val dollars : ?
+        BINARY_OP +
+          BINARY_OP +
+            LITERAL String "$"
+            CALL toStr
+              VAR_REF x
+          LITERAL String "$"

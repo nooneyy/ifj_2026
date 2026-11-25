@@ -1,0 +1,38 @@
+/**
+ * @file interp_multiline.ifj
+ * @brief Multi-line interpolated strings
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create codegen tests for INTERPOLATEDS extension from the specification.
+ * Format of the tests must be the same as with all other files in tests/. Base
+ * the tests entirely on the specification and other tests."
+ * (context: codegen tests for the INTERPOLATEDS extension (spec 5.6); every
+ * program is compiled by codegen_main, run by ic26int and its output and return
+ * code are compared; every inserted value is converted the same way as by
+ * toStr, so a Double is written with "%.2f" (spec 4, 5.6))
+ */
+// a multi-line interpolated string holds its line ends and double quotes
+// literally, $id, ${expr} and $$ work like in the one-line ones, an empty
+// one prints nothing (spec 1.1, 5.6)
+// -> He said "hi" to IFJ[new line]  indented 52[new line]$ end, ""
+import ifj26.*
+
+@main def main(): Unit =
+  val name = "IFJ"
+  val n = 26
+  print(s"""He said "hi" to $name
+  indented ${n * 2}
+$$ end""")
+  print("\n")
+  print(s"""""")
+  print(s"""""$name""")
+  print("\n")

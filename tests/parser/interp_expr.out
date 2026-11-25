@@ -1,0 +1,94 @@
+PROGRAM
+  FUNC_DEF twice (a: Int) : Int
+    BINARY_OP *
+      VAR_REF a
+      LITERAL Int 2
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val a : ?
+        LITERAL Int 1
+      VAR_DEF val b : ?
+        LITERAL Int 3
+      CALL print
+        BINARY_OP +
+          LITERAL String "sum "
+          CALL toStr
+            BINARY_OP +
+              VAR_REF a
+              BINARY_OP *
+                VAR_REF b
+                BINARY_OP -
+                  VAR_REF a
+                  LITERAL Int 3
+      CALL print
+        BINARY_OP +
+          BINARY_OP +
+            BINARY_OP +
+              LITERAL String "neg "
+              CALL toStr
+                UNARY_OP -
+                  VAR_REF a
+            LITERAL String " and not "
+          CALL toStr
+            UNARY_OP !
+              BINARY_OP <
+                VAR_REF a
+                LITERAL Int 2
+      CALL print
+        BINARY_OP +
+          LITERAL String "cmp "
+          CALL toStr
+            BINARY_OP &&
+              BINARY_OP <=
+                VAR_REF a
+                LITERAL Int 2
+              BINARY_OP !=
+                VAR_REF a
+                LITERAL Int 0
+      CALL print
+        BINARY_OP +
+          BINARY_OP +
+            BINARY_OP +
+              BINARY_OP +
+                BINARY_OP +
+                  LITERAL String "lit "
+                  CALL toStr
+                    LITERAL Double 1.2345
+                LITERAL String " "
+              CALL toStr
+                LITERAL String "text"
+            LITERAL String " "
+          CALL toStr
+            LITERAL Boolean true
+      CALL print
+        BINARY_OP +
+          BINARY_OP +
+            BINARY_OP +
+              LITERAL String "call "
+              CALL toStr
+                CALL twice
+                  VAR_REF a
+            LITERAL String " "
+          CALL toStr
+            CALL toStr
+              VAR_REF a
+      CALL print
+        BINARY_OP +
+          LITERAL String "if "
+          CALL toStr
+            IF expr
+              cond:
+                BINARY_OP >
+                  VAR_REF a
+                  LITERAL Int 0
+              then:
+                VAR_REF a
+              else:
+                LITERAL Int 0
+      CALL print
+        BINARY_OP +
+          BINARY_OP +
+            LITERAL String "spaced "
+            CALL toStr
+              VAR_REF a
+          LITERAL String " out"

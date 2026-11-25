@@ -1,0 +1,73 @@
+PROGRAM
+  FUNC_DEF greet (name: String) : String
+    BINARY_OP +
+      LITERAL String "Hello "
+      CALL toStr
+        VAR_REF name
+  FUNC_DEF label (n: Int) : String
+    BLOCK
+      RETURN
+        BINARY_OP +
+          LITERAL String "n = "
+          CALL toStr
+            VAR_REF n
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val n : ?
+        LITERAL Int 26
+      VAR_DEF var t : String
+        LITERAL String "first"
+      ASSIGN t
+        BINARY_OP +
+          LITERAL String "second "
+          CALL toStr
+            VAR_REF n
+      CALL print
+        CALL greet
+          BINARY_OP +
+            LITERAL String "IFJ"
+            CALL toStr
+              VAR_REF n
+      VAR_DEF val sum : ?
+        BINARY_OP +
+          BINARY_OP +
+            CALL toStr
+              VAR_REF n
+            CALL toStr
+              BINARY_OP +
+                VAR_REF n
+                LITERAL Int 1
+          LITERAL String "plain"
+      VAR_DEF val par : ?
+        BINARY_OP +
+          BINARY_OP +
+            LITERAL String "in "
+            CALL toStr
+              VAR_REF n
+          VAR_REF t
+      VAR_DEF val cond : ?
+        IF expr
+          cond:
+            BINARY_OP >
+              VAR_REF n
+              LITERAL Int 1
+          then:
+            BINARY_OP +
+              LITERAL String "big "
+              CALL toStr
+                VAR_REF n
+          else:
+            LITERAL String "small"
+      IF stmt
+        cond:
+          BINARY_OP ==
+            CALL toStr
+              VAR_REF n
+            LITERAL String "26"
+        then:
+          BLOCK
+            CALL print
+              LITERAL String "equal"
+      CALL print
+        CALL label
+          VAR_REF n

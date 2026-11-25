@@ -1,0 +1,33 @@
+PROGRAM
+  FUNC_DEF main @main () : Unit
+    BLOCK
+      VAR_DEF val name : ?
+        LITERAL String "IFJ"
+      VAR_DEF val n : ?
+        LITERAL Int 26
+      VAR_DEF val empty : ?
+        LITERAL String ""
+      VAR_DEF val quotes : ?
+        BINARY_OP +
+          BINARY_OP +
+            BINARY_OP +
+              LITERAL String "\""
+              CALL toStr
+                VAR_REF name
+            LITERAL String "\" "
+          CALL toStr
+            VAR_REF n
+      VAR_DEF val lines : ?
+        BINARY_OP +
+          BINARY_OP +
+            BINARY_OP +
+              CALL toStr
+                VAR_REF n
+              LITERAL String "\n"
+            CALL toStr
+              BINARY_OP *
+                VAR_REF n
+                LITERAL Int 2
+          LITERAL String "\n$"
+      CALL print
+        VAR_REF lines

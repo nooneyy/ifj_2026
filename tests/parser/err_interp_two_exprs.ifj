@@ -1,0 +1,28 @@
+/**
+ * @file err_interp_two_exprs.ifj
+ * @brief Two operands inside ${ } without an operator
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create parser tests for INTERPOLATED extension from the specification.
+ * Format of the tests must be the same as with all other files in tests/. Base
+ * the tests entirely on the specification and other tests."
+ * (context: parser tests for the INTERPOLATEDS extension, derived from the
+ * IFJ26 spec, section 5.6; an interpolated string is built as a concatenation
+ * of its parts with +, every $id and ${expr} is wrapped in a call of toStr,
+ * as the spec converts every inserted value the same way as toStr does)
+ */
+// ${ } holds one expression, two operands need an operator between them
+// (spec 5.6) -> 2
+import ifj26.*
+@main def main(): Unit =
+  val n = 1
+  print(s"${n n}")

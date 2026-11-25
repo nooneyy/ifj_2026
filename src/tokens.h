@@ -68,6 +68,10 @@ typedef enum TokenType {
   TOKEN_KW_MATCH,     // "match"
   TOKEN_KW_TYPE,      // "type"
   TOKEN_UNDERSCORE,   // "_"
+  TOKEN_INTERP_BEGIN, // s" or s"""
+  TOKEN_INTERP_END,   // " after s" or """ after s"""
+  TOKEN_INTERP_EXPR_BEGIN, // ${ inside an interpolated string
+  TOKEN_INTERP_EXPR_END,   // } closing ${
 } TokenType;
 
 /**

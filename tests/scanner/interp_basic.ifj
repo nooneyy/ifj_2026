@@ -1,0 +1,33 @@
+/**
+ * @file interp_basic.ifj
+ * @brief Interpolated strings - $id, ${expr}, $$ and plain text
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Make new scanner tests for interpolateds. Follow the format of other files
+ * in tests/. Base them on the specification."
+ * (context: scanner tests for the INTERPOLATEDS extension, derived from the
+ * IFJ26 spec, section 5.6, and the lexical errors in section 1.1)
+ */
+// one-line interpolated strings (INTERPOLATEDS): $id, ${expr}, $$ as one '$',
+// plain text and the spec example -> 0
+import ifj26.*
+@main def main(): Unit =
+  val name = "IFJ"
+  val n = 26
+  print(s"$name${n + 1} costs $$0")
+  val empty = s""; val plain = s"no interpolation"
+  val first = s"$name is first"; val last = s"last is $name"
+  val dot = s"$name."; val twice = s"$name$name"; val under = s"$_x and $n_2"
+  val only = s"${n}"; val dollars = s"$$$$ and $$name"
+  val spaced = s"spaced ${ n * 2 } out"
+  val notInterp = "$name ${n} stays text in a normal string"
+  val s = "x"; val t = s + s"$s"
