@@ -14,7 +14,6 @@
 #include <string.h>
 
 #define TMP_VAR_BUF_SIZE 32
-#define IR_NAME_BUF_SIZE 128
 #define INITIAL_VAR_CAP 16
 #define TMPS_PER_AST_NODE 2
 #define EXTRA_TMP_SLOTS 4
@@ -219,8 +218,13 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "PUSHFRAME\n");
   fprintf(ctx->out, "DEFVAR LF@val\n");
   fprintf(ctx->out, "POPS LF@val\n");
+  fprintf(ctx->out, "DEFVAR LF@type\n");
+  fprintf(ctx->out, "TYPE LF@type LF@val\n");
   fprintf(ctx->out, "DEFVAR LF@res\n");
+  fprintf(ctx->out, "MOVE LF@res LF@val\n");
+  fprintf(ctx->out, "JUMPIFEQ $ifj_toInt_end LF@type string@int\n");
   fprintf(ctx->out, "FLOAT2INT LF@res LF@val\n");
+  fprintf(ctx->out, "LABEL $ifj_toInt_end\n");
   fprintf(ctx->out, "PUSHS LF@res\n");
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
@@ -307,6 +311,9 @@ static void generate_builtin_library(CodeGenContext *ctx) {
   fprintf(ctx->out, "PUSHFRAME\n");
   fprintf(ctx->out, "DEFVAR LF@res\n");
   fprintf(ctx->out, "READ LF@res bool\n");
+  fprintf(ctx->out, "JUMPIFNEQ $ifj_readBoolean_end LF@res nil@nil\n");
+  fprintf(ctx->out, "MOVE LF@res bool@false\n");
+  fprintf(ctx->out, "LABEL $ifj_readBoolean_end\n");
   fprintf(ctx->out, "PUSHS LF@res\n");
   fprintf(ctx->out, "POPFRAME\n");
   fprintf(ctx->out, "RETURN\n\n");
@@ -725,7 +732,10 @@ static void expression_binary_op(CodeGenContext *ctx, ASTNode *expr,
   generate_expression(ctx, bin->left, left_tmp);
   generate_expression(ctx, bin->right, right_tmp);
 
-  if (dest_var == NULL) {
+  if (dest_var == NULL &&
+      op != OP_DIV) { // if the OP_DIV check wasn't here the code would
+                      // sometimes not run into divide by zero errors since if
+                      // dest_var == NULL it would be skipped
     return;
   }
 
@@ -747,8 +757,12 @@ static void expression_binary_op(CodeGenContext *ctx, ASTNode *expr,
             right_tmp);
     break;
   case OP_DIV: {
+    const char *target = (dest_var != NULL)
+                             ? dest_var
+                             : left_tmp; // second part of dest_var == NULL
+                                         // divide by zero skipping
     inst = (expr->data_type == INT) ? "IDIV" : "DIV";
-    fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, dest_var, left_tmp,
+    fprintf(ctx->out, "%s LF@%s LF@%s LF@%s\n", inst, target, left_tmp,
             right_tmp);
     break;
   }
@@ -1093,29 +1107,32 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
     return;
   }
 
-  char gen_ir[IR_NAME_BUF_SIZE];
-  snprintf(gen_ir, sizeof(gen_ir), "%s$%d", for_node->generator_name, gen_uid);
-  fprintf(ctx->out, "MOVE LF@%s LF@%s\n", gen_ir, start_tmp);
+  const char *gen_name = for_node->generator_name;
+  fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", gen_name, gen_uid, start_tmp);
 
   fprintf(ctx->out, "LABEL $for_start_%d\n", id);
   fprintf(ctx->out, "LT LF@%s LF@%s int@0\n", cond_tmp, step_tmp);
   fprintf(ctx->out, "JUMPIFEQ $for_neg_%d LF@%s bool@true\n", id, cond_tmp);
 
   if (for_node->includes_end) {
-    fprintf(ctx->out, "GT LF@%s LF@%s LF@%s\n", cond_tmp, gen_ir, end_tmp);
+    fprintf(ctx->out, "GT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid,
+            end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@true\n", id, cond_tmp);
   } else {
-    fprintf(ctx->out, "LT LF@%s LF@%s LF@%s\n", cond_tmp, gen_ir, end_tmp);
+    fprintf(ctx->out, "LT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid,
+            end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@false\n", id, cond_tmp);
   }
   fprintf(ctx->out, "JUMP $for_guards_%d\n", id);
 
   fprintf(ctx->out, "LABEL $for_neg_%d\n", id);
   if (for_node->includes_end) {
-    fprintf(ctx->out, "LT LF@%s LF@%s LF@%s\n", cond_tmp, gen_ir, end_tmp);
+    fprintf(ctx->out, "LT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid,
+            end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@true\n", id, cond_tmp);
   } else {
-    fprintf(ctx->out, "GT LF@%s LF@%s LF@%s\n", cond_tmp, gen_ir, end_tmp);
+    fprintf(ctx->out, "GT LF@%s LF@%s$%d LF@%s\n", cond_tmp, gen_name, gen_uid,
+            end_tmp);
     fprintf(ctx->out, "JUMPIFEQ $for_end_%d LF@%s bool@false\n", id, cond_tmp);
   }
 
@@ -1129,7 +1146,8 @@ static void statement_for(CodeGenContext *ctx, ASTNode *statement,
 
   generate_statement(ctx, for_node->body, func_ret_type);
   fprintf(ctx->out, "LABEL $for_step_%d\n", id);
-  fprintf(ctx->out, "ADD LF@%s LF@%s LF@%s\n", gen_ir, gen_ir, step_tmp);
+  fprintf(ctx->out, "ADD LF@%s$%d LF@%s$%d LF@%s\n", gen_name, gen_uid,
+          gen_name, gen_uid, step_tmp);
   fprintf(ctx->out, "JUMP $for_start_%d\n", id);
 
   fprintf(ctx->out, "LABEL $for_end_%d\n", id);
@@ -1161,13 +1179,15 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
     }
 
     int uid = ctx->next_var_uid++;
-    char ir_name[IR_NAME_BUF_SIZE];
-    snprintf(ir_name, sizeof(ir_name), "%s$%d", def->name, uid);
+    if (def->expr != NULL) {
+      char val_tmp[TMP_VAR_BUF_SIZE];
+      new_tmp_var(ctx, val_tmp);
 
-    generate_expression(ctx, def->expr, ir_name);
-    if (var_type == DOUBLE && def->expr != NULL &&
-        def->expr->data_type == INT) {
-      fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ir_name, ir_name);
+      generate_expression(ctx, def->expr, val_tmp);
+      if (var_type == DOUBLE && def->expr->data_type == INT) {
+        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", val_tmp, val_tmp);
+      }
+      fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", def->name, uid, val_tmp);
     }
     scope_push_var_with_uid(ctx, def->name, var_type, uid);
     break;
@@ -1176,15 +1196,19 @@ static void generate_statement(CodeGenContext *ctx, ASTNode *statement,
   case NODE_ASSIGN: {
     ASTAssignNodeData *assign = &statement->data.assign;
     const LocalVarEntry *entry = scope_lookup(ctx, assign->left);
-    if (entry != NULL) {
+    if (entry != NULL && assign->right != NULL) {
+      const char *target_name = entry->name;
+      int target_uid = entry->uid;
       DataType target_type = entry->type;
-      char ir_name[IR_NAME_BUF_SIZE];
-      snprintf(ir_name, sizeof(ir_name), "%s$%d", entry->name, entry->uid);
-      generate_expression(ctx, assign->right, ir_name);
-      if (target_type == DOUBLE && assign->right != NULL &&
-          assign->right->data_type == INT) {
-        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", ir_name, ir_name);
+      char val_tmp[TMP_VAR_BUF_SIZE];
+      new_tmp_var(ctx, val_tmp);
+
+      generate_expression(ctx, assign->right, val_tmp);
+      if (target_type == DOUBLE && assign->right->data_type == INT) {
+        fprintf(ctx->out, "INT2FLOAT LF@%s LF@%s\n", val_tmp, val_tmp);
       }
+      fprintf(ctx->out, "MOVE LF@%s$%d LF@%s\n", target_name, target_uid,
+              val_tmp);
     }
     break;
   }
@@ -1370,6 +1394,10 @@ static void generate_function(CodeGenContext *ctx, ASTNode *fn_node) {
     } else {
       ASTNode *s = fn->body->data.block.statements;
       while (s != NULL) {
+        if (s == NULL) {
+          fprintf(ctx->out, "PUSHS nil@nil\n");
+        }
+
         if (s->next == NULL && is_expression_node(s)) {
           emit_return_expr(ctx, s, fn->return_type);
         } else {
@@ -1411,7 +1439,9 @@ ReturnCodes generate_code(ASTNode *program, FILE *out) {
     function = function->next;
   }
 
-  generate_builtin_library(&ctx);
+  if (!ctx.has_error) {
+    generate_builtin_library(&ctx);
+  }
 
   free(ctx.vars);
   return ctx.has_error ? ERR_INTERNAL : RETURN_SUCCESS;
