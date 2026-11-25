@@ -967,13 +967,6 @@ static bool build_to_str(Parser *parser, ASTNode *arg, unsigned int line,
  */
 static bool parse_expr(Parser *parser, ASTNode **out);
 
-static bool parse_interpolateds(Parser *parser, ASTNode **out) {
-  // placeholder
-  *out = NULL;
-  syntax_error(parser, "unimplemented");
-  return false;
-}
-
 static bool parse_program(Parser *parser) {
   bool correct = false;
   if (!expect(parser, TOKEN_KW_IMPORT)) {
@@ -2361,7 +2354,6 @@ static bool parse_interpolateds(Parser *parser, ASTNode **out) {
 }
 
 static bool parse_interp_parts(Parser *parser, ASTNode **acc) {
-  (void)parse_interpolateds;
   bool correct = false;
   ASTNode *part = NULL;
   const unsigned int line = parser->current_token.line;
