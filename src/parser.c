@@ -2345,8 +2345,9 @@ static bool parse_interpolateds(Parser *parser, ASTNode **out) {
       return false;
     }
     empty[0] = '\0';
-    *out =
-        ast_init_literal(STRING, (ASTLiteralNodeData){.string = empty}, line);
+    ASTLiteralNodeData value;
+    value.string = empty;
+    *out = ast_init_literal(STRING, value, line);
     if (*out == NULL) {
       parser->rc = ERR_INTERNAL;
       return false;
