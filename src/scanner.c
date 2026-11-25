@@ -1342,14 +1342,13 @@ static ReturnCodes scanner_fsm(Token *token_to_fill, Scanner *sc) {
         }
         sc->interp_text = true;
         return RETURN_SUCCESS;
-      } else {
-        ungetc(c, sc->src);
-        sc->has_pending = true;
-        sc->pending = TOKEN_INTERP_END;
-        token_to_fill->type = TOKEN_INTERP_BEGIN;
-        token_to_fill->line = sc->line;
-        return RETURN_SUCCESS;
       }
+      ungetc(c, sc->src);
+      sc->has_pending = true;
+      sc->pending = TOKEN_INTERP_END;
+      token_to_fill->type = TOKEN_INTERP_BEGIN;
+      token_to_fill->line = sc->line;
+      return RETURN_SUCCESS;
       break;
     }
   }
