@@ -519,6 +519,7 @@ ASTNode *ast_init_valmem_field(ASTNode *receiver, char *name,
       .args = NULL,
       .arg_list_count = 0,
       .arg_list_sizes = NULL,
+      .is_extension = false,
   };
 
   *valmem_field = (ASTNode){

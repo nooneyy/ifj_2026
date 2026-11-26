@@ -230,6 +230,9 @@ typedef struct {
                           // (PARAMLISTS ext)
   size_t
       arg_list_count; // How many items are in arg_list_sizes (PARAMLISTS ext)
+  bool is_extension;  // EXTKW: true if semantics resolved the field to a user
+                      // method of the receiver's type, false for a built-in
+                      // member (false until semantic analysis)
 } ASTValmemFieldData;
 
 /**
