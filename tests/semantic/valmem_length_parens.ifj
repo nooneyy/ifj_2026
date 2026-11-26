@@ -1,5 +1,5 @@
 /**
- * @file err_valmem_parens.ifj
+ * @file valmem_length_parens.ifj
  * @brief VALMEM member written with an empty argument list
  * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
  * @date 24.11.2026
@@ -18,8 +18,18 @@
  * (context: parser tests for the VALMEM extension (spec 5.4) - a member
  * binds tighter than every operator and chains go from the left, derived from
  * the IFJ26 spec as a black box)
+ *
+ * Moved from the parser tests (err_valmem_parens, code 2) by Claude Opus 5.5
+ * AI model.
+ *
+ * Prompt:
+ * "Please update tests/parser_main.c so that it prints the valmem arg lists
+ * and move err_valmem_parens from the parser to the semantic tests now that
+ * we have EXTKW"
  */
-// the members are written without an empty argument list (spec 5.4) -> 2
+// the members are written without an empty argument list (spec 5.4), with
+// EXTKW the call parses and the wrong number of lists is found in semantics
+// (spec 5.9, 5.10) -> 5
 import ifj26.*
 @main def main(): Unit =
   val s = "abc"

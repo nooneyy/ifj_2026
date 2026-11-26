@@ -88,6 +88,8 @@ typedef struct {
   bool is_main;         // Is this function annotated with "@main"?
   ASTNode *body;        // The body of the function (Block node, non-NULL once
                         // successfully parsed)
+  FunctionParam receiver; // EXTKW: receiver of a method, name owned by this
+                          // struct, name == NULL for plain function
 } ASTFunctionDefNodeData;
 
 /**
@@ -216,11 +218,21 @@ typedef struct {
 } ASTUnaryOpNodeData;
 
 /**
- * @brief Data specified to the Valmem field node
+ * @brief Data specified to the Valmem field node. Also used for EXTKW fields!
  */
 typedef struct {
-  ASTNode *receiver; // The value which the operation is called on
-  char *name;        // The name of the operation
+  ASTNode *receiver;      // The value which the operation is called on
+  char *name;             // The name of the operation
+  ASTNode *args;          // Linked list of method arguments (any expr nodes -
+                          // NODE_LITERAL, NODE_VARIABLE_REF, NODE_BINARY_OP,
+                          // NODE_UNARY_OP, NODE_FUNCTION_CALL)
+  size_t *arg_list_sizes; // An array of the sizes of each argument list
+                          // (PARAMLISTS ext)
+  size_t
+      arg_list_count; // How many items are in arg_list_sizes (PARAMLISTS ext)
+  bool is_extension;  // EXTKW: true if semantics resolved the field to a user
+                      // method of the receiver's type, false for a built-in
+                      // member (false until semantic analysis)
 } ASTValmemFieldData;
 
 /**
@@ -397,23 +409,24 @@ ASTNode *ast_init_return(ASTNode *value, unsigned int line);
 ASTNode *ast_init_func_call(char *name, unsigned int line);
 
 /**
- * @brief Adds a new argument list to a Function Call node
- * @param func_call A pointer to the Function call node
+ * @brief Adds a new argument list to a function in the Function Call node or a
+ * method in the VALMEM field node
+ * @param f_node A pointer to the Function call or VALMEM field node
  * @return RETURN_SUCCESS on success, ERR_INTERNAL on reallocation failure or
- * NULL func_call or wrong node type (func_call gets freed)
+ * NULL node or wrong node type (node gets freed)
  */
-ReturnCodes ast_func_call_new_arg_list(ASTNode *func_call);
+ReturnCodes ast_func_call_new_arg_list(ASTNode *f_node);
 
 /**
  * @brief Adds a new argument to the last argument list of the Function Call
- * node
- * @param func_call A pointer to the Function call node
+ * node or to the last argument list of the method in a VALMEM field node
+ * @param f_node A pointer to the Function call or VALMEM field node
  * @param arg A pointer to the expr node of the argument to add
  * @return RETURN_SUCCESS on success, ERR_INTERNAL on reallocation failure or
- * NULL arguments, wrong node type or no argument list (func_call and arg get
+ * NULL arguments, wrong node type or no argument list (node and arg get
  * freed)
  */
-ReturnCodes ast_func_call_add_arg(ASTNode *func_call, ASTNode *arg);
+ReturnCodes ast_func_call_add_arg(ASTNode *f_node, ASTNode *arg);
 
 /**
  * @brief A constructor function for a Binary Operation node

@@ -1,0 +1,56 @@
+/**
+ * @file extkw_valid.ifj
+ * @brief Valid definitions and calls of methods
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: semantic tests for the EXTKW extension (spec 5.9) - a method is
+ * called only by the member syntax with exactly the argument lists of its
+ * definition, a method that isn't defined for the receiver's type is error 3,
+ * a method name repeated for the same type is error 4, a wrong number of lists
+ * or arguments or an incompatible argument is error 5 like with PARAMLISTS;
+ * derived from the IFJ26 spec as a black box, with the claimed extensions
+ * BOOLTHEN, CONTROL, FUNEXP, VALMEM, PARAMLISTS and INTERPOLATEDS)
+ */
+// the spec example with the result types, methods used before their
+// definition, the same name for different types, a method using another
+// method of its receiver and an Int argument widened to a Double parameter
+// (spec 1.3, 5.9) -> 0
+import ifj26.*
+@main def main(): Unit =
+  val x: Int = 6
+  val y: Int = x.twice
+  val z: String = x.foo()
+  val w: Int = x.plus(12)
+  val s: String = "ab".twice
+  val q: Int = x.quad
+  val d: Double = 1.5.scale(2)
+  val b: Boolean = x.isSmall
+  print(y)
+
+extension (value: Int)
+  def twice: Int = value * 2
+  def foo(): String = "foo" + value.toString
+  def plus(other: Int): Int = value + other
+  def quad = value.twice.twice
+  def isSmall: Boolean = value < 10
+
+extension (text: String)
+  def twice: String = text + text
+
+extension (d: Double)
+  def scale(factor: Double): Double = d * factor

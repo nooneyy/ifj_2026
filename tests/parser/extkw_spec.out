@@ -1,0 +1,30 @@
+PROGRAM
+  FUNC_DEF twice [value: Int] : Int
+    BINARY_OP *
+      VAR_REF value
+      LITERAL Int 2
+  FUNC_DEF foo [value: Int] () : String
+    BINARY_OP +
+      LITERAL String "foo"
+      VALMEM_FIELD toString
+        VAR_REF value
+  FUNC_DEF plus [value: Int] (other: Int) : Int
+    BINARY_OP +
+      VAR_REF value
+      VAR_REF other
+  FUNC_DEF someFn () : ?
+    BLOCK
+      VAR_DEF val x : Int
+        LITERAL Int 6
+      VAR_DEF val y : ?
+        VALMEM_FIELD twice
+          VAR_REF x
+      VAR_DEF val z : ?
+        VALMEM_FIELD foo (0)
+          VAR_REF x
+      VAR_DEF val w : ?
+        VALMEM_FIELD plus (1)
+          VAR_REF x
+          LITERAL Int 12
+  FUNC_DEF main @main () : Unit
+    CALL someFn

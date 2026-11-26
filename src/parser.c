@@ -144,7 +144,7 @@ static const char PREC_TABLE[PREC_TABLE_SIZE][PREC_TABLE_SIZE] = {
         },
     [PREC_DOT] =
         {
-            '=', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+            '=', '=', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
             ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
         },
     [PREC_DELIM] =
@@ -377,6 +377,7 @@ static bool parse_program(Parser *parser);
  *
  * RULE 2: DEFS -> DEF DEFS
  * RULE 3: DEFS -> eps
+ * RULE 92: DEFS -> EXTENSION DEFS
  *
  * @param parser Parser's current state
  * @return false if an error occured in this or any other called function,
@@ -945,6 +946,47 @@ static bool parse_interp_parts(Parser *parser, ASTNode **acc);
 static bool parse_interp_part(Parser *parser, ASTNode **part);
 
 /**
+ * @brief Parses methods of one type
+ *
+ * RULE 88: EXTENSION -> KW_EXTENSION ( ID : TYPE ) EOL INDENT EXT_DEF
+ *          EXT_DEFS DEDENT
+ *
+ * @param parser Parser's current state
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_extension(Parser *parser);
+
+/**
+ * @brief Parses one method of an extension
+ *
+ * RULE 89: EXT_DEF -> KW_DEF ID PARAM_LIST TYPE_DECL = DEF_EX
+ *
+ * @param parser Parser's current state
+ * @param receiver_name Name of the receiver of the extension
+ * @param receiver_type Type of the receiver of the extension
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_ext_def(Parser *parser, const char *receiver_name,
+                          DataType receiver_type);
+
+/**
+ * @brief Parses the rest of the methods of an extension
+ *
+ * RULE 90: EXT_DEFS -> EXT_DEF EXT_DEFS
+ * RULE 91: EXT_DEFS -> eps
+ *
+ * @param parser Parser's current state
+ * @param receiver_name Name of the receiver of the extension
+ * @param receiver_type Type of the receiver of the extension
+ * @return false if an error occured in this or any other called function, else
+ * true
+ */
+static bool parse_ext_defs(Parser *parser, const char *receiver_name,
+                           DataType receiver_type);
+
+/**
  * @brief Builds a call of toStr with one argument
  *
  * Used for $id and ${expr} parts of an interpolated string.
@@ -1015,6 +1057,14 @@ static bool parse_defs(Parser *parser) {
 
   } else if (parser->current_token.type == TOKEN_EOF) {
     correct = true;
+  } else if (parser->current_token.type == TOKEN_KW_EXTENSION) {
+    // EXTENSION
+    // RULE 88
+    correct = parse_extension(parser);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_defs(parser);
   } else {
     syntax_error(parser, "Syntactic error: Invalid function definition.");
   }
@@ -2496,6 +2546,166 @@ static bool parse_interp_part(Parser *parser, ASTNode **part) {
   return correct;
 }
 
+static bool parse_extension(Parser *parser) {
+  bool correct = false;
+  char *name = NULL;
+  DataType type = UNKNOWN;
+
+  if (!(expect(parser, TOKEN_KW_EXTENSION) && expect(parser, TOKEN_OPEN_PAR))) {
+    syntax_error(parser, "Syntactic error: Invalid extension definition.");
+    return false;
+  }
+  // KW_EXTENSION (
+
+  if (parser->current_token.type != TOKEN_ID) {
+    syntax_error(parser,
+                 "Syntactic error: Missing id in extension definition.");
+    return false;
+  }
+  name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+  if (!parser_advance(parser)) {
+    free(name);
+    return false;
+  }
+  // KW_EXTENSION ( ID
+
+  if (!expect(parser, TOKEN_COLON)) {
+    syntax_error(parser, "Syntactic error: Missing : in extension receiver.");
+    free(name);
+    return false;
+  }
+  // KW_EXTENSION ( ID :
+
+  // KW_EXTENSION ( ID : TYPE
+  // RULES 26, 27, 28, 29, 30
+  correct = parse_type(parser, &type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+
+  if (!(expect(parser, TOKEN_CLOSE_PAR) && expect(parser, TOKEN_EOL) &&
+        expect(parser, TOKEN_INDENT))) {
+    free(name);
+    syntax_error(parser, "Syntactic error: Invalid extension definition.");
+    return false;
+  }
+  // KW_EXTENSION ( ID : TYPE ) EOL INDENT
+
+  // KW_EXTENSION ( ID : TYPE ) EOL INDENT EXT_DEF
+  // RULE 89
+  correct = parse_ext_def(parser, name, type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+
+  // KW_EXTENSION ( ID : TYPE ) EOL INDENT EXT_DEF EXT_DEFS
+  // RULES 90, 91
+  correct = parse_ext_defs(parser, name, type);
+  if (!correct) {
+    free(name);
+    return false;
+  }
+  if (!expect(parser, TOKEN_DEDENT)) {
+    free(name);
+    syntax_error(parser,
+                 "Syntactic error: Missing dedent after extension definition.");
+    return false;
+  }
+  // KW_EXTENSION ( ID : TYPE ) EOL INDENT EXT_DEF EXT_DEFS DEDENT
+
+  free(name);
+  return correct;
+}
+
+static bool parse_ext_def(Parser *parser, const char *receiver_name,
+                          DataType receiver_type) {
+  bool correct = false;
+  char *method_name = NULL;
+  const unsigned int line = parser->current_token.line;
+
+  if (!(expect(parser, TOKEN_KW_DEF) &&
+        parser->current_token.type == TOKEN_ID)) {
+    syntax_error(parser,
+                 "Syntactic error: Invalid function definition in extension.");
+    return false;
+  }
+  // KW_DEF ID
+
+  method_name = parser->current_token.content.string;
+  parser->current_token.content.string = NULL;
+  if (!parser_advance(parser)) {
+    free(method_name);
+    return false;
+  }
+
+  ASTNode *method = ast_init_func_def(method_name, false, line);
+  if (method == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  ast_ll_append(&parser->program->data.program.functions, method);
+
+  char *copy = malloc(strlen(receiver_name) + 1);
+  if (copy == NULL) {
+    parser->rc = ERR_INTERNAL;
+    return false;
+  }
+  strcpy(copy, receiver_name);
+  method->data.function_def.receiver =
+      (FunctionParam){.name = copy, .data_type = receiver_type};
+
+  // KW_DEF ID PARAM_LIST
+  // RULES 12, 13
+  correct = parse_param_list(parser, method);
+  if (!correct) {
+    return false;
+  }
+
+  // KW_DEF ID PARAM_LIST TYPE_DECL
+  // RULES 24, 25
+  correct = parse_type_decl(parser, &method->data.function_def.return_type);
+  if (!correct) {
+    return false;
+  }
+
+  if (!expect(parser, TOKEN_ASSIGN)) {
+    syntax_error(parser, "Syntactic error: Missing = in method definition.");
+    return false;
+  }
+  // KW_DEF ID PARAM_LIST TYPE_DECL =
+
+  // KW_DEF ID PARAM_LIST TYPE_DECL = DEF_EX
+  // RULES 9, 10, 11
+  correct = parse_def_ex(parser, method);
+
+  return correct;
+}
+
+static bool parse_ext_defs(Parser *parser, const char *receiver_name,
+                           DataType receiver_type) {
+  bool correct = false;
+  if (parser->current_token.type == TOKEN_KW_DEF) {
+    // EXT_DEF
+    // RULE 89
+    correct = parse_ext_def(parser, receiver_name, receiver_type);
+    if (!correct) {
+      return false;
+    }
+    correct = parse_ext_defs(parser, receiver_name, receiver_type);
+  } else if (parser->current_token.type == TOKEN_DEDENT) {
+    // eps
+    // no deeper RULE
+    correct = true;
+  } else {
+    syntax_error(parser,
+                 "Syntactic error: Missing dedent after extension definition.");
+  }
+  return correct;
+}
+
 /**
  * @brief Parses the whole program and builds its AST
  *
@@ -2669,6 +2879,113 @@ static bool is_expr(PrecItem item) {
   }
 
   return false;
+}
+
+/**
+ * @brief Verifies whether the function/method call starting from item_idx and
+ * ending at last_idx is the correct shape
+ * @param parser Pointer to the Parser struct
+ * @param ps Pointer to the Precedence stack
+ * @param item_idx The precedence item that starts the arguments ['(']
+ * @param last_idx The precedence item that ends the call
+ * @return true on success, else false with the syntax error already reported
+ */
+static bool prec_verify_call_args(Parser *parser, PrecStack *ps,
+                                  size_t item_idx, size_t last_idx) {
+  while (item_idx <= last_idx) {
+    if (!is_terminal(ps->items[item_idx], PREC_LPAREN)) {
+      // First item is not LPAREN
+      syntax_error(parser, "Syntactic error: wrong function "
+                           "call, expected LPAREN, got something else");
+      return false;
+    }
+    item_idx++;
+
+    if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+      // () -> list with no arguments
+      item_idx++;
+      continue; // Skip inner checks
+    }
+
+    while (true) {
+      if (!is_expr(ps->items[item_idx])) {
+        // Odd item in arg list is not E
+        syntax_error(parser, "Syntactic error: wrong arguments inside function "
+                             "call, expected expr, got something else");
+        return false;
+      }
+      item_idx++;
+
+      if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+        // ')', list done
+        item_idx++;
+        break;
+      }
+
+      if (!is_terminal(ps->items[item_idx], PREC_COMMA)) {
+        // Even item in arg list is not comma
+        syntax_error(parser, "Syntactic error: wrong arguments inside "
+                             "function call, expected ',', got something else");
+        return false;
+      }
+      item_idx++;
+
+      if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
+        if (!ps->items[item_idx].terminal_token.lf_before) {
+          // Comma before RPAREN -> LF_BEFORE must be true
+          syntax_error(parser, "Syntactic error: trailing comma inside "
+                               "function call not allowed");
+          return false;
+        }
+
+        item_idx++;
+        break;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * @brief Adds the parsed arg lists to the function/method call node
+ * @param f_node Pointer to the function call/valmem field node to add the args
+ * into
+ * @param ps Pointer to the precedence stack
+ * @param first_idx The precedence item that starts the arguments ['(']
+ * @param last_idx The precedence item that ends the call
+ * @return RETURN_SUCCESS on success, or ERR_INTERNAL in case of wrong nodes
+ * passed in/memory allocation etc. (args and f_node get freed)
+ */
+static ReturnCodes prec_add_arg_lists(ASTNode *f_node, PrecStack *ps,
+                                      size_t first_idx, size_t last_idx) {
+  ReturnCodes ret = RETURN_SUCCESS;
+
+  for (size_t item_idx = first_idx; item_idx < last_idx; item_idx++) {
+    // Looping from the first item to the last item...
+
+    PrecItem item = ps->items[item_idx];
+
+    if (is_terminal(item, PREC_LPAREN)) {
+      // '(', start new list
+      ret = ast_func_call_new_arg_list(f_node);
+    } else if (is_expr(item)) {
+      // E, add argument
+      ret = ast_func_call_add_arg(f_node, item.expr);
+    }
+
+    if (ret != RETURN_SUCCESS) {
+      // Something failed, free the rest of the arguments
+      for (size_t arg_idx = item_idx + 1; arg_idx < last_idx; arg_idx++) {
+        PrecItem maybe_arg_item = ps->items[arg_idx];
+        if (is_expr(maybe_arg_item)) {
+          ast_free(maybe_arg_item.expr);
+        }
+      }
+      return ret;
+    }
+  }
+  return ret;
 }
 
 /**
@@ -2883,58 +3200,8 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
     }
 
     // Check for correct function call shape
-    while (item_idx <= last_idx) {
-      if (!is_terminal(ps->items[item_idx], PREC_LPAREN)) {
-        // First item is not LPAREN
-        syntax_error(parser, "Syntactic error: wrong function "
-                             "call, expected LPAREN, got something else");
-        return false;
-      }
-      item_idx++;
-
-      if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
-        // () -> list with no arguments
-        item_idx++;
-        continue; // Skip inner checks
-      }
-
-      while (true) {
-        if (!is_expr(ps->items[item_idx])) {
-          // Odd item in arg list is not E
-          syntax_error(parser,
-                       "Syntactic error: wrong arguments inside function "
-                       "call, expected expr, got something else");
-          return false;
-        }
-        item_idx++;
-
-        if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
-          // ')', list done
-          item_idx++;
-          break;
-        }
-
-        if (!is_terminal(ps->items[item_idx], PREC_COMMA)) {
-          // Even item in arg list is not comma
-          syntax_error(parser,
-                       "Syntactic error: wrong arguments inside "
-                       "function call, expected ',', got something else");
-          return false;
-        }
-        item_idx++;
-
-        if (is_terminal(ps->items[item_idx], PREC_RPAREN)) {
-          if (!ps->items[item_idx].terminal_token.lf_before) {
-            // Comma before RPAREN -> LF_BEFORE must be true
-            syntax_error(parser, "Syntactic error: trailing comma inside "
-                                 "function call not allowed");
-            return false;
-          }
-
-          item_idx++;
-          break;
-        }
-      }
+    if (!prec_verify_call_args(parser, ps, item_idx, last_idx)) {
+      return false;
     }
 
     // Function call is OK
@@ -2957,29 +3224,53 @@ static bool prec_reduce(Parser *parser, PrecStack *ps) {
       return false;
     }
 
-    for (item_idx = less_idx + 2; item_idx < less_idx + expr_len; item_idx++) {
-      // Looping from the first item to the last item...
-      ReturnCodes ret = RETURN_SUCCESS;
+    ReturnCodes ret = prec_add_arg_lists(expr, ps, item_idx, last_idx);
 
-      PrecItem item = ps->items[item_idx];
+    if (ret != RETURN_SUCCESS) {
+      parser->rc = ret;
+      return false;
+    }
+  } else if (is_expr(first_item) && expr_len >= 5) {
+    PrecItem second_item = ps->items[less_idx + 2];
+    PrecItem third_item = ps->items[less_idx + 3];
 
-      if (is_terminal(item, PREC_LPAREN)) {
-        // '(', start new list
-        ret = ast_func_call_new_arg_list(expr);
-      } else if (is_expr(item)) {
-        // E, add argument
-        ret = ast_func_call_add_arg(expr, item.expr);
+    if (is_terminal(second_item, PREC_DOT) &&
+        is_terminal(third_item, PREC_FUNC)) {
+      // E -> E . func(E, E, ...)(E, E, ...)... [EXTKW]
+
+      size_t call_args_start = less_idx + 4;
+      size_t call_args_end = less_idx + expr_len;
+
+      // Verify shape of method call args
+      if (!prec_verify_call_args(parser, ps, call_args_start, call_args_end)) {
+        return false;
       }
 
-      if (ret != RETURN_SUCCESS) {
-        // Something failed, free the rest of the arguments
-        for (size_t arg_idx = item_idx + 1; arg_idx < less_idx + expr_len;
+      // Method call is OK
+      prec_stack_pop_to_less(ps); // Pop <E . func(E, E,...) from the stack
+
+      expr = ast_init_valmem_field(first_item.expr,
+                                   third_item.terminal_token.content.string,
+                                   first_item.expr->line);
+
+      if (expr == NULL) {
+        for (size_t arg_idx = less_idx + 4; arg_idx < call_args_end;
              arg_idx++) {
+          // for every E, free it because allocation failed
           PrecItem maybe_arg_item = ps->items[arg_idx];
           if (is_expr(maybe_arg_item)) {
             ast_free(maybe_arg_item.expr);
           }
         }
+
+        parser->rc = ERR_INTERNAL;
+        return false;
+      }
+
+      ReturnCodes ret =
+          prec_add_arg_lists(expr, ps, call_args_start, call_args_end);
+
+      if (ret != RETURN_SUCCESS) {
         parser->rc = ret;
         return false;
       }

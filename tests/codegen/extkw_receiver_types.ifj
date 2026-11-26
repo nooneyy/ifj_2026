@@ -1,0 +1,49 @@
+/**
+ * @file extkw_receiver_types.ifj
+ * @brief Methods of every type on several kinds of receivers
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 25.11.2026
+ */
+
+
+/**
+ * Disclaimer!
+ * This testing file was made by Claude Opus 5.5 AI model
+ * This file is only for testing purposes.
+ *
+ * Prompt:
+ * "Create tests parser semantic and codegen tests for extkw extension defined
+ * in the specification. Format of the tests must be the same as all other
+ * tests in each corresponding tests/ folder. Base the tests only on the
+ * specification and the tests in the corresponding folder. The plan is to
+ * make type extensions basically on the same principale as VALMEM, so you can
+ * count on that."
+ * (context: codegen tests for the EXTKW extension (spec 5.9); every program
+ * is compiled by codegen_main, run by ic26int and its output and return code
+ * are compared; derived from the IFJ26 spec as a black box, with the claimed
+ * extensions BOOLTHEN, CONTROL, FUNEXP, VALMEM, PARAMLISTS and INTERPOLATEDS)
+ */
+// methods of String, Double, Boolean and Int called on literals and on an
+// expression in parentheses (spec 5.9, 5.4) -> hi!|2.50|false|14|42
+import ifj26.*
+
+extension (s: String)
+  def shout: String = s + "!"
+extension (d: Double)
+  def half: Double = d / 2.0
+extension (b: Boolean)
+  def flip: Boolean = !b
+extension (n: Int)
+  def twice: Int = n * 2
+
+@main def main(): Unit =
+  print("hi".shout)
+  print("|")
+  print(5.0.half.toString)
+  print("|")
+  print(true.flip)
+  print("|")
+  print((3 + 4).twice)
+  print("|")
+  print(21.twice)
+  print("\n")

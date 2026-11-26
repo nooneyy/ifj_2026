@@ -47,6 +47,17 @@
  * CALL add (1)(1)(1), so the existing parser tests keep their output)
  */
 
+/**
+ * Disclaimer!
+ * The argument lists in the NODE_VALMEM_FIELD case of print_node and the
+ * method receiver in print_func_def were added by Claude Opus 5.5 AI model.
+ *
+ * Prompt:
+ * "Please update tests/parser_main.c so that it prints the valmem arg lists
+ * and move err_valmem_parens from the parser to the semantic tests now that
+ * we have EXTKW"
+ */
+
 #include "../src/ast.h"
 #include "../src/parser.h"
 #include "../src/return.h"
@@ -233,12 +244,18 @@ static void print_slot(const char *label, const ASTNode *node, int depth) {
  * With PARAMLISTS every list has its own parentheses, e.g.
  * FUNC_DEF add (a: Int)(b: Int) : Int, and a function without a parameter
  * list has none: FUNC_DEF answer : Int
+ * An EXTKW method shows its receiver in square brackets after the name, e.g.
+ * FUNC_DEF plus [value: Int] (other: Int) : Int
  */
 static void print_func_def(const ASTNode *node) {
   const ASTFunctionDefNodeData *def = &node->data.function_def;
   printf("FUNC_DEF %s", def->name);
   if (def->is_main) {
     fputs(" @main", stdout);
+  }
+  // EXTKW: the receiver of a method in square brackets
+  if (def->receiver.name != NULL) {
+    printf(" [%s: %s]", def->receiver.name, type_name(def->receiver.data_type));
   }
   // every parameter list in its own parentheses (PARAMLISTS), none if the
   // function has no parameter list
@@ -375,10 +392,22 @@ static void print_node(const ASTNode *node, int depth) {
     print_node(node->data.unary_op.operand, depth + 1);
     break;
 
-  case NODE_VALMEM_FIELD:
-    printf("VALMEM_FIELD %s\n", node->data.valmem_field.name);
-    print_node(node->data.valmem_field.receiver, depth + 1);
+  case NODE_VALMEM_FIELD: {
+    const ASTValmemFieldData *field = &node->data.valmem_field;
+    printf("VALMEM_FIELD %s", field->name);
+    // EXTKW: the argument count of every list, even a single one, so that
+    // x.twice (no list) and x.foo() (one empty list) differ
+    if (field->arg_list_count != 0) {
+      putchar(' ');
+      for (size_t i = 0; i < field->arg_list_count; i++) {
+        printf("(%zu)", field->arg_list_sizes[i]);
+      }
+    }
+    putchar('\n');
+    print_node(field->receiver, depth + 1);
+    print_list(field->args, depth + 1);
     break;
+  }
 
   default:
     printf("UNKNOWN_NODE %d\n", (int)node->node_type);

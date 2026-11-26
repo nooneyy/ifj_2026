@@ -12,6 +12,8 @@
 #include "symtable.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // The max amount of params a builtin function has
@@ -166,6 +168,66 @@ static ReturnCodes symtable_stack_new_var(SymtableStack *stack, char *name,
 }
 
 /**
+ * @brief Converts a DataType to type name (used in method keys)
+ * @param type The data type to convert
+ * @return The type name as a string literal, NULL for types without a name
+ */
+static const char *data_type_to_string(DataType type) {
+  switch (type) {
+  case INT:
+    return "Int";
+  case DOUBLE:
+    return "Double";
+  case STRING:
+    return "String";
+  case BOOLEAN:
+    return "Boolean";
+  case UNIT:
+    return "Unit";
+  default:
+    return NULL;
+  }
+}
+
+/**
+ * @brief Sets *out to the symtable key of an EXTKW method on a type
+ * (format: receiver_type&name)
+ * @param receiver_type The data type of the method's receiver
+ * @param name The name of the method
+ * @param out A pointer to the string to be filled
+ * @return RETURN_SUCCESS on success, ERR_INTERNAL on a memory allocation error
+ * or wrong passed in receiver_type
+ */
+static ReturnCodes method_key(DataType receiver_type, const char *name,
+                              char **out) {
+  *out = NULL;
+  const char *data_type_name = data_type_to_string(receiver_type);
+
+  if (data_type_name == NULL) {
+    print_error("Wrong type passed in to method_key function!", 0);
+    return ERR_INTERNAL;
+  }
+
+  // DATA_TYPE_NAME + '&' + NAME + '\0'
+  size_t temp_str_len = strlen(data_type_name) + strlen(name) + 2;
+
+  char *temp = malloc(temp_str_len);
+
+  if (temp == NULL) {
+    print_error("Allocation failed!", 0);
+    return ERR_INTERNAL;
+  }
+
+  // & -> special separator for methods on types (normal functions can't have &
+  // in their name)
+  snprintf(temp, temp_str_len, "%s&%s", data_type_name, name);
+
+  *out = temp;
+
+  return RETURN_SUCCESS;
+}
+
+/**
  * @brief The first pass of the semantic analysis - registers functions to the
  * symtable, checks for @main definition(s)
  * @param symtable Pointer to the symtable struct
@@ -180,6 +242,9 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
   while (function != NULL) {
     // Iterating through the program functions...
     ASTFunctionDefNodeData *function_data = &function->data.function_def;
+    ReturnCodes ret = RETURN_SUCCESS;
+    char *key = NULL;
+    char *sym_name = function_data->name;
 
     if (function_data->is_main) {
       main_count++;
@@ -207,9 +272,19 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
       }
     }
 
+    if (function_data->receiver.name != NULL) {
+      ret = method_key(function_data->receiver.data_type, function_data->name,
+                       &key);
+      if (ret != RETURN_SUCCESS) {
+        return ret;
+      }
+      sym_name = key;
+    }
     Symbol *func_sym = init_function_symbol(
-        function_data->name, function_data->return_type,
+        sym_name, function_data->return_type,
         function_data->return_type != UNKNOWN, false, function_data->is_main);
+
+    free(key);
 
     if (func_sym == NULL) {
       return ERR_INTERNAL;
@@ -219,8 +294,7 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
          param_idx++) {
       // Iterating through the function params...
       FunctionParam *param = &function_data->params[param_idx];
-      ReturnCodes ret =
-          add_function_param(func_sym, param->name, param->data_type);
+      ret = add_function_param(func_sym, param->name, param->data_type);
 
       if (ret != RETURN_SUCCESS) {
         free_symbol(func_sym);
@@ -228,7 +302,7 @@ static ReturnCodes semantic_global_pass(Symtable *global_sym,
       }
     }
 
-    ReturnCodes ret = symtable_insert(global_sym, func_sym);
+    ret = symtable_insert(global_sym, func_sym);
 
     if (ret == ERR_SEM_RED) {
       print_error("Semantic error: redefinition of function with the "
@@ -276,10 +350,13 @@ static ReturnCodes check_statement(SemanticContext *context, ASTNode *statement,
  * @param context Pointer to the semantic context (global symtable, current
  * function)
  * @param function A pointer to the function ASTNode struct
+ * @param function_sym A pointer to the Function symbol (also can be an EXTKW
+ * extension)
  * @return RETURN_SUCCESS on success, or one of the semantic errors or
  * ERR_INTERNAL on memory allocation failure
  */
-static ReturnCodes check_function(SemanticContext *context, ASTNode *function);
+static ReturnCodes check_function(SemanticContext *context, ASTNode *function,
+                                  Symbol *function_sym);
 
 /**
  * @brief Decides whether the data type is a number type
@@ -475,16 +552,31 @@ static bool unify_types(DataType then_type, DataType else_type, DataType *out) {
 }
 
 /**
- * @brief Searches for ASTNode by given name
+ * @brief Searches for ASTNode by given name and receiver type
  * @param program A pointer to the root node of the AST (the program node)
  * @param name Name of function we want to find
+ * @param receiver_type Data type of the receiver, UNKNOWN means "basic
+ * function"
  * @return ASTNode of the searched function, or NULL if couldn't be found
  */
-static ASTNode *find_function_def(ASTNode *program, const char *name) {
+static ASTNode *find_function_def(ASTNode *program, const char *name,
+                                  DataType receiver_type) {
   ASTNode *function = program->data.program.functions;
 
   while (function != NULL) {
-    if (strcmp(function->data.function_def.name, name) == 0) {
+    const ASTFunctionDefNodeData *def = &function->data.function_def;
+    bool kind_matches = false;
+
+    if (receiver_type == UNKNOWN) {
+      // looking for a plain function, it has no receiver
+      kind_matches = def->receiver.name == NULL;
+    } else {
+      // looking for a method of receiver_type
+      kind_matches = ((def->receiver.name != NULL &&
+                       def->receiver.data_type == receiver_type) != 0);
+    }
+
+    if (kind_matches && strcmp(def->name, name) == 0) {
       return function;
     }
     function = function->next;
@@ -525,11 +617,10 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
       if (fun_sym != NULL) {
         size_t list_count = 1;
         if (!fun_sym->data.function.is_builtin) {
-          ASTNode *def = find_function_def(context->program, var_ref_data.name);
+          ASTNode *def =
+              find_function_def(context->program, var_ref_data.name, UNKNOWN);
           if (def == NULL) {
-            print_error(
-                "Internal error: definition of referenced function not found!",
-                0);
+            print_error("definition of referenced function not found!", 0);
             return ERR_INTERNAL;
           }
           list_count = def->data.function_def.list_count;
@@ -619,14 +710,13 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
     if (!fun_sym->data.function.is_builtin) {
       if (fun_sym->data.function.state == UNCHECKED) {
         ASTNode *fun_node =
-            find_function_def(context->program, fun_call_data.name);
+            find_function_def(context->program, fun_call_data.name, UNKNOWN);
         if (fun_node == NULL) {
-          print_error(
-              "Internal error: definition of called function not found!", 0);
+          print_error("definition of called function not found!", 0);
           return ERR_INTERNAL;
         }
 
-        ret = check_function(context, fun_node);
+        ret = check_function(context, fun_node, fun_sym);
 
         if (ret != RETURN_SUCCESS) {
           return ret;
@@ -652,10 +742,9 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
 
     if (!fun_sym->data.function.is_builtin) {
       ASTNode *def_node =
-          find_function_def(context->program, fun_call_data.name);
+          find_function_def(context->program, fun_call_data.name, UNKNOWN);
       if (def_node == NULL) {
-        print_error("Internal error: definition of called function not found!",
-                    0);
+        print_error("definition of called function not found!", 0);
         return ERR_INTERNAL;
       }
       expected_list_count = def_node->data.function_def.list_count;
@@ -778,45 +867,154 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
       break;
     }
 
-    if (strcmp(valmem_data->name, "toInt") == 0) {
-      if (receiver_type != DOUBLE) {
-        // toInt is for DOUBLE only
-        print_error("toInt field called on value that's not DOUBLE!",
+    // built-in member valid for the receiver's type
+    DataType builtin_type = UNKNOWN;
+
+    if ((strcmp(valmem_data->name, "toInt") == 0 && receiver_type == DOUBLE) ||
+        (strcmp(valmem_data->name, "length") == 0 && receiver_type == STRING)) {
+      // DOUBLE.toInt || STRING.length
+      builtin_type = INT;
+    } else if (strcmp(valmem_data->name, "floor") == 0 &&
+               receiver_type == DOUBLE) {
+      // DOUBLE.floor
+      builtin_type = DOUBLE;
+    } else if (strcmp(valmem_data->name, "toString") == 0) {
+      // ANY.toString
+      builtin_type = STRING;
+    }
+
+    if (builtin_type != UNKNOWN) {
+      if (valmem_data->arg_list_count != 0) {
+        // built-in members are written without an argument list
+        print_error("Semantic error: built-in member called with an argument "
+                    "list!",
                     valmem_data->receiver->line);
-        return ERR_SEM_TYPE;
+        return ERR_SEM_ARG;
       }
 
-      *out = INT;
+      *out = builtin_type;
       break;
+    }
+
+    // otherwise an EXTKW method of the receiver's type
+    if (data_type_to_string(receiver_type) != NULL) {
+      char *key = NULL;
+      ret = method_key(receiver_type, valmem_data->name, &key);
+      if (ret != RETURN_SUCCESS) {
+        return ret;
+      }
+
+      Symbol *method_sym = symtable_get(context->global_sym, key);
+      free(key);
+
+      if (method_sym != NULL) {
+        ASTNode *method_def = find_function_def(
+            context->program, valmem_data->name, receiver_type);
+        if (method_def == NULL) {
+          print_error("definition of called method not found!", 0);
+          return ERR_INTERNAL;
+        }
+
+        // x.foo vs x.foo() - a method without a list isn't one with an empty
+        // list
+        if (valmem_data->arg_list_count !=
+            method_def->data.function_def.list_count) {
+          print_error(
+              "Semantic error: wrong number of argument lists of a method!",
+              expr->line);
+          return ERR_SEM_ARG;
+        }
+
+        // check the method's body on demand, detect recursion
+        if (method_sym->data.function.state == UNCHECKED) {
+          ret = check_function(context, method_def, method_sym);
+          if (ret != RETURN_SUCCESS) {
+            return ret;
+          }
+        } else if (method_sym->data.function.state == IN_PROGRESS) {
+          for (CallStack *item = context->top; item != NULL;
+               item = item->caller) {
+            if (!item->function->data.function.return_type_defined) {
+              print_error("Semantic error: recursive call of a method without "
+                          "an explicit return type",
+                          expr->line);
+              return ERR_SEM_TYPE;
+            }
+            if (item->function == method_sym) {
+              break;
+            }
+          }
+        }
+
+        const ASTFunctionDefNodeData *method_data =
+            &method_def->data.function_def;
+        // the receiver isn't one of the params
+        for (size_t list_idx = 0; list_idx < valmem_data->arg_list_count;
+             list_idx++) {
+          if (valmem_data->arg_list_sizes[list_idx] !=
+              method_data->list_sizes[list_idx]) {
+            print_error("Semantic error: wrong number of arguments in a list "
+                        "of a method!",
+                        expr->line);
+            return ERR_SEM_ARG;
+          }
+        }
+
+        FunctionSymbol *method_func = &method_sym->data.function;
+        size_t arg_idx = 0;
+        for (ASTNode *arg = valmem_data->args; arg != NULL; arg = arg->next) {
+          DataType arg_out = UNKNOWN;
+          ret = check_expr(context, arg, stack, &arg_out);
+          if (ret != RETURN_SUCCESS) {
+            return ret;
+          }
+
+          if (arg_idx >= method_func->param_count) {
+            print_error("Semantic error: too many arguments supplied to "
+                        "method!",
+                        expr->line);
+            return ERR_SEM_ARG;
+          }
+
+          if (!is_assignable(arg_out, method_func->params[arg_idx].data_type)) {
+            print_error("Semantic error: mismatch between method argument "
+                        "types!",
+                        expr->line);
+            return ERR_SEM_ARG;
+          }
+
+          arg_idx++;
+        }
+
+        if (arg_idx != method_func->param_count) {
+          print_error("Semantic error: too little arguments supplied to "
+                      "method!",
+                      expr->line);
+          return ERR_SEM_ARG;
+        }
+
+        *out = method_sym->data.function.return_type;
+        valmem_data->is_extension = true;
+        break;
+      }
+    }
+
+    if (strcmp(valmem_data->name, "toInt") == 0) {
+      print_error("toInt field called on value that's not DOUBLE!",
+                  valmem_data->receiver->line);
+      return ERR_SEM_TYPE;
     }
 
     if (strcmp(valmem_data->name, "floor") == 0) {
-      if (receiver_type != DOUBLE) {
-        // floor is for DOUBLE only
-        print_error("floor field called on value that's not DOUBLE!",
-                    valmem_data->receiver->line);
-        return ERR_SEM_TYPE;
-      }
-
-      *out = DOUBLE;
-      break;
+      print_error("floor field called on value that's not DOUBLE!",
+                  valmem_data->receiver->line);
+      return ERR_SEM_TYPE;
     }
 
     if (strcmp(valmem_data->name, "length") == 0) {
-      if (receiver_type != STRING) {
-        // length is for STRING only
-        print_error("length field called on value that's not STRING!",
-                    valmem_data->receiver->line);
-        return ERR_SEM_TYPE;
-      }
-
-      *out = INT;
-      break;
-    }
-
-    if (strcmp(valmem_data->name, "toString") == 0) {
-      *out = STRING;
-      break;
+      print_error("length field called on value that's not STRING!",
+                  valmem_data->receiver->line);
+      return ERR_SEM_TYPE;
     }
 
     print_error("Unknown field operation called on value!",
@@ -1173,7 +1371,8 @@ static ReturnCodes check_statement_list(SemanticContext *context,
   return ret;
 }
 
-static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
+static ReturnCodes check_function(SemanticContext *context, ASTNode *function,
+                                  Symbol *function_sym) {
   ReturnCodes ret = RETURN_SUCCESS;
   Symtable *function_symtable = symtable_init();
 
@@ -1186,7 +1385,7 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
   ASTFunctionDefNodeData function_data = function->data.function_def;
 
   CallStack frame = {
-      .function = symtable_get(context->global_sym, function_data.name),
+      .function = function_sym,
       .caller = context->top,
   };
 
@@ -1194,14 +1393,24 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
 
   frame.function->data.function.state = IN_PROGRESS;
 
-  for (size_t param_idx = 0; param_idx < function_data.param_count;
-       param_idx++) {
-    FunctionParam *param = &function_data.params[param_idx];
-    ret = symtable_stack_new_var(&stack, param->name, param->data_type,
-                                 FUNC_PARAM, function->line);
+  if (function_data.receiver.name != NULL) {
+    // Function is an EXTKW extension method, add its receiver to the symtable
+    // stack
+    ret = symtable_stack_new_var(&stack, function_data.receiver.name,
+                                 function_data.receiver.data_type, FUNC_PARAM,
+                                 function->line);
+  }
 
-    if (ret != RETURN_SUCCESS) {
-      break;
+  if (ret == RETURN_SUCCESS) {
+    for (size_t param_idx = 0; param_idx < function_data.param_count;
+         param_idx++) {
+      FunctionParam *param = &function_data.params[param_idx];
+      ret = symtable_stack_new_var(&stack, param->name, param->data_type,
+                                   FUNC_PARAM, function->line);
+
+      if (ret != RETURN_SUCCESS) {
+        break;
+      }
     }
   }
 
@@ -1264,10 +1473,26 @@ static ReturnCodes semantic_body_pass(Symtable *global_sym, ASTNode *program) {
   context.program = program;
 
   while (function != NULL) {
-    Symbol *function_sym =
-        symtable_get(global_sym, function->data.function_def.name);
+    ASTFunctionDefNodeData *func_data = &function->data.function_def;
+    Symbol *function_sym = NULL;
+
+    if (func_data->receiver.name != NULL) {
+      // Function is an EXTKW method, set its function_sym
+      char *key = NULL;
+      ret = method_key(func_data->receiver.data_type, func_data->name, &key);
+
+      if (ret != RETURN_SUCCESS) {
+        break;
+      }
+
+      function_sym = symtable_get(global_sym, key);
+      free(key);
+    } else {
+      function_sym = symtable_get(global_sym, func_data->name);
+    }
+
     if (function_sym->data.function.state == UNCHECKED) {
-      ret = check_function(&context, function);
+      ret = check_function(&context, function, function_sym);
     }
     if (ret != RETURN_SUCCESS) {
       break;
