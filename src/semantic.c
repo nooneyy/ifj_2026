@@ -631,13 +631,28 @@ static bool unify_types(DataType then_type, DataType else_type, DataType *out) {
  * @brief Searches for ASTNode by given name
  * @param program A pointer to the root node of the AST (the program node)
  * @param name Name of function we want to find
+ * @param receiver_type Data type of the receiver, UNKNOWN means "basic
+ * function"
  * @return ASTNode of the searched function, or NULL if couldn't be found
  */
-static ASTNode *find_function_def(ASTNode *program, const char *name) {
+static ASTNode *find_function_def(ASTNode *program, const char *name,
+                                  DataType receiver_type) {
   ASTNode *function = program->data.program.functions;
 
   while (function != NULL) {
-    if (strcmp(function->data.function_def.name, name) == 0) {
+    const ASTFunctionDefNodeData *def = &function->data.function_def;
+    bool kind_matches = false;
+
+    if (receiver_type == UNKNOWN) {
+      // looking for a plain function, it has no receiver
+      kind_matches = def->receiver.name == NULL;
+    } else {
+      // looking for a method of receiver_type
+      kind_matches = def->receiver.name != NULL &&
+                     def->receiver.data_type == receiver_type;
+    }
+
+    if (kind_matches && strcmp(def->name, name) == 0) {
       return function;
     }
     function = function->next;
@@ -678,7 +693,8 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
       if (fun_sym != NULL) {
         size_t list_count = 1;
         if (!fun_sym->data.function.is_builtin) {
-          ASTNode *def = find_function_def(context->program, var_ref_data.name);
+          ASTNode *def =
+              find_function_def(context->program, var_ref_data.name, UNKNOWN);
           if (def == NULL) {
             print_error(
                 "Internal error: definition of referenced function not found!",
@@ -772,7 +788,7 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
     if (!fun_sym->data.function.is_builtin) {
       if (fun_sym->data.function.state == UNCHECKED) {
         ASTNode *fun_node =
-            find_function_def(context->program, fun_call_data.name);
+            find_function_def(context->program, fun_call_data.name, UNKNOWN);
         if (fun_node == NULL) {
           print_error(
               "Internal error: definition of called function not found!", 0);
@@ -805,7 +821,7 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
 
     if (!fun_sym->data.function.is_builtin) {
       ASTNode *def_node =
-          find_function_def(context->program, fun_call_data.name);
+          find_function_def(context->program, fun_call_data.name, UNKNOWN);
       if (def_node == NULL) {
         print_error("Internal error: definition of called function not found!",
                     0);
@@ -931,45 +947,154 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
       break;
     }
 
-    if (strcmp(valmem_data->name, "toInt") == 0) {
-      if (receiver_type != DOUBLE) {
-        // toInt is for DOUBLE only
-        print_error("toInt field called on value that's not DOUBLE!",
+    // built-in member valid for the receiver's type
+    DataType builtin_type = UNKNOWN;
+
+    if (strcmp(valmem_data->name, "toInt") == 0 && receiver_type == DOUBLE) {
+      builtin_type = INT;
+    } else if (strcmp(valmem_data->name, "floor") == 0 &&
+               receiver_type == DOUBLE) {
+      builtin_type = DOUBLE;
+    } else if (strcmp(valmem_data->name, "length") == 0 &&
+               receiver_type == STRING) {
+      builtin_type = INT;
+    } else if (strcmp(valmem_data->name, "toString") == 0) {
+      builtin_type = STRING;
+    }
+
+    if (builtin_type != UNKNOWN) {
+      if (valmem_data->arg_list_count != 0) {
+        // built-in members are written without an argument list
+        print_error("Semantic error: built-in member called with an argument "
+                    "list!",
                     valmem_data->receiver->line);
-        return ERR_SEM_TYPE;
+        return ERR_SEM_ARG;
       }
 
-      *out = INT;
+      *out = builtin_type;
       break;
+    }
+
+    // otherwise an EXTKW method of the receiver's type
+    if (data_type_to_string(receiver_type) != NULL) {
+      char *key = NULL;
+      ret = method_key(receiver_type, valmem_data->name, &key);
+      if (ret != RETURN_SUCCESS) {
+        return ret;
+      }
+
+      Symbol *method_sym = symtable_get(context->global_sym, key);
+      free(key);
+
+      if (method_sym != NULL) {
+        ASTNode *method_def = find_function_def(
+            context->program, valmem_data->name, receiver_type);
+        if (method_def == NULL) {
+          print_error("Internal error: definition of called method not found!",
+                      0);
+          return ERR_INTERNAL;
+        }
+
+        // x.foo vs x.foo() - a method without a list isn't one with an empty
+        // list
+        if (valmem_data->arg_list_count !=
+            method_def->data.function_def.list_count) {
+          print_error(
+              "Semantic error: wrong number of argument lists of a method!",
+              expr->line);
+          return ERR_SEM_ARG;
+        }
+
+        // check the method's body on demand, detect recursion
+        if (method_sym->data.function.state == UNCHECKED) {
+          ret = check_function(context, method_def);
+          if (ret != RETURN_SUCCESS) {
+            return ret;
+          }
+        } else if (method_sym->data.function.state == IN_PROGRESS) {
+          for (CallStack *item = context->top; item != NULL;
+               item = item->caller) {
+            if (!item->function->data.function.return_type_defined) {
+              print_error("Semantic error: recursive call of a method without "
+                          "an explicit return type",
+                          expr->line);
+              return ERR_SEM_TYPE;
+            }
+            if (item->function == method_sym) {
+              break;
+            }
+          }
+        }
+
+        const ASTFunctionDefNodeData *method_data =
+            &method_def->data.function_def;
+        // the receiver isn't one of the params
+        for (size_t list_idx = 0; list_idx < valmem_data->arg_list_count;
+             list_idx++) {
+          if (valmem_data->arg_list_sizes[list_idx] !=
+              method_data->list_sizes[list_idx]) {
+            print_error("Semantic error: wrong number of arguments in a list "
+                        "of a method!",
+                        expr->line);
+            return ERR_SEM_ARG;
+          }
+        }
+
+        FunctionSymbol *method_func = &method_sym->data.function;
+        size_t arg_idx = 0;
+        for (ASTNode *arg = valmem_data->args; arg != NULL; arg = arg->next) {
+          DataType arg_out = UNKNOWN;
+          ret = check_expr(context, arg, stack, &arg_out);
+          if (ret != RETURN_SUCCESS) {
+            return ret;
+          }
+
+          if (arg_idx >= method_func->param_count) {
+            print_error("Semantic error: too many arguments supplied to "
+                        "method!",
+                        expr->line);
+            return ERR_SEM_ARG;
+          }
+
+          if (!is_assignable(arg_out, method_func->params[arg_idx].data_type)) {
+            print_error("Semantic error: mismatch between method argument "
+                        "types!",
+                        expr->line);
+            return ERR_SEM_ARG;
+          }
+
+          arg_idx++;
+        }
+
+        if (arg_idx != method_func->param_count) {
+          print_error("Semantic error: too little arguments supplied to "
+                      "method!",
+                      expr->line);
+          return ERR_SEM_ARG;
+        }
+
+        *out = method_sym->data.function.return_type;
+        valmem_data->is_extension = true;
+        break;
+      }
+    }
+
+    if (strcmp(valmem_data->name, "toInt") == 0) {
+      print_error("toInt field called on value that's not DOUBLE!",
+                  valmem_data->receiver->line);
+      return ERR_SEM_TYPE;
     }
 
     if (strcmp(valmem_data->name, "floor") == 0) {
-      if (receiver_type != DOUBLE) {
-        // floor is for DOUBLE only
-        print_error("floor field called on value that's not DOUBLE!",
-                    valmem_data->receiver->line);
-        return ERR_SEM_TYPE;
-      }
-
-      *out = DOUBLE;
-      break;
+      print_error("floor field called on value that's not DOUBLE!",
+                  valmem_data->receiver->line);
+      return ERR_SEM_TYPE;
     }
 
     if (strcmp(valmem_data->name, "length") == 0) {
-      if (receiver_type != STRING) {
-        // length is for STRING only
-        print_error("length field called on value that's not STRING!",
-                    valmem_data->receiver->line);
-        return ERR_SEM_TYPE;
-      }
-
-      *out = INT;
-      break;
-    }
-
-    if (strcmp(valmem_data->name, "toString") == 0) {
-      *out = STRING;
-      break;
+      print_error("length field called on value that's not STRING!",
+                  valmem_data->receiver->line);
+      return ERR_SEM_TYPE;
     }
 
     print_error("Unknown field operation called on value!",
