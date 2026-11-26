@@ -33,6 +33,7 @@ digraph scanner_fsm {
     QUOT_2 [shape = doublecircle;label = "QUOT_2\n/STRING";];
     STR_END [shape = doublecircle;style = dashed;label = "STR_END\n/STRING";];
     STR_ML_END [shape = doublecircle;style = dashed;label = "STR_ML_END\n/STRING";];
+    SLASH [shape = doublecircle;label = "SLASH\n/DIV";];
     
     // WHITESPACE
     IDLE -> IDLE [label = "space, tab";];
@@ -117,4 +118,22 @@ digraph scanner_fsm {
     LINE_START -> LINE_START [label = "\\n, space, tab";];
     PAREN_NEWLINE -> PAREN_NEWLINE [label = "\\n, space, tab";];
     PAREN_NEWLINE -> IDLE [label = "Σ \\ {\\n, space, tab}";];
+    
+    // COMMENTS + DIV
+    IDLE -> SLASH [label = "'/'";];
+    SLASH -> COMM_LINE [label = "'/'";];
+    SLASH -> COMM_BLOCK [label = "* / depth++";];
+    
+    COMM_LINE -> IDLE [label = "\\n, EOF";];
+    COMM_LINE -> COMM_LINE [label = "Σ \\ {\\n, EOF}";];
+    
+    COMM_BLOCK -> COMM_BLOCK_STAR [label = "*";];
+    COMM_BLOCK -> COMM_BLOCK_SLASH [label = "'/'";];
+    COMM_BLOCK -> COMM_BLOCK [label = "Σ \\ {*, /, EOF}";];
+    COMM_BLOCK_STAR -> COMM_BLOCK_STAR [label = "*";];
+    COMM_BLOCK_STAR -> IDLE [label = "'/' [depth == 0]\n/ depth --";];
+    COMM_BLOCK_STAR -> COMM_BLOCK [label = "'/' [depth > 0]\n/ depth--";];
+    COMM_BLOCK_STAR -> COMM_BLOCK [label = "Σ \\ {*, /, EOF}";];
+    COMM_BLOCK_SLASH -> COMM_BLOCK [label = "* / depth++";];
+    COMM_BLOCK_SLASH -> COMM_BLOCK [label = "Σ \\ {*, EOF}";];
 }
