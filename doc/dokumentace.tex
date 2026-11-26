@@ -1,0 +1,190 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Structured General Purpose Assignment
+% LaTeX Template
+%
+% This template has been downloaded from:
+% http://www.latextemplates.com
+%
+% Original author:
+% Ted Pavlic (http://www.tedpavlic.com)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[czech]{babel}
+\usepackage{lmodern}
+\usepackage{fancyhdr} % Required for custom headers
+\usepackage{lastpage} % Required to determine the last page for the footer
+\usepackage{extramarks} % Required for headers and footers
+\usepackage{graphicx} % Required to insert images
+\usepackage{float}
+
+% Margins
+\topmargin=-0.45in
+\evensidemargin=0in
+\oddsidemargin=0in
+\textwidth=6.5in
+\textheight=9.0in
+\headsep=0.25in
+
+\linespread{1.1} % Line spacing
+\setlength{\headheight}{12.38004pt}
+
+% Set up the header and footer
+\pagestyle{fancy}
+\lhead{\firstxmark} % Top left header
+\chead{\hmwkClass: \hmwkTitle} % Top center header
+\lfoot{\lastxmark} % Bottom left footer
+\cfoot{} % Bottom center footer
+\rfoot{Strana\ \thepage\ z\ \pageref{LastPage}} % Bottom right footer
+\renewcommand\headrulewidth{0.4pt} % Size of the header rule
+\renewcommand\footrulewidth{0.4pt} % Size of the footer rule
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+%----------------------------------------------------------------------------------------
+%	DOCUMENT STRUCTURE COMMANDS
+%	Skip this unless you know what you're doing
+%----------------------------------------------------------------------------------------
+
+% Header and footer for when a page split occurs within a problem environment
+\newcommand{\enterProblemHeader}[1]{
+\nobreak\extramarks{#1}{#1 pokračuje na další straně\ldots}\nobreak
+\nobreak\extramarks{#1 (pokračování)}{#1 pokračuje na další straně\ldots}\nobreak
+}
+
+% Header and footer for when a page split occurs between problem environments
+\newcommand{\exitProblemHeader}[1]{
+\nobreak\extramarks{#1 (pokračování)}{#1 pokračuje na další straně\ldots}\nobreak
+\nobreak\extramarks{#1}{}\nobreak
+}
+
+\setcounter{secnumdepth}{0} % Removes default section numbers
+\newcounter{homeworkProblemCounter} % Creates a counter to keep track of the number of problems
+
+\newcommand{\homeworkProblemName}{}
+\newenvironment{homeworkProblem}[1][Problem \arabic{homeworkProblemCounter}]{ % Makes a new environment called homeworkProblem which takes 1 argument (custom name) but the default is "Problem #"
+\stepcounter{homeworkProblemCounter} % Increase counter for number of problems
+\renewcommand{\homeworkProblemName}{#1} % Assign \homeworkProblemName the name of the problem
+\section{\homeworkProblemName} % Make a section in the document with the custom problem count
+\enterProblemHeader{\homeworkProblemName} % Header and footer within the environment
+}{
+\exitProblemHeader{\homeworkProblemName} % Header and footer after the environment
+}
+
+\newcommand{\homeworkSectionName}{}
+\newenvironment{homeworkSection}[1]{ % New environment for sections within homework problems, takes 1 argument - the name of the section
+\renewcommand{\homeworkSectionName}{#1} % Assign \homeworkSectionName to the name of the section from the environment argument
+\subsection{\homeworkSectionName} % Make a subsection with the custom name of the subsection
+\enterProblemHeader{\homeworkProblemName\ [\homeworkSectionName]} % Header and footer within the environment
+}{
+\enterProblemHeader{\homeworkProblemName} % Header and footer after the environment
+}
+
+%----------------------------------------------------------------------------------------
+%	NAME AND CLASS SECTION
+%----------------------------------------------------------------------------------------
+
+\newcommand{\hmwkTitle}{Překladač jazyka IFJ26} % Assignment title
+\newcommand{\hmwkClass}{IFJ, IAL} % Course/class
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\title{
+\vspace{2in}
+\textmd{\textbf{\hmwkClass:\ Implementace překladače imperativního jazyka IFJ26}}\\
+Varianta projektu: TRP-izp \\
+\vspace{2in}
+}
+
+\author{%
+  \textbf{Tomáš Kolařík} \\
+  \textbf{\texttt{xkolart01}} \\
+  \textbf{\texttt{281930}} \\
+  \textbf{25\,\%}%
+  \and
+  Adam Neugebauer \\
+  \texttt{xneugea00} \\
+  \texttt{282400} \\
+  25\,\%%
+  \and
+  Oldřich Vašíček \\
+  \texttt{xvasico00} \\
+  \texttt{280767} \\
+  25\,\%%
+  \and
+  Tadeáš Čupr \\
+  \texttt{xcuprta00} \\
+  \texttt{282877} \\
+  25\,\%%
+}
+
+
+
+\date{\today}
+
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+Implementovaná rozšíření: \texttt{FUNEXP}, \texttt{CONTROL}, \texttt{BOOLTHEN},
+\texttt{VALMEM}, \texttt{PARAMLISTS}, \texttt{INTERPOLATEDS}, \texttt{EXTKW}\\[1ex]
+Git repozitář: \texttt{https://github.com/nooneyy/ifj\_2026}
+\end{center}
+
+%----------------------------------------------------------------------------------------
+%	TABLE OF CONTENTS
+%----------------------------------------------------------------------------------------
+
+%\setcounter{tocdepth}{1} % Uncomment this line if you don't want subsections listed in the ToC
+
+\newpage
+\tableofcontents
+\newpage
+
+%----------------------------------------------------------------------------------------
+%	SECTIONS
+%----------------------------------------------------------------------------------------
+
+\begin{homeworkProblem}[Rozdělení práce mezi členy týmu]
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Spolupráce a vývoj]
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Schéma architektury projektu]
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Lexikální analýza]
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Syntaktická analýza]
+    \begin{homeworkSection}{LL gramatika}
+    \end{homeworkSection}
+    \begin{homeworkSection}{LL tabulka}
+    \end{homeworkSection}
+    \begin{homeworkSection}{Precedenční tabulka}
+    \end{homeworkSection}
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Popis modulů]
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Využití AI]
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Literatura]
+\end{homeworkProblem}
+
+\end{document}
