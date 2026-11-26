@@ -34,6 +34,9 @@ digraph scanner_fsm {
     STR_END [shape = doublecircle;style = dashed;];
     STR_ML_END [shape = doublecircle;style = dashed;];
     
+    // WHITESPACE
+    IDLE -> IDLE [label = "space, tab";];
+    
     // ID route
     IDLE -> ID [label = "a-Z";];
     IDLE -> UND [label = "_";];
@@ -106,4 +109,12 @@ digraph scanner_fsm {
     STR_ML_END -> STR_ML_END [label = "\"";];
     
     ESC -> STR [label = "\\, \", n, r, t";];
+    
+    // INDENTATION
+    IDLE -> LINE_START [label = "\\n [outside ()] / EOL";];
+    IDLE -> PAREN_NEWLINE [label = "\\n [inside ()]";];
+    LINE_START -> IDLE [label = "Σ \\ {\\n, space, tab} / INDENT, DEDENT";];
+    LINE_START -> LINE_START [label = "\\n, space, tab";];
+    PAREN_NEWLINE -> PAREN_NEWLINE [label = "\\n, space, tab";];
+    PAREN_NEWLINE -> IDLE [label = "Σ \\ {\\n, space, tab}";];
 }
