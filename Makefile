@@ -84,7 +84,7 @@ test:
 src/main.o: src/return.h src/scanner.h src/tokens.h src/parser.h src/ast.h src/semantic.h src/codegen.h
 src/scanner.o: src/scanner.h src/return.h src/tokens.h src/dynstr.h
 src/parser.o: src/parser.h src/ast.h src/tokens.h src/return.h src/scanner.h src/prec_stack.h src/symbol.h
-src/semantic.o: src/semantic.h src/ast.h src/return.h src/symbol.h src/symtable.h src/dynstr.h
+src/semantic.o: src/semantic.h src/ast.h src/return.h src/symbol.h src/symtable.h 
 src/codegen.o: src/codegen.h src/ast.h src/return.h src/symbol.h
 src/ast.o: src/ast.h src/symbol.h src/return.h
 src/prec_stack.o: src/prec_stack.h src/ast.h src/return.h src/tokens.h

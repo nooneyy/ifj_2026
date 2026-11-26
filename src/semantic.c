@@ -7,19 +7,17 @@
 
 #include "semantic.h"
 #include "ast.h"
-#include "dynstr.h"
 #include "return.h"
 #include "symbol.h"
 #include "symtable.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 // The max amount of params a builtin function has
 #define MAX_BUILTIN_PARAM_COUNT 3
-// Separator between the receiver's type name and the method name
-#define METHOD_KEY_SEPARATOR '&'
 
 /**
  * @brief All the information needed to insert a builtin function to the
@@ -186,38 +184,19 @@ static const char *data_type_to_string(DataType type) {
     return "Boolean";
   case UNIT:
     return "Unit";
-  case ANY:
-  case UNKNOWN:
   default:
     return NULL;
   }
 }
 
 /**
- * @brief Appends a whole string to the end of a DynStr
- * @param s DynStr to append to (already initialized with dynstr_init())
- * @param str The '\0'-terminated string to append
- * @return RETURN_SUCCESS on success, ERR_INTERNAL if a reallocation fails
- */
-static ReturnCodes append_string(DynStr *s, const char *str) {
-  for (size_t idx = 0; str[idx] != '\0'; idx++) {
-    ReturnCodes ret = dynstr_append(s, str[idx]);
-    if (ret != RETURN_SUCCESS) {
-      return ret;
-    }
-  }
-
-  return RETURN_SUCCESS;
-}
-
-/**
- * @brief Builds the symtable key of an EXTKW method, the receiver's type name
- * and the method name joined by METHOD_KEY_SEPARATOR (e.g. "Int&twice")
+ * @brief Sets *out to the symtable key of an EXTKW method on a type
+ * (format: receiver_type&name)
  * @param receiver_type The data type of the method's receiver
  * @param name The name of the method
- * @param out Pointer to the resulting key, allocated and owned by the caller
- * @return RETURN_SUCCESS on success, ERR_INTERNAL if the receiver type has no
- * name or if an allocation fails
+ * @param out A pointer to the string to be filled
+ * @return RETURN_SUCCESS on success, ERR_INTERNAL on a memory allocation error
+ * or wrong passed in receiver_type
  */
 static ReturnCodes method_key(DataType receiver_type, const char *name,
                               char **out) {
@@ -225,41 +204,25 @@ static ReturnCodes method_key(DataType receiver_type, const char *name,
   const char *data_type_name = data_type_to_string(receiver_type);
 
   if (data_type_name == NULL) {
-    print_error("Internal error: method key data type doesn't have name!", 0);
+    print_error("Wrong type passed in to method_key function!", 0);
     return ERR_INTERNAL;
   }
 
-  DynStr key_tmp = {NULL, 0, 0};
+  // DATA_TYPE_NAME + '&' + NAME + '\0'
+  size_t temp_str_len = strlen(data_type_name) + strlen(name) + 2;
 
-  ReturnCodes ret = dynstr_init(&key_tmp);
-  if (ret != RETURN_SUCCESS) {
-    print_error("Internal error: failed allocation in dynstr!", 0);
-    return ret;
-  }
+  char *temp = malloc(temp_str_len);
 
-  // appending data type name
-  ret = append_string(&key_tmp, data_type_name);
-  if (ret != RETURN_SUCCESS) {
-    dynstr_free(&key_tmp);
-    print_error("Internal error: failed allocation in dynstr!", 0);
-    return ERR_INTERNAL;
-  }
-  // appending separator
-  ret = dynstr_append(&key_tmp, METHOD_KEY_SEPARATOR);
-  if (ret != RETURN_SUCCESS) {
-    dynstr_free(&key_tmp);
-    print_error("Internal error: failed allocation in dynstr!", 0);
-    return ERR_INTERNAL;
-  }
-  // appending method name
-  ret = append_string(&key_tmp, name);
-  if (ret != RETURN_SUCCESS) {
-    dynstr_free(&key_tmp);
-    print_error("Internal error: failed allocation in dynstr!", 0);
+  if (temp == NULL) {
+    print_error("Allocation failed!", 0);
     return ERR_INTERNAL;
   }
 
-  *out = dynstr_take(&key_tmp);
+  // & -> special separator for methods on types (normal functions can't have &
+  // in their name)
+  snprintf(temp, temp_str_len, "%s&%s", data_type_name, name);
+
+  *out = temp;
 
   return RETURN_SUCCESS;
 }
@@ -296,8 +259,7 @@ static ReturnCodes function_def_symbol(Symtable *global_sym,
   }
 
   if (found == NULL) {
-    print_error("Internal error: symbol of a function definition not found!",
-                0);
+    print_error("symbol of a function definition not found!", 0);
     return ERR_INTERNAL;
   }
 
@@ -696,9 +658,7 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
           ASTNode *def =
               find_function_def(context->program, var_ref_data.name, UNKNOWN);
           if (def == NULL) {
-            print_error(
-                "Internal error: definition of referenced function not found!",
-                0);
+            print_error("definition of referenced function not found!", 0);
             return ERR_INTERNAL;
           }
           list_count = def->data.function_def.list_count;
@@ -790,8 +750,7 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
         ASTNode *fun_node =
             find_function_def(context->program, fun_call_data.name, UNKNOWN);
         if (fun_node == NULL) {
-          print_error(
-              "Internal error: definition of called function not found!", 0);
+          print_error("definition of called function not found!", 0);
           return ERR_INTERNAL;
         }
 
@@ -823,8 +782,7 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
       ASTNode *def_node =
           find_function_def(context->program, fun_call_data.name, UNKNOWN);
       if (def_node == NULL) {
-        print_error("Internal error: definition of called function not found!",
-                    0);
+        print_error("definition of called function not found!", 0);
         return ERR_INTERNAL;
       }
       expected_list_count = def_node->data.function_def.list_count;
@@ -990,8 +948,7 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
         ASTNode *method_def = find_function_def(
             context->program, valmem_data->name, receiver_type);
         if (method_def == NULL) {
-          print_error("Internal error: definition of called method not found!",
-                      0);
+          print_error("definition of called method not found!", 0);
           return ERR_INTERNAL;
         }
 
@@ -1478,6 +1435,8 @@ static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
   frame.function->data.function.state = IN_PROGRESS;
 
   if (function_data.receiver.name != NULL) {
+    // Function is an EXTKW extension method, add its receiver to the symtable
+    // stack
     ret = symtable_stack_new_var(&stack, function_data.receiver.name,
                                  function_data.receiver.data_type, FUNC_PARAM,
                                  function->line);
