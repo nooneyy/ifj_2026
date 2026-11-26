@@ -13,17 +13,26 @@ digraph scanner_fsm {
     
     // START
     start [shape = point;];
-    start -> IDLE;
+    start -> IDLE [style = bold;];
+    
+    // NOT STATES IN CODE
+    D [style = dashed;];
+    STR_END [style = dashed;];
+    STR_ML_END [style = dashed;];
+    ESC [style = dashed;];
     
     // ENDING STATES
     ID [shape = doublecircle;];
     INT [shape = doublecircle;];
     DBL [shape = doublecircle;];
-    D [shape = doublecircle;];
+    D [shape = doublecircle;style = dashed;];
     EXP [shape = doublecircle;];
     ZERO [shape = doublecircle;];
     UND [shape = doublecircle;];
     DOT_START [shape = doublecircle;];
+    QUOT_2 [shape = doublecircle;];
+    STR_END [shape = doublecircle;style = dashed;];
+    STR_ML_END [shape = doublecircle;style = dashed;];
     
     // ID route
     IDLE -> ID [label = "a-Z";];
@@ -75,4 +84,26 @@ digraph scanner_fsm {
     
     EXP_UND -> EXP [label = "0-9";];
     EXP_UND -> EXP_UND [label = "_";];
+    
+    // STRING route
+    IDLE -> QUOT_1 [label = "\"";];
+    
+    QUOT_1 -> QUOT_2 [label = "\"";];
+    QUOT_1 -> STR [label = "Σ \\ {\", \\, \\n, EOF}";];
+    QUOT_1 -> ESC [label = "\\";];
+    QUOT_2 -> STR_ML [label = "\"";];
+    
+    STR -> STR [label = "Σ \\ {\", \\, \\n, EOF}";];
+    STR -> STR_END [label = "\"";];
+    STR -> ESC [label = "\\";];
+    
+    STR_ML -> STR_ML_1_Q [label = "\"";];
+    STR_ML -> STR_ML [label = "Σ \\ {EOF, \"}";];
+    STR_ML_1_Q -> STR_ML_2_Q [label = "\"";];
+    STR_ML_1_Q -> STR_ML [label = "Σ \\ {EOF, \"}";];
+    STR_ML_2_Q -> STR_ML [label = "Σ \\ {EOF, \"}";];
+    STR_ML_2_Q -> STR_ML_END [label = "\"";];
+    STR_ML_END -> STR_ML_END [label = "\"";];
+    
+    ESC -> STR [label = "\\, \", n, r, t";];
 }
