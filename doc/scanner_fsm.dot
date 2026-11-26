@@ -20,20 +20,57 @@ digraph scanner_fsm {
     STR_END [style = dashed;];
     STR_ML_END [style = dashed;];
     ESC [style = dashed;];
+    COMM_BLOCK_SLASH [style = dashed;];
+    OPEN_PAR [style = dashed;];
+    CLOSE_PAR [style = dashed;];
+    SEMICOLON [style = dashed;];
+    COMMA [style = dashed;];
+    COLON [style = dashed;];
+    MUL [style = dashed;];
+    PLUS [style = dashed;];
+    MINUS [style = dashed;];
+    NOT_EQ [style = dashed;];
+    EQ [style = dashed;];
+    GRE_EQ [style = dashed;];
+    LOW_EQ [style = dashed;];
+    GENERATOR [style = dashed;];
+    AND_AND [style = dashed;];
+    OR_OR [style = dashed;];
+    
+    
     
     // ENDING STATES
     ID [shape = doublecircle;label = "ID\n/ID, KW, BOOL";];
     INT [shape = doublecircle;label = "INT\n/INT";];
     DBL [shape = doublecircle;label = "DBL\n/DOUBLE";];
-    D [shape = doublecircle;style = dashed;label = "D\n/DOUBLE";];
+    D [shape = doublecircle;label = "D\n/DOUBLE";];
     EXP [shape = doublecircle;label = "EXP\n/DOUBLE";];
     ZERO [shape = doublecircle;label = "ZERO\n/INT";];
     UND [shape = doublecircle;label = "UND\n/UND";];
     DOT_START [shape = doublecircle;label = "DOT_START\n/DOT";];
     QUOT_2 [shape = doublecircle;label = "QUOT_2\n/STRING";];
-    STR_END [shape = doublecircle;style = dashed;label = "STR_END\n/STRING";];
-    STR_ML_END [shape = doublecircle;style = dashed;label = "STR_ML_END\n/STRING";];
+    STR_END [shape = doublecircle;label = "STR_END\n/STRING";];
+    STR_ML_END [shape = doublecircle;label = "STR_ML_END\n/STRING";];
     SLASH [shape = doublecircle;label = "SLASH\n/DIV";];
+    OPEN_PAR [shape = doublecircle;label = "OPEN_PAR\n/OPEN_PAR";];
+    CLOSE_PAR [shape = doublecircle;label = "CLOSE_PAR\n/CLOSE_PAR";];
+    SEMICOLON [shape = doublecircle;label = "SEMICOLON\n/SEMICOLON";];
+    COMMA [shape = doublecircle;label = "COMMA\n/COMMA";];
+    COLON [shape = doublecircle;label = "COLON\n/COLON";];
+    MUL [shape = doublecircle;label = "MUL\n/MUL";];
+    PLUS [shape = doublecircle;label = "PLUS\n/PLUS";];
+    MINUS [shape = doublecircle;label = "MINUS\n/MINUS";];
+    EXCL [shape = doublecircle;label = "EXCL\n/EXCL_MARK";];
+    ASSIGN [shape = doublecircle;label = "ASSIGN\n/ASSIGN";];
+    GRE [shape = doublecircle;label = "GRE\n/GRE";];
+    LOW [shape = doublecircle;label = "LOW\n/LOW";];
+    NOT_EQ [shape = doublecircle;label = "NOT_EQ\n/NOT_EQ";];
+    EQ [shape = doublecircle;label = "EQ\n/EQ";];
+    GRE_EQ [shape = doublecircle;label = "GRE_EQ\n/GRE_EQ";];
+    LOW_EQ [shape = doublecircle;label = "LOW_EQ\n/LOW_EQ";];
+    GENERATOR [shape = doublecircle;label = "GENERATOR\n/GENERATOR";];
+    AND_AND [shape = doublecircle;label = "AND_AND\n/AND";];
+    OR_OR [shape = doublecircle;label = "OR_OR\n/OR";];
     
     // WHITESPACE
     IDLE -> IDLE [label = "space, tab";];
@@ -131,9 +168,35 @@ digraph scanner_fsm {
     COMM_BLOCK -> COMM_BLOCK_SLASH [label = "'/'";];
     COMM_BLOCK -> COMM_BLOCK [label = "Σ \\ {*, /, EOF}";];
     COMM_BLOCK_STAR -> COMM_BLOCK_STAR [label = "*";];
-    COMM_BLOCK_STAR -> IDLE [label = "'/' [depth == 0]\n/ depth --";];
-    COMM_BLOCK_STAR -> COMM_BLOCK [label = "'/' [depth > 0]\n/ depth--";];
+    COMM_BLOCK_STAR -> IDLE [label = "'/' [depth == 1]\n/ depth--";];
+    COMM_BLOCK_STAR -> COMM_BLOCK [label = "'/' [depth > 1]\n/ depth--";];
     COMM_BLOCK_STAR -> COMM_BLOCK [label = "Σ \\ {*, /, EOF}";];
     COMM_BLOCK_SLASH -> COMM_BLOCK [label = "* / depth++";];
     COMM_BLOCK_SLASH -> COMM_BLOCK [label = "Σ \\ {*, EOF}";];
+    
+    // SINGLE CHARACTERS
+    IDLE -> OPEN_PAR [label = "(";];
+    IDLE -> CLOSE_PAR [label = ")";];
+    IDLE -> SEMICOLON [label = ";";];
+    IDLE -> COMMA [label = ",";];
+    IDLE -> COLON [label = ":";];
+    IDLE -> MUL [label = "*";];
+    IDLE -> PLUS [label = "+";];
+    IDLE -> MINUS [label = "-";];
+    
+    // OPERATORS
+    IDLE -> EXCL [label = "!";];
+    IDLE -> ASSIGN [label = "=";];
+    IDLE -> GRE [label = ">";];
+    IDLE -> LOW [label = "<";];
+    IDLE -> AND [label = "&";];
+    IDLE -> OR [label = "|";];
+    
+    EXCL -> NOT_EQ [label = "=";];
+    ASSIGN -> EQ [label = "=";];
+    GRE -> GRE_EQ [label = "=";];
+    LOW -> LOW_EQ [label = "=";];
+    LOW -> GENERATOR [label = "-";];
+    AND -> AND_AND [label = "&";];
+    OR -> OR_OR [label = "|";];
 }
