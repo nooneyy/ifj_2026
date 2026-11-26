@@ -40,6 +40,7 @@
 \pagestyle{fancy}
 \lhead{\firstxmark} % Top left header
 \chead{\hmwkClass: \hmwkTitle} % Top center header
+\rhead{}
 \lfoot{\lastxmark} % Bottom left footer
 \cfoot{} % Bottom center footer
 \rfoot{Strana\ \thepage\ z\ \pageref{LastPage}} % Bottom right footer
@@ -158,9 +159,54 @@ Git repozitář: \texttt{https://github.com/nooneyy/ifj\_2026}
 %----------------------------------------------------------------------------------------
 
 \begin{homeworkProblem}[Rozdělení práce mezi členy týmu]
+    Zpočátku jsme byli dohodnuti na následujícím rozdělení práce:
+
+    \begin{itemize}
+        \item Adam Neugebauer - implementace lexikální analýzy, syntaktické analýzy,
+        \item Tomáš Kolařík - implementace tabulky symbolů, optimalizátoru výsledného kódu, pomoc při implementaci syntaktické analýzy dle potřeby,
+        \item Oldřich Vašíček - implementace generátoru vnitřního kódu, pomoc při implementaci optimalizátoru výsl. kódu dle potřeby,
+        \item Tadeáš Čupr - generátor cílového kódu, pomoc kdekoliv dle potřeby.
+    \end{itemize}
+
+    Od této dohody jsme ale časem upustili, jelikož jsme během semestru zjistili, že optimalizátor výsledného kódu není k chodu překladače vůbec nutný a nezbyl by na něj čas, syntaktická analýza je jedna z nejtěžších částí projektu a proto by bylo vhodné její implementaci alespoň rozdělit na část rekurzivního sestupu a precedenční analýzy výrazů, sémantická analýza je důležitá a nebyla vůbec nikomu původně přiřazena.
+    Dále jsme v počátečním rozdělení úplně nebrali ohled na to, že implementace určitých částí je závislá na jiné části projektu a tedy nelze dělat souběžně s ní.
+    
+    Museli jsme tedy udělat v rozdělení změny, to výsledné vypadá takto:
+    
+    \begin{itemize}
+        \item \textbf{Adam Neugebauer} - implementace lexikální analýzy, syntaktické analýzy rekurzivním sestupem, kódů návratových chyb a konvence zpracování chyb, konvence testů,
+        \item \textbf{Tomáš Kolařík} - počáteční struktura repozitáře a konvence při práci s ním (\texttt{Makefile}, formátování kódu, statická analýza, komentáře atd.), implementace tabulky symbolů, precedenční analýzy výrazů, abstraktního syntaktického stromu, sémantické analýzy,
+        \item \textbf{Oldřich Vašíček} - implementace abstraktního syntaktického stromu, sémantické analýzy,
+        \item \textbf{Tadeáš Čupr} - implementace generátoru cílového kódu.
+    \end{itemize}
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Spolupráce a vývoj]
+    Projekt je verzován pomocí verzovacího systému \textit{Git} a hostovaný na \textit{GitHubu}.
+    V našem \texttt{README.md} souboru jsme měli již od začátku stanovena následující pravidla:
+
+    \begin{itemize}
+        \item Samostatná větev pro každou novou funkci/část projektu či opravu již stávajícího kódu; předpony názvů větví dle účelu větve (\texttt{feat/}: nová funkce, \texttt{fix/}: oprava apod.)
+        \item Zprávy commitů podle \textit{Conventional Commits},
+        \item Konvence pojmenování proměnných (klasické proměnné ve \texttt{snake\_case}, konstanty v \\ \texttt{SCREAMING\_SNAKE\_CASE}, struktury v \texttt{PascalCase}),
+        \item Vše až na dokumentaci bude psáno anglicky.
+    \end{itemize}
+
+    Po dokončení práce v jednotlivé větvi se vždy potom udělal pull request směřující na hlavní větev projektu \texttt{main}. Ty zpravidla potom kontroloval a slučoval vedoucí (Tomáš Kolařík), v ojedinělých případech se commity vkládaly ihned do větve \texttt{main} (na počátku repozitáře) nebo se pull request sloučil ihned po jeho vytvoření (když se jednalo o zřejmě správnou změnu, všichni již spali apod...)
+    Pro každou fázi překladu byla vytvořena sada testů:
+    \begin{itemize}
+        \item Lexikální analýza - 28 testů porovnávajících výstup tokenů ze skeneru,
+        \item Syntaktická analýza - 179 testů porovnávajících výstup uzlů z abstraktního syntaktického stromu,
+        \item Sémantická analýza - 187 testů porovnávajících chybové návratové kódy,
+        \item Generátor cílového kódu - 130 testů porovnávajících výstup vygenerovaného IFJcode26 programu s očekávaným výstupem.
+    \end{itemize}
+
+    Všechny testy odpovídají black-box testům, testy parseru a sémantické analýzy navíc odpovídají integračním testům těchto 2 a 3 komponent, testy generátoru cílového kódu jsou vlastně i end-to-end testy celého překladače.
+    Při běhu testů se ještě navíc každý spuštěný test kontroloval nástrojem \texttt{valgrind}, který kontroloval možné problémy s alokací paměti.
+    Soubory se zdrojovým kódem se povinně formátovaly pomocí nástroje \texttt{clang-format} s pravidly založenými na stylu \textit{LLVM}.
+    Každá hlavička souboru se zdrojovým kódem, všechny struktury a funkce byly opatřeny komentářem ve stylu \textit{Doxygen}.
+    
+    
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Schéma architektury projektu]
