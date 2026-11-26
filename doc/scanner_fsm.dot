@@ -22,17 +22,17 @@ digraph scanner_fsm {
     ESC [style = dashed;];
     
     // ENDING STATES
-    ID [shape = doublecircle;];
-    INT [shape = doublecircle;];
-    DBL [shape = doublecircle;];
-    D [shape = doublecircle;style = dashed;];
-    EXP [shape = doublecircle;];
-    ZERO [shape = doublecircle;];
-    UND [shape = doublecircle;];
-    DOT_START [shape = doublecircle;];
-    QUOT_2 [shape = doublecircle;];
-    STR_END [shape = doublecircle;style = dashed;];
-    STR_ML_END [shape = doublecircle;style = dashed;];
+    ID [shape = doublecircle;label = "ID\n/ID, KW, BOOL";];
+    INT [shape = doublecircle;label = "INT\n/INT";];
+    DBL [shape = doublecircle;label = "DBL\n/DOUBLE";];
+    D [shape = doublecircle;style = dashed;label = "D\n/DOUBLE";];
+    EXP [shape = doublecircle;label = "EXP\n/DOUBLE";];
+    ZERO [shape = doublecircle;label = "ZERO\n/INT";];
+    UND [shape = doublecircle;label = "UND\n/UND";];
+    DOT_START [shape = doublecircle;label = "DOT_START\n/DOT";];
+    QUOT_2 [shape = doublecircle;label = "QUOT_2\n/STRING";];
+    STR_END [shape = doublecircle;style = dashed;label = "STR_END\n/STRING";];
+    STR_ML_END [shape = doublecircle;style = dashed;label = "STR_ML_END\n/STRING";];
     
     // WHITESPACE
     IDLE -> IDLE [label = "space, tab";];
