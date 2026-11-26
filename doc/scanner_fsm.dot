@@ -1,0 +1,78 @@
+/**
+ * @file scanner_fsm.dot
+ * @brief Scanner's Finite State Machine in Graphviz dot
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 26.11.2026
+ */
+digraph scanner_fsm {
+    rankdir = LR;
+    // left to right direction
+    
+    node [shape = circle; fontname = "Helvetica"; fontsize = 10;];
+    edge [fontname = "Helvetica"; fontsize = 9;];
+    
+    // START
+    start [shape = point;];
+    start -> IDLE;
+    
+    // ENDING STATES
+    ID [shape = doublecircle;];
+    INT [shape = doublecircle;];
+    DBL [shape = doublecircle;];
+    D [shape = doublecircle;];
+    EXP [shape = doublecircle;];
+    ZERO [shape = doublecircle;];
+    UND [shape = doublecircle;];
+    DOT_START [shape = doublecircle;];
+    
+    // ID route
+    IDLE -> ID [label = "a-Z";];
+    IDLE -> UND [label = "_";];
+    ID -> ID [label = "a-Z, _, 0-9";];
+    UND -> ID [label = "a-Z, _, 0-9";];
+    
+    // INT route
+    IDLE -> INT [label = "1-9";];
+    IDLE -> ZERO [label = "0";];
+    INT -> INT [label = "0-9";];
+    INT -> INT_UND [label = "_";];
+    INT -> DOT [label = ".";];
+    INT -> E [label = "e, E";];
+    
+    ZERO -> ZERO_INT [label = "0-9";];
+    ZERO -> E [label = "e, E";];
+    ZERO -> DOT [label = ".";];
+    
+    ZERO_INT -> ZERO_INT [label = "0-9";];
+    ZERO_INT -> ZERO_INT_DOT [label = ".";];
+    ZERO_INT -> E [label = "e, E";];
+    ZERO_INT_DOT -> DBL [label = "0-9";];
+    
+    INT_UND -> INT [label = "0-9";];
+    INT_UND -> INT_UND [label = "_";];
+    
+    // DBL route
+    IDLE -> DOT_START [label = ".";];
+    DOT_START -> DBL [label = "0-9";];
+    DOT -> DBL [label = "0-9";];
+    DBL -> DBL [label = "0-9";];
+    DBL -> DBL_UND [label = "_";];
+    DBL -> E [label = "e, E";];
+    DBL -> D [label = "d, D";];
+    
+    DBL_UND -> DBL [label = "0-9";];
+    DBL_UND -> DBL_UND [label = "_";];
+    
+    // EXPONENT route
+    E -> EXP [label = "0-9";];
+    E -> E_SIGN [label = "+, -";];
+    
+    E_SIGN -> EXP [label = "0-9";];
+    
+    EXP -> EXP [label = "0-9";];
+    EXP -> EXP_UND [label = "_";];
+    EXP -> D [label = "d, D";];
+    
+    EXP_UND -> EXP [label = "0-9";];
+    EXP_UND -> EXP_UND [label = "_";];
+}
