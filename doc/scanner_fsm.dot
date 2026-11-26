@@ -36,6 +36,8 @@ digraph scanner_fsm {
     GENERATOR [style = dashed;];
     AND_AND [style = dashed;];
     OR_OR [style = dashed;];
+    EOF [style = dashed;];
+    AT_MAIN [style = dashed;];
     
     
     
@@ -71,6 +73,8 @@ digraph scanner_fsm {
     GENERATOR [shape = doublecircle;label = "GENERATOR\n/GENERATOR";];
     AND_AND [shape = doublecircle;label = "AND_AND\n/AND";];
     OR_OR [shape = doublecircle;label = "OR_OR\n/OR";];
+    EOF [shape = doublecircle;label = "EOF\n/EOF";];
+    AT_MAIN [shape = doublecircle;label = "AT_MAIN\n/AT_MAIN";];
     
     // WHITESPACE
     IDLE -> IDLE [label = "space, tab";];
@@ -183,6 +187,7 @@ digraph scanner_fsm {
     IDLE -> MUL [label = "*";];
     IDLE -> PLUS [label = "+";];
     IDLE -> MINUS [label = "-";];
+    IDLE -> EOF [label = "EOF";];
     
     // OPERATORS
     IDLE -> EXCL [label = "!";];
@@ -199,4 +204,8 @@ digraph scanner_fsm {
     LOW -> GENERATOR [label = "-";];
     AND -> AND_AND [label = "&";];
     OR -> OR_OR [label = "|";];
+    
+    // MAIN
+    IDLE -> AT [label = "@";];
+    AT -> AT_MAIN [label = "main";];
 }
