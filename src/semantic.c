@@ -228,47 +228,6 @@ static ReturnCodes method_key(DataType receiver_type, const char *name,
 }
 
 /**
- * @brief Finds the global symtable symbol of a function or method definition. A
- * plain function is looked up by its name, an EXTKW method by its method key
- * @param global_sym Pointer to the global symtable struct
- * @param def Data of the Function Definition node
- * @param out Pointer to the found symbol (owned by the symtable, never NULL on
- * success), set to NULL on error
- * @return RETURN_SUCCESS on success
- */
-static ReturnCodes function_def_symbol(Symtable *global_sym,
-                                       const ASTFunctionDefNodeData *def,
-                                       Symbol **out) {
-  *out = NULL;
-  char *key = NULL;
-  Symbol *found = NULL;
-  ReturnCodes ret = RETURN_SUCCESS;
-
-  // symbol is a basic function
-  if (def->receiver.name == NULL) {
-    found = symtable_get(global_sym, def->name);
-  } else {
-    // symbol is a method, e.g. "Int&twice"
-    ret = method_key(def->receiver.data_type, def->name, &key);
-    if (ret != RETURN_SUCCESS) {
-      return ret;
-    }
-
-    found = symtable_get(global_sym, key);
-    free(key);
-  }
-
-  if (found == NULL) {
-    print_error("symbol of a function definition not found!", 0);
-    return ERR_INTERNAL;
-  }
-
-  *out = found;
-
-  return RETURN_SUCCESS;
-}
-
-/**
  * @brief The first pass of the semantic analysis - registers functions to the
  * symtable, checks for @main definition(s)
  * @param symtable Pointer to the symtable struct
@@ -391,10 +350,13 @@ static ReturnCodes check_statement(SemanticContext *context, ASTNode *statement,
  * @param context Pointer to the semantic context (global symtable, current
  * function)
  * @param function A pointer to the function ASTNode struct
+ * @param function_sym A pointer to the Function symbol (also can be an EXTKW
+ * extension)
  * @return RETURN_SUCCESS on success, or one of the semantic errors or
  * ERR_INTERNAL on memory allocation failure
  */
-static ReturnCodes check_function(SemanticContext *context, ASTNode *function);
+static ReturnCodes check_function(SemanticContext *context, ASTNode *function,
+                                  Symbol *function_sym);
 
 /**
  * @brief Decides whether the data type is a number type
@@ -754,7 +716,7 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
           return ERR_INTERNAL;
         }
 
-        ret = check_function(context, fun_node);
+        ret = check_function(context, fun_node, fun_sym);
 
         if (ret != RETURN_SUCCESS) {
           return ret;
@@ -964,7 +926,7 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
 
         // check the method's body on demand, detect recursion
         if (method_sym->data.function.state == UNCHECKED) {
-          ret = check_function(context, method_def);
+          ret = check_function(context, method_def, method_sym);
           if (ret != RETURN_SUCCESS) {
             return ret;
           }
@@ -1408,13 +1370,9 @@ static ReturnCodes check_statement_list(SemanticContext *context,
   return ret;
 }
 
-static ReturnCodes check_function(SemanticContext *context, ASTNode *function) {
-  Symbol *function_sym = NULL;
-  ReturnCodes ret = function_def_symbol(
-      context->global_sym, &function->data.function_def, &function_sym);
-  if (ret != RETURN_SUCCESS) {
-    return ret;
-  }
+static ReturnCodes check_function(SemanticContext *context, ASTNode *function,
+                                  Symbol *function_sym) {
+  ReturnCodes ret = RETURN_SUCCESS;
   Symtable *function_symtable = symtable_init();
 
   if (function_symtable == NULL) {
@@ -1514,15 +1472,26 @@ static ReturnCodes semantic_body_pass(Symtable *global_sym, ASTNode *program) {
   context.program = program;
 
   while (function != NULL) {
+    ASTFunctionDefNodeData *func_data = &function->data.function_def;
     Symbol *function_sym = NULL;
-    ret = function_def_symbol(global_sym, &function->data.function_def,
-                              &function_sym);
-    if (ret != RETURN_SUCCESS) {
-      break;
+
+    if (func_data->receiver.name != NULL) {
+      // Function is an EXTKW method, set its function_sym
+      char *key = NULL;
+      ret = method_key(func_data->receiver.data_type, func_data->name, &key);
+
+      if (ret != RETURN_SUCCESS) {
+        break;
+      }
+
+      function_sym = symtable_get(global_sym, key);
+      free(key);
+    } else {
+      function_sym = symtable_get(global_sym, func_data->name);
     }
 
     if (function_sym->data.function.state == UNCHECKED) {
-      ret = check_function(&context, function);
+      ret = check_function(&context, function, function_sym);
     }
     if (ret != RETURN_SUCCESS) {
       break;
