@@ -224,6 +224,47 @@ static void pop_result(CodeGenContext *ctx, const char *dest_var) {
   }
 }
 
+/**
+ * @brief Maps a DataType to its IFJcode26 type name for method labels
+ * @param type Receiver data type
+ * @return Type name string or NULL for unnamed types
+ */
+static const char *data_type_label(DataType type) {
+  switch (type) {
+  case INT:
+    return "Int";
+  case DOUBLE:
+    return "Double";
+  case STRING:
+    return "String";
+  case BOOLEAN:
+    return "Boolean";
+  case UNIT:
+    return "Unit";
+  default:
+    return NULL;
+  }
+}
+
+/**
+ * @brief Emits the IFJcode26 label name for a function or extension method
+ * @param ctx Code generator context
+ * @param fn Function or method definition AST data
+ */
+static void emit_func_label(CodeGenContext *ctx,
+                            const ASTFunctionDefNodeData *fn) {
+  if (fn->receiver.name != NULL) {
+    const char *type_name = data_type_label(fn->receiver.data_type);
+    if (type_name == NULL) {
+      ctx->has_error = true;
+      return;
+    }
+    fprintf(ctx->out, "$m_%s$%s", type_name, fn->name);
+  } else {
+    fprintf(ctx->out, "$fn_%s", fn->name);
+  }
+}
+
 // Expressions
 
 /**
@@ -364,6 +405,7 @@ static const ASTFunctionDefNodeData *find_function_def(const ASTNode *program,
   const ASTNode *fn = program->data.program.functions;
   while (fn != NULL) {
     if (fn->node_type == NODE_FUNCTION_DEF &&
+        fn->data.function_def.receiver.name == NULL &&
         strcmp(fn->data.function_def.name, name) == 0) {
       return &fn->data.function_def;
     }
@@ -374,16 +416,40 @@ static const ASTFunctionDefNodeData *find_function_def(const ASTNode *program,
 }
 
 /**
- * @brief Emits IFJcode26 code for a function call
- * @param ctx Code generator context
- * @param expr AST node of the function call
- * @param dest_var Destination LF variable name or NULL to discard
+ * @brief Finds an extension method's AST data by receiver type and name
+ * @param program Root AST node of program
+ * @param receiver_type Data type of the receiver
+ * @param name Name of the method to find
+ * @return Pointer to the method's ASTFunctionDefNodeData
+ *         NULL if not found
  */
-static void expression_function_call(CodeGenContext *ctx, const ASTNode *expr,
-                                     const char *dest_var) {
-  const ASTFunctionDefNodeData *callee =
-      find_function_def(ctx->program, expr->data.function_call.name);
-  ASTNode *arg = expr->data.function_call.args;
+static const ASTFunctionDefNodeData *find_method_def(const ASTNode *program,
+                                                     DataType receiver_type,
+                                                     const char *name) {
+  const ASTNode *fn = program->data.program.functions;
+  while (fn != NULL) {
+    if (fn->node_type == NODE_FUNCTION_DEF &&
+        fn->data.function_def.receiver.name != NULL &&
+        fn->data.function_def.receiver.data_type == receiver_type &&
+        strcmp(fn->data.function_def.name, name) == 0) {
+      return &fn->data.function_def;
+    }
+    fn = fn->next;
+  }
+
+  return NULL;
+}
+
+/**
+ * @brief Evaluates and pushes call arguments onto the data stack
+ * @param ctx Code generator context
+ * @param args Linked list of argument expressions
+ * @param callee Callee function or method definition
+ *               NULL for built-ins
+ */
+static void push_call_args(CodeGenContext *ctx, const ASTNode *args,
+                           const ASTFunctionDefNodeData *callee) {
+  const ASTNode *arg = args;
   size_t arg_idx = 0;
 
   while (arg != NULL) {
@@ -400,6 +466,19 @@ static void expression_function_call(CodeGenContext *ctx, const ASTNode *expr,
     arg = arg->next;
     arg_idx++;
   }
+}
+
+/**
+ * @brief Emits IFJcode26 code for a function call
+ * @param ctx Code generator context
+ * @param expr AST node of the function call
+ * @param dest_var Destination LF variable name or NULL to discard
+ */
+static void expression_function_call(CodeGenContext *ctx, const ASTNode *expr,
+                                     const char *dest_var) {
+  const ASTFunctionDefNodeData *callee =
+      find_function_def(ctx->program, expr->data.function_call.name);
+  push_call_args(ctx, expr->data.function_call.args, callee);
 
   const char *name = expr->data.function_call.name;
   if (is_builtin_func(name)) {
@@ -612,6 +691,30 @@ static void expression_valmem_field(CodeGenContext *ctx, const ASTNode *expr,
   const ASTValmemFieldData *valmem = &expr->data.valmem_field;
 
   if (valmem->name == NULL || valmem->receiver == NULL) {
+    return;
+  }
+
+  if (valmem->is_extension) {
+    const ASTFunctionDefNodeData *callee = find_method_def(
+        ctx->program, valmem->receiver->data_type, valmem->name);
+    if (callee == NULL) {
+      ctx->has_error = true;
+      return;
+    }
+
+    char recv_tmp[TMP_VAR_BUF_SIZE];
+    new_tmp_var(ctx, recv_tmp);
+
+    generate_expression(ctx, valmem->receiver, recv_tmp);
+    fprintf(ctx->out, "PUSHS LF@%s\n", recv_tmp);
+
+    push_call_args(ctx, valmem->args, callee);
+
+    fprintf(ctx->out, "CALL ");
+    emit_func_label(ctx, callee);
+    fprintf(ctx->out, "\n");
+
+    pop_result(ctx, dest_var);
     return;
   }
 
@@ -1074,6 +1177,7 @@ static int count_ast_nodes(const ASTNode *node) {
 
     case NODE_VALMEM_FIELD:
       count += count_ast_nodes(node->data.valmem_field.receiver);
+      count += count_ast_nodes(node->data.valmem_field.args);
       break;
 
     default:
@@ -1156,6 +1260,7 @@ static void emit_var_defs_walk(CodeGenContext *ctx, const ASTNode *node,
 
     case NODE_VALMEM_FIELD:
       emit_var_defs_walk(ctx, node->data.valmem_field.receiver, uid_counter);
+      emit_var_defs_walk(ctx, node->data.valmem_field.args, uid_counter);
       break;
 
     default:
@@ -1174,16 +1279,23 @@ static void emit_var_defs_walk(CodeGenContext *ctx, const ASTNode *node,
  */
 static bool function_params(CodeGenContext *ctx,
                             const ASTFunctionDefNodeData *fn) {
+
+  if (fn->receiver.name != NULL) {
+    if (scope_push_var(ctx, fn->receiver.name, fn->receiver.data_type) < 0) {
+      return false;
+    }
+  }
+
   for (size_t i = 0; i < fn->param_count; i++) {
     if (scope_push_var(ctx, fn->params[i].name, fn->params[i].data_type) < 0) {
       return false;
     }
   }
-  for (size_t i = fn->param_count; i > 0; i--) {
+  for (size_t i = ctx->var_count; i > 0; i--) {
     size_t idx = i - 1;
-    fprintf(ctx->out, "DEFVAR LF@%s$%d\n", fn->params[idx].name,
+    fprintf(ctx->out, "DEFVAR LF@%s$%d\n", ctx->vars[idx].name,
             ctx->vars[idx].uid);
-    fprintf(ctx->out, "POPS LF@%s$%d\n", fn->params[idx].name,
+    fprintf(ctx->out, "POPS LF@%s$%d\n", ctx->vars[idx].name,
             ctx->vars[idx].uid);
   }
   return true;
@@ -1238,7 +1350,9 @@ static void generate_function(CodeGenContext *ctx, const ASTNode *fn_node) {
 
   const ASTFunctionDefNodeData *fn = &fn_node->data.function_def;
 
-  fprintf(ctx->out, "LABEL $fn_%s\n", fn->name);
+  fprintf(ctx->out, "LABEL ");
+  emit_func_label(ctx, fn);
+  fprintf(ctx->out, "\n");
 
   fprintf(ctx->out, "CREATEFRAME\n");
   fprintf(ctx->out, "PUSHFRAME\n");
