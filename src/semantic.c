@@ -552,7 +552,7 @@ static bool unify_types(DataType then_type, DataType else_type, DataType *out) {
 }
 
 /**
- * @brief Searches for ASTNode by given name
+ * @brief Searches for ASTNode by given name and receiver type
  * @param program A pointer to the root node of the AST (the program node)
  * @param name Name of function we want to find
  * @param receiver_type Data type of the receiver, UNKNOWN means "basic
@@ -572,8 +572,8 @@ static ASTNode *find_function_def(ASTNode *program, const char *name,
       kind_matches = def->receiver.name == NULL;
     } else {
       // looking for a method of receiver_type
-      kind_matches = def->receiver.name != NULL &&
-                     def->receiver.data_type == receiver_type;
+      kind_matches = ((def->receiver.name != NULL &&
+                       def->receiver.data_type == receiver_type) != 0);
     }
 
     if (kind_matches && strcmp(def->name, name) == 0) {
@@ -870,15 +870,16 @@ static ReturnCodes check_expr(SemanticContext *context, ASTNode *expr,
     // built-in member valid for the receiver's type
     DataType builtin_type = UNKNOWN;
 
-    if (strcmp(valmem_data->name, "toInt") == 0 && receiver_type == DOUBLE) {
+    if ((strcmp(valmem_data->name, "toInt") == 0 && receiver_type == DOUBLE) ||
+        (strcmp(valmem_data->name, "length") == 0 && receiver_type == STRING)) {
+      // DOUBLE.toInt || STRING.length
       builtin_type = INT;
     } else if (strcmp(valmem_data->name, "floor") == 0 &&
                receiver_type == DOUBLE) {
+      // DOUBLE.floor
       builtin_type = DOUBLE;
-    } else if (strcmp(valmem_data->name, "length") == 0 &&
-               receiver_type == STRING) {
-      builtin_type = INT;
     } else if (strcmp(valmem_data->name, "toString") == 0) {
+      // ANY.toString
       builtin_type = STRING;
     }
 
