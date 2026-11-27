@@ -38,43 +38,45 @@ digraph scanner_fsm {
     OR_OR [style = dashed;];
     EOF [style = dashed;];
     AT_MAIN [style = dashed;];
+    DOLLAR [style = dashed;];
     
     
     
     // ENDING STATES
-    ID [shape = doublecircle;label = "ID\n/ID, KW, BOOL";];
-    INT [shape = doublecircle;label = "INT\n/INT";];
-    DBL [shape = doublecircle;label = "DBL\n/DOUBLE";];
-    D [shape = doublecircle;label = "D\n/DOUBLE";];
-    EXP [shape = doublecircle;label = "EXP\n/DOUBLE";];
-    ZERO [shape = doublecircle;label = "ZERO\n/INT";];
-    UND [shape = doublecircle;label = "UND\n/UND";];
-    DOT_START [shape = doublecircle;label = "DOT_START\n/DOT";];
-    QUOT_2 [shape = doublecircle;label = "QUOT_2\n/STRING";];
-    STR_END [shape = doublecircle;label = "STR_END\n/STRING";];
-    STR_ML_END [shape = doublecircle;label = "STR_ML_END\n/STRING";];
-    SLASH [shape = doublecircle;label = "SLASH\n/DIV";];
-    OPEN_PAR [shape = doublecircle;label = "OPEN_PAR\n/OPEN_PAR";];
-    CLOSE_PAR [shape = doublecircle;label = "CLOSE_PAR\n/CLOSE_PAR";];
-    SEMICOLON [shape = doublecircle;label = "SEMICOLON\n/SEMICOLON";];
-    COMMA [shape = doublecircle;label = "COMMA\n/COMMA";];
-    COLON [shape = doublecircle;label = "COLON\n/COLON";];
-    MUL [shape = doublecircle;label = "MUL\n/MUL";];
-    PLUS [shape = doublecircle;label = "PLUS\n/PLUS";];
-    MINUS [shape = doublecircle;label = "MINUS\n/MINUS";];
-    EXCL [shape = doublecircle;label = "EXCL\n/EXCL_MARK";];
-    ASSIGN [shape = doublecircle;label = "ASSIGN\n/ASSIGN";];
-    GRE [shape = doublecircle;label = "GRE\n/GRE";];
-    LOW [shape = doublecircle;label = "LOW\n/LOW";];
-    NOT_EQ [shape = doublecircle;label = "NOT_EQ\n/NOT_EQ";];
-    EQ [shape = doublecircle;label = "EQ\n/EQ";];
-    GRE_EQ [shape = doublecircle;label = "GRE_EQ\n/GRE_EQ";];
-    LOW_EQ [shape = doublecircle;label = "LOW_EQ\n/LOW_EQ";];
-    GENERATOR [shape = doublecircle;label = "GENERATOR\n/GENERATOR";];
-    AND_AND [shape = doublecircle;label = "AND_AND\n/AND";];
-    OR_OR [shape = doublecircle;label = "OR_OR\n/OR";];
-    EOF [shape = doublecircle;label = "EOF\n/EOF";];
-    AT_MAIN [shape = doublecircle;label = "AT_MAIN\n/AT_MAIN";];
+    ID [shape = doublecircle;label = "ID\n/ ID, KW, BOOL";];
+    INT [shape = doublecircle;label = "INT\n/ INT";];
+    DBL [shape = doublecircle;label = "DBL\n/ DOUBLE";];
+    D [shape = doublecircle;label = "D\n/ DOUBLE";];
+    EXP [shape = doublecircle;label = "EXP\n/ DOUBLE";];
+    ZERO [shape = doublecircle;label = "ZERO\n/ INT";];
+    UND [shape = doublecircle;label = "UND\n/ UND";];
+    DOT_START [shape = doublecircle;label = "DOT_START\n/ DOT";];
+    QUOT_2 [shape = doublecircle;label = "QUOT_2\n/ STRING";];
+    STR_END [shape = doublecircle;label = "STR_END\n/ STRING";];
+    STR_ML_END [shape = doublecircle;label = "STR_ML_END\n/ STRING";];
+    SLASH [shape = doublecircle;label = "SLASH\n/ DIV";];
+    OPEN_PAR [shape = doublecircle;label = "OPEN_PAR\n/ OPEN_PAR";];
+    CLOSE_PAR [shape = doublecircle;label = "CLOSE_PAR\n/ CLOSE_PAR";];
+    SEMICOLON [shape = doublecircle;label = "SEMICOLON\n/ SEMICOLON";];
+    COMMA [shape = doublecircle;label = "COMMA\n/ COMMA";];
+    COLON [shape = doublecircle;label = "COLON\n/ COLON";];
+    MUL [shape = doublecircle;label = "MUL\n/ MUL";];
+    PLUS [shape = doublecircle;label = "PLUS\n/ PLUS";];
+    MINUS [shape = doublecircle;label = "MINUS\n/ MINUS";];
+    EXCL [shape = doublecircle;label = "EXCL\n/ EXCL_MARK";];
+    ASSIGN [shape = doublecircle;label = "ASSIGN\n/ ASSIGN";];
+    GRE [shape = doublecircle;label = "GRE\n/ GRE";];
+    LOW [shape = doublecircle;label = "LOW\n/ LOW";];
+    NOT_EQ [shape = doublecircle;label = "NOT_EQ\n/ NOT_EQ";];
+    EQ [shape = doublecircle;label = "EQ\n/ EQ";];
+    GRE_EQ [shape = doublecircle;label = "GRE_EQ\n/ GRE_EQ";];
+    LOW_EQ [shape = doublecircle;label = "LOW_EQ\n/ LOW_EQ";];
+    GENERATOR [shape = doublecircle;label = "GENERATOR\n/ GENERATOR";];
+    AND_AND [shape = doublecircle;label = "AND_AND\n/ AND";];
+    OR_OR [shape = doublecircle;label = "OR_OR\n/ OR";];
+    EOF [shape = doublecircle;label = "EOF\n/ EOF";];
+    AT_MAIN [shape = doublecircle;label = "AT_MAIN\n/ AT_MAIN";];
+    INTERP_2_QUOT [shape = doublecircle;label = "INTERP_2_QUOT\n/INTERP_BEGIN,\nINTERP_END";];
     
     // WHITESPACE
     IDLE -> IDLE [label = "space, tab";];
@@ -179,8 +181,8 @@ digraph scanner_fsm {
     COMM_BLOCK_SLASH -> COMM_BLOCK [label = "Σ \\ {*, EOF}";];
     
     // SINGLE CHARACTERS
-    IDLE -> OPEN_PAR [label = "(";];
-    IDLE -> CLOSE_PAR [label = ")";];
+    IDLE -> OPEN_PAR [label = "( / par++";];
+    IDLE -> CLOSE_PAR [label = ") / par--";];
     IDLE -> SEMICOLON [label = ";";];
     IDLE -> COMMA [label = ",";];
     IDLE -> COLON [label = ":";];
@@ -208,4 +210,18 @@ digraph scanner_fsm {
     // MAIN
     IDLE -> AT [label = "@";];
     AT -> AT_MAIN [label = "main";];
+    
+    // INTERPOLATED STRING
+    IDLE -> STR [label = "} [in ${...}, single-line]\n/ INTERP_EXPR_END";];
+    IDLE -> STR_ML [label = "} [in ${...}, multi-line]\n/ INTERP_EXPR_END";];
+    
+    ID -> INTERP_1_QUOT [label = "\" [ID == \"s\"]";];
+    INTERP_1_QUOT -> INTERP_2_QUOT [label = "\"";];
+    INTERP_1_QUOT -> STR [label = "Σ \\ {\"} / INTERP_BEGIN";];
+    INTERP_2_QUOT -> STR_ML [label = "\" / INTERP_BEGIN";];
+    
+    STR -> DOLLAR [label = "$ [interp]";];
+    DOLLAR -> STR [label = "$";];
+    DOLLAR -> IDLE [label = "{ / (STRING), INTERP_EXPR_BEGIN";];
+    DOLLAR -> IDLE [label = "a-Z, _ / (STRING)";];
 }
