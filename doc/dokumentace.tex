@@ -221,10 +221,47 @@ Git repozitář: \texttt{https://github.com/nooneyy/ifj\_2026}
     \begin{homeworkSection}{LL tabulka}
     \end{homeworkSection}
     \begin{homeworkSection}{Precedenční tabulka}
+        \input{prec_table}
     \end{homeworkSection}
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Popis modulů]
+    \begin{homeworkSection}{main.c}
+        Obsahuje funkci \texttt{main()} - vstupní bod programu. Inicializuje datovou strukturu \texttt{Scanner} pro lexikální analýzu, dále zavolá syntaktickou analýzu, která volá lexikální analýzu a získává od ní tokeny a mezitím plní uzly abstraktního syntaktického stromu. Poté se na AST zavolá sémantická analýza a následně generátor cílového kódu. Po první chybě je uvolněna paměť a vykonávání překladu nepokračuje.
+    \end{homeworkSection}
+    \begin{homeworkSection}{scanner.c/.h}
+        Obsahuje popis rozhraní a implementaci lexikální analýzy - nejdůležitější je definice struktury \texttt{Scanner}, která uchovává informace mezi jednotlivými volání lex. analýzy, výčtový typ \texttt{FsmState}, který určuje seznam stavů konečného stavového automatu a samotná funkce \texttt{scanner\_fsm}, která na základě vstupního kódu IFJ26 určí pomocí přechodů token k vrácení sémantické analýze.
+    \end{homeworkSection}
+    \begin{homeworkSection}{dynstr.c/.h}
+        Obsahuje popis rozhraní a implementaci struktury \texttt{DynStr} - textového řetězce s dynamickou velikostí. Využívá se v lexikální analýze pro všechny identifikátory a hodnoty literálů.
+    \end{homeworkSection}
+    \begin{homeworkSection}{parser.c/.h}
+        Obsahuje popis rozhraní a implementaci syntaktické analýzy - jsou zde obsaženy obě její částí: jak rekurzivní sestup (všechny funkce \texttt{parse\_*} kromě \texttt{parse\_expr}), tak precedenční analýza výrazů (funkce \texttt{parse\_expr} a precedenční tabulka \texttt{PREC\_TABLE}). Tyto funkce postupně plní abstraktní syntaktický strom.
+    \end{homeworkSection}
+    \begin{homeworkSection}{prec\_stack.c/.h}
+        Obsahuje popis rozhraní a implementaci zásobníku položek precedenční analýzy - definici struktury zásobníku \texttt{PrecStack}, jeho položek \texttt{PrecItem}, terminálů ve výčtovém typu \texttt{PrecTerminal} a funkce pro práci se samotným zásobníkem - \texttt{prec\_stack\_push, prec\_stack\_top\_terminal} apod.
+    \end{homeworkSection}
+    \begin{homeworkSection}{ast.c/.h}
+        Obsahuje popis struktury uzlů abstraktního syntaktického stromu (\texttt{ASTNode}), jejich možné typy (\texttt{ASTNodeType}), data, která v nich mohou být uchována (\texttt{ASTProgramNodeData, ASTBlockNodeData} apod.) a mnoho funkcí pro jejich inicializaci, přidávání dat (jako například parametry funkcí) a následnou destrukci.
+    \end{homeworkSection}
+    \begin{homeworkSection}{symbol.c/.h}
+       Obsahuje popis struktury \texttt{Symbol}, která se vkládá do tabulky symbolů a je součástí sémantických kontrol překladače. Dále definuje dva typy symbolů - funkční symbol a symbol proměnné, typy proměnných - konstanta, parametr funkce apod. a konstruktory a destruktory pro tyto symboly.
+    \end{homeworkSection}
+    \begin{homeworkSection}{symtable.c/.h}
+        Obsahuje popis rozhraní a implementaci tabulky symbolů pomocí hashovací tabulky s implicitním řetězením položek. Jako hashovací funkce tabulky byla zvolena \texttt{DJB2}.
+    \end{homeworkSection}
+    \begin{homeworkSection}{semantic.c/.h}
+        Obsahuje popis rozhraní a implementaci sémantické analýzy - ta zaregistruje vestavěné (builtin) funkce a provede dva průchody přes AST: první - \texttt{semantic\_global\_pass} zaplní globální tabulku symbolů a zkontroluje počet funkcí označených \texttt{@main} a druhý - \texttt{semantic\_body\_pass}, který zkontroluje sémantická pravidla všech funkcí (včetně jejich těl) a nastaví výsledné datové typy uzlů AST.
+    \end{homeworkSection}
+    \begin{homeworkSection}{codegen.c/.h}
+        Obsahuje popis rozhraní a implementaci generátoru cílového kódu - vypíše prolog IFJcode26, pro každou funkci v abstraktním syntaktickém stromu vygeneruje a vypíše její IFJcode26 reprezentaci a vypíše knihovnu vestavěných (builtin) funkcí na standardní výstup (\texttt{stdout}).
+    \end{homeworkSection}
+    \begin{homeworkSection}{tokens.c/.h}
+        Obsahuje popis struktury \texttt{Token}, kterou emituje lexikální analýza při průchodu vstupního kódu IFJ26. Ve výčtovém typu \texttt{TokenType} definuje typy tokenů, které lexikální analýza umí rozpoznat a implementuje destruktor \texttt{token\_free}.
+    \end{homeworkSection}
+    \begin{homeworkSection}{return.c/.h}
+        Definuje výčtový typ \texttt{ReturnCodes}, který obsahuje všechny možné návratové kódy programu. Dále definuje pomocnou funkci \texttt{print\_error}, pomocí které vypisujeme chyby na standardní chybový výstup (\texttt{stderr}).
+    \end{homeworkSection}
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Využití AI]
