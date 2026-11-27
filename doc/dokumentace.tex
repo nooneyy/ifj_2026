@@ -24,6 +24,7 @@
 \usepackage{extramarks} % Required for headers and footers
 \usepackage{graphicx} % Required to insert images
 \usepackage{float}
+\usepackage{biblatex}
 \usepackage{underscore}   % allows plain _ in normal text
 \usepackage{enumitem}
 \usepackage{multicol}
@@ -224,7 +225,7 @@ Git repozitář: \texttt{https://github.com/nooneyy/ifj\_2026}
     \label{fig:block-diagram}
 \end{figure}
 Bloky označené přerušovaným okrajem nejsou samostatné moduly projektu - jedná se o datové struktury (v případě stdin a stdout jde o \texttt{FILE*}, v případě programu se jedná o \texttt{ASTNode*}).
-Diagram zaznačuje tok dat - ne tok řízení: v realitě sémantická analýza volá lexikální analýzu a žádá po ní token, plní AST, dále se zavolá sémantická analýza, která zanalyzuje AST a vyplní ho datovými typy. Potom se zavolá generátor kódu, který nakonec z AST vytvoří výstupný kód IFJcode26.
+Diagram zaznačuje tok dat - ne tok řízení: v realitě syntaktická analýza volá lexikální analýzu a žádá po ní token, plní AST, dále se zavolá sémantická analýza, která zanalyzuje AST a vyplní ho datovými typy. Potom se zavolá generátor kódu, který nakonec z AST vytvoří výstupný kód IFJcode26.
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Lexikální analýza]
@@ -402,7 +403,7 @@ Syntaktická analýza je řešená kombinací rekurzivního sestupu (shora dolů
         Obsahuje funkci \texttt{main()} - vstupní bod programu. Inicializuje datovou strukturu \texttt{Scanner} pro lexikální analýzu, dále zavolá syntaktickou analýzu, která volá lexikální analýzu a získává od ní tokeny a mezitím plní uzly abstraktního syntaktického stromu. Poté se na AST zavolá sémantická analýza a následně generátor cílového kódu. Po první chybě je uvolněna paměť a vykonávání překladu nepokračuje.
     \end{homeworkSection}
     \begin{homeworkSection}{scanner.c/.h}
-        Obsahuje popis rozhraní a implementaci lexikální analýzy - nejdůležitější je definice struktury \texttt{Scanner}, která uchovává informace mezi jednotlivými voláními lex. analýzy, výčtový typ \texttt{FsmState}, který určuje seznam stavů konečného stavového automatu a samotná funkce \texttt{scanner\_fsm}, která na základě vstupního kódu IFJ26 určí pomocí přechodů token k vrácení sémantické analýze.
+        Obsahuje popis rozhraní a implementaci lexikální analýzy - nejdůležitější je definice struktury \texttt{Scanner}, která uchovává informace mezi jednotlivými voláními lex. analýzy, výčtový typ \texttt{FsmState}, který určuje seznam stavů konečného stavového automatu a samotná funkce \texttt{scanner\_fsm}, která na základě vstupního kódu IFJ26 určí pomocí přechodů token k vrácení syntaktické analýze.
     \end{homeworkSection}
     \begin{homeworkSection}{dynstr.c/.h}
         Obsahuje popis rozhraní a implementaci struktury \texttt{DynStr} - textového řetězce s dynamickou velikostí. Využívá se v lexikální analýze pro všechny identifikátory a hodnoty literálů.
