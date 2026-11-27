@@ -1,0 +1,111 @@
+\begin{table}[H]
+  \centering
+  \scriptsize
+  \setlength{\tabcolsep}{2pt}
+  \renewcommand{\arraystretch}{1.15}
+  \newcommand{\llterm}[1]{\rotatebox{90}{\texttt{#1}}}
+  \rowcolors{2}{gray!25}{white}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{|l|*{37}{c|}}
+    \hline
+    & \llterm{kw\_import} & \llterm{at\_main} & \llterm{kw\_def} & \llterm{kw\_extension} & \llterm{eof} & \llterm{eol} & \llterm{indent} & \llterm{dedent} & \llterm{kw\_if} & \llterm{kw\_else} & \llterm{kw\_while} & \llterm{kw\_do} & \llterm{kw\_for} & \llterm{kw\_return} & \llterm{kw\_var} & \llterm{kw\_val} & \llterm{kw\_int} & \llterm{kw\_double} & \llterm{kw\_string} & \llterm{kw\_boolean} & \llterm{kw\_unit} & \llterm{until} & \llterm{to} & \llterm{by} & \llterm{id} & \llterm{int, double, true, false} & \llterm{string} & \llterm{(} & \llterm{-, !} & \llterm{)} & \llterm{,} & \llterm{:} & \llterm{=} & \llterm{;} & \llterm{interp\_begin} & \llterm{interp\_expr\_begin} & \llterm{interp\_end} \\
+    \hline
+    \texttt{PROGRAM} & 1 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{DEFS} &  & 2 & 2 & 92 & 3 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{DEF} &  & 4 & 4 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{OPT\_MAIN} &  & 5 & 6 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{OPT\_EOL} &  &  & 8 &  &  & 7 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{DEF\_EX} &  &  &  &  &  & 11 &  &  & 9 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 10 & 10 & 10 & 10 & 10 &  &  &  &  &  & 10 &  &  \\
+    \hline
+    \texttt{PARAM\_LIST} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 13 &  &  &  & 12 & 12 &  &  &  &  \\
+    \hline
+    \texttt{PARAM\_BODY} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 14 &  &  &  &  & 15 &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{PARAMS} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 16 &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{NEXT} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 18 & 17 &  &  &  &  &  &  \\
+    \hline
+    \texttt{NEXT\_CONT} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 20 &  &  &  &  & 19 &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{VAR\_DECL} &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 21 & 21 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{EDIT\_TYPE} &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 22 & 23 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{TYPE\_DECL} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 24 & 25 &  &  &  &  \\
+    \hline
+    \texttt{TYPE} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 26 & 27 & 28 & 29 & 30 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{ECC} &  &  &  &  &  &  &  &  & 32 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 31 & 31 & 31 & 31 & 31 &  &  &  &  &  & 31 &  &  \\
+    \hline
+    \texttt{END} &  &  &  &  &  & 33 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 34 &  &  &  \\
+    \hline
+    \texttt{ASSIGN} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 35 &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{IF} &  &  &  &  &  &  &  &  & 36 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{THEN\_ONE} &  &  &  &  &  & 38 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 37 & 37 & 37 & 37 & 37 &  &  &  &  &  & 37 &  &  \\
+    \hline
+    \texttt{ONLY\_IF} &  &  &  &  &  & 40 &  &  &  & 41 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 39 &  &  &  \\
+    \hline
+    \texttt{AFTER\_BLOCK} &  &  &  &  &  &  &  & 42 & 42 & 43 & 42 &  & 42 & 42 & 42 & 42 &  &  &  &  &  &  &  &  & 42 & 42 & 42 & 42 &  &  &  &  &  &  & 42 &  &  \\
+    \hline
+    \texttt{ELIF} &  &  &  &  &  & 44 &  &  & 45 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 46 & 46 & 46 & 46 & 46 &  &  &  &  &  & 46 &  &  \\
+    \hline
+    \texttt{IF\_REQ\_ELSE} &  &  &  &  &  &  &  &  & 47 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{THEN\_REQ\_ELSE} &  &  &  &  &  & 49 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 48 & 48 & 48 & 48 & 48 &  &  &  &  &  & 48 &  &  \\
+    \hline
+    \texttt{IS\_REQ\_ELIF} &  &  &  &  &  & 52 &  &  & 50 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 51 & 51 & 51 & 51 & 51 &  &  &  &  &  & 51 &  &  \\
+    \hline
+    \texttt{AFTER\_REQ\_BLOCK} &  &  &  &  &  &  &  &  &  & 53 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{WHILE} &  &  &  &  &  &  &  &  &  &  & 54 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{FOR} &  &  &  &  &  &  &  &  &  &  &  &  & 55 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{FOR\_SET} &  &  &  &  &  & 56 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 57 &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{UN\_TO} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 58 & 59 &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{OPT\_BY} &  &  &  &  &  & 61 &  &  & 61 &  &  & 61 &  &  &  &  &  &  &  &  &  &  &  & 60 &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{GUARDS} &  &  &  &  &  &  &  & 63 & 62 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{ONELINE\_GUARDS} &  &  &  &  &  &  &  &  & 64 &  &  & 65 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{AFTER\_DO} &  &  &  &  &  & 66 &  &  & 67 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 67 & 67 & 67 & 67 & 67 &  &  &  &  &  & 67 &  &  \\
+    \hline
+    \texttt{RETURN} &  &  &  &  &  &  &  &  &  &  &  &  &  & 68 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{OPT\_ECC} &  &  &  &  &  & 70 &  &  & 69 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 69 & 69 & 69 & 69 & 69 &  &  &  &  & 70 & 69 &  &  \\
+    \hline
+    \texttt{BLOCK} &  &  &  &  &  &  & 71 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{IN\_BLOCK} &  &  &  &  &  &  &  &  & 72 &  & 72 &  & 72 & 72 & 72 & 72 &  &  &  &  &  &  &  &  & 72 & 72 & 72 & 72 &  &  &  &  &  &  & 72 &  &  \\
+    \hline
+    \texttt{IN\_BLOCK2} &  &  &  &  &  &  &  & 74 & 73 &  & 73 &  & 73 & 73 & 73 & 73 &  &  &  &  &  &  &  &  & 73 & 73 & 73 & 73 &  &  &  &  &  &  & 73 &  &  \\
+    \hline
+    \texttt{STATEMENT} &  &  &  &  &  &  &  &  & 77 &  & 76 &  & 79 & 81 & 75 & 75 &  &  &  &  &  &  &  &  & 78, 80 & 78 & 78 & 78 &  &  &  &  &  &  & 78 &  &  \\
+    \hline
+    \texttt{INTERPOLATEDS} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 82 &  &  \\
+    \hline
+    \texttt{INTERP\_PARTS} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 83 &  & 83 &  &  &  &  &  &  &  &  & 83 & 84 \\
+    \hline
+    \texttt{INTERP\_PART} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 86 &  & 85 &  &  &  &  &  &  &  &  & 87 &  \\
+    \hline
+    \texttt{EXTENSION} &  &  &  & 88 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{EXT\_DEF} &  &  & 89 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+    \texttt{EXT\_DEFS} &  &  & 90 &  &  &  &  & 91 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+    \hline
+  \end{tabular}%
+  }
+  \caption{LL tabulka. Pro \texttt{id} v~řádku \texttt{STATEMENT}: následuje-li \texttt{=}, pak pravidlo 80, jinak 78.}
+  \label{tab:ll}
+\end{table}
