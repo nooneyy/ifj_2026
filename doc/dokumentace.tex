@@ -24,6 +24,10 @@
 \usepackage{extramarks} % Required for headers and footers
 \usepackage{graphicx} % Required to insert images
 \usepackage{float}
+\usepackage{underscore}   % allows plain _ in normal text
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage[table]{xcolor}
 
 % Margins
 \topmargin=-0.45in
@@ -39,8 +43,8 @@
 % Set up the header and footer
 \pagestyle{fancy}
 \lhead{\firstxmark} % Top left header
-\chead{\hmwkClass: \hmwkTitle} % Top center header
-\rhead{}
+\chead{}
+\rhead{\hmwkClass: \hmwkTitle} % Top right header
 \lfoot{\lastxmark} % Bottom left footer
 \cfoot{} % Bottom center footer
 \rfoot{Strana\ \thepage\ z\ \pageref{LastPage}} % Bottom right footer
@@ -87,7 +91,10 @@
 }{
 \enterProblemHeader{\homeworkProblemName} % Header and footer after the environment
 }
-
+\newcommand{\arr}{$\rightarrow$}
+\newcommand{\eps}{$\varepsilon$}
+\newcommand{\expr}{$\langle$expr$\rangle$}
+\newcommand{\note}[1]{\hfill\textrm{\textit{(#1)}}}
 %----------------------------------------------------------------------------------------
 %	NAME AND CLASS SECTION
 %----------------------------------------------------------------------------------------
@@ -213,12 +220,167 @@ Git repozitář: \texttt{https://github.com/nooneyy/ifj\_2026}
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Lexikální analýza]
+    Lexikální analýza je prováděna pomocí konečného stavového automatu (\texttt{scanner.c}, funkce \texttt{scanner\_fsm}), zpracovávajícího vstup znak po znaku. Výstupy automatu jsou kombinovaně Mealyho i Mooreovy. Počátečním stavem automatu je stav IDLE. Ve stavu IDLE jsou přeskakovány pouze znaky mezer a tabulátorů, jakýkoliv jiný vstupní znak vyústí ve změnu stavu či ukončení programu s chybou neznámého znaku.
+\begin{homeworkSection}{Hlavní části automatu}
+\begin{itemize}
+    \item Identifikátory se po rozpoznání porovnají se všemi klíčovými slovy v seznamu (KW, BOOL).
+    \item Zpracování čísel je rozděleno na celá a desetinná čísla, exponent, oddělovač \texttt{\_}, příponu \texttt{d} a zakázanou počáteční nulu.
+    \item Řetězce jsou rozděleny na jednořádkové s tzv. escape sekvencemi (\verb|\\|, \verb|\"|, \verb|\n|, \verb|\r|, \verb|\t|), víceřádkové bez escape sekvencí a interpolované.
+    \item Komentáře jsou rozděleny na dva typy, řádkové a blokové, které lze také zanořovat.
+    \item Operátory a @main typicky s 2 stavy navíc (v kódu explicitně pouze 1 stav) a jednoznakové tokeny pouze s 1 stavem (v kódu nemají svůj explicitní stav a jsou zpracovávány ze stavu IDLE)
+    \item Odsazení hlídající začátek řádku a počet znaků odsazení.
+\end{itemize}
+\end{homeworkSection}
+\begin{homeworkSection}{Diagram konečného automatu}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=\dimexpr\paperwidth-1.5cm\relax,
+                         height=0.9\textheight,
+                         keepaspectratio]{scanner_fsm.pdf}%
+    }
+    \caption{Konečný automat lexikálního analyzátoru}
+    \label{fig:scanner-fsm}
+\end{figure}
+\begin{itemize}
+    \item Stavy automatu jsou označeny kolečky, přechody šipkami a výstupy jsou vždy uvedeny za lomítkem, pokud tam nějaké jsou. Dvojitým kolečkem jsou označeny koncové stavy a přerušovanými kolečky jsou zaznačeny takové stavy, které se explicitně nevyskytují ve zdrojovém kódu a jsou typicky řešeny ve stavu předchozím.
+    \item Pojmenování některých prvků diagramu není ekvivalentní s názvy prvků ve zdrojovém kódu z důvodu formátování diagramu, jsou však dostatečně podobné na to, aby bylo z diagramu jasné, co ze zdrojového kódu se popisuje.
+    \item Automat na rozdíl od klasického konečného stavového automatu obsahuje také výstupy a podmínky, které neznačí tokeny. Takové výstupy a podmínky jsou uvedeny pouze v případě, že jsou naprosto nezbytné pro správné pochopení automatu a typicky značí nějakou z proměnných ve zdrojovém kódu.
+    \item Legenda notace
+    \begin{itemize}
+        \item $\Sigma \setminus \{\dots\}$ značí libovolný znak kromě uvedených
+        \item $[\dots]$ značí podmínku přechodu
+        \item (T) značí, že token T se vydá pouze pokud před ním byl text
+        \item depth - čítač hloubky zanoření komentářů a závorek
+        \item chybějící přechod vyústí v lexikální chybu
+    \end{itemize}
+\end{itemize}
+\end{homeworkSection}
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Syntaktická analýza]
+Syntaktická analýza je řešená kombinací rekurzivního sestupu (shora dolů) dle LL gramatiky a precedenční analýzou výrazů zdola nahoru. Vzhledem k tomu, že je implementováno rozšíření FUNEXP, nejen veškeré výrazy, ale také volání funkcí zajišťuje precedenční analýza a strukturu jak celého programu, tak jednotlivých podčástí řeší LL gramatika a rekurzivní sestup. Tyto dvě metody jsou spolu obousměrně úzce svázané a funkce v kódu se volají navzájem. \newline
     \begin{homeworkSection}{LL gramatika}
+    Použitá LL gramatika je typu LL(1)*, rozhoduje se tedy ve valné většině případů pouze na základě aktuálního tokenu, jsou však případy, ve kterých musí parser znát i token následující a podle toho se rozhoduje. Všechny použité lookahead jsou v gramatice řádně zaznačeny stejně tak, jako některé podmínky, které musí být splněny pro použití pravidla.
+{\ttfamily\footnotesize\linespread{1}\selectfont
+\setlength{\columnsep}{1.5em}
+\begin{multicols}{2}
+\begin{enumerate}[nosep, leftmargin=*, labelsep=0.4em, label=\arabic*.]
+  \item PROGRAM \arr{} kw_import id(\uv{ifj26}) dot mul eol DEFS eof
+
+  \item DEFS \arr{} DEF DEFS
+  \item DEFS \arr{} \eps
+
+  \item DEF \arr{} OPT_MAIN kw_def id PARAM_LIST TYPE_DECL = DEF_EX
+  \item OPT_MAIN \arr{} at_main OPT_EOL
+  \item OPT_MAIN \arr{} \eps
+  \item OPT_EOL \arr{} eol
+  \item OPT_EOL \arr{} \eps
+  \item DEF_EX \arr{} IF_REQ_ELSE
+  \item DEF_EX \arr{} \expr{} eol
+  \item DEF_EX \arr{} eol BLOCK
+
+  \item PARAM_LIST \arr{} \eps
+  \item PARAM_LIST \arr{} ( PARAM_BODY
+  \item PARAM_BODY \arr{} PARAMS
+  \item PARAM_BODY \arr{} ) PARAM_LIST
+  \item PARAMS \arr{} id : TYPE NEXT
+  \item NEXT \arr{} , NEXT_CONT
+  \item NEXT \arr{} ) PARAM_LIST
+  \item NEXT_CONT \arr{} ) PARAM_LIST \note{must have lf before}
+  \item NEXT_CONT \arr{} PARAMS
+
+  \item VAR_DECL \arr{} EDIT_TYPE id TYPE_DECL = ECC
+  \item EDIT_TYPE \arr{} kw_var
+  \item EDIT_TYPE \arr{} kw_val
+  \item TYPE_DECL \arr{} : TYPE
+  \item TYPE_DECL \arr{} \eps
+  \item TYPE \arr{} kw_int
+  \item TYPE \arr{} kw_double
+  \item TYPE \arr{} kw_string
+  \item TYPE \arr{} kw_boolean
+  \item TYPE \arr{} kw_unit
+
+  \item ECC \arr{} \expr{} END
+  \item ECC \arr{} IF_REQ_ELSE
+  \item END \arr{} eol
+  \item END \arr{} ;
+
+  \item ASSIGN \arr{} id = ECC
+
+  \item IF \arr{} kw_if \expr{} kw_then THEN_ONE
+  \item THEN_ONE \arr{} \expr{} ONLY_IF
+  \item THEN_ONE \arr{} eol BLOCK AFTER_BLOCK
+  \item ONLY_IF \arr{} ;
+  \item ONLY_IF \arr{} eol AFTER_BLOCK
+  \item ONLY_IF \arr{} kw_else ELIF
+  \item AFTER_BLOCK \arr{} \eps
+  \item AFTER_BLOCK \arr{} kw_else ELIF
+  \item ELIF \arr{} eol BLOCK
+  \item ELIF \arr{} IF
+  \item ELIF \arr{} \expr{} END
+
+  \item IF_REQ_ELSE \arr{} kw_if \expr{} kw_then THEN_REQ_ELSE
+  \item THEN_REQ_ELSE \arr{} \expr{} kw_else IS_REQ_ELIF
+  \item THEN_REQ_ELSE \arr{} eol BLOCK AFTER_REQ_BLOCK
+  \item IS_REQ_ELIF \arr{} IF_REQ_ELSE
+  \item IS_REQ_ELIF \arr{} \expr{} END
+  \item IS_REQ_ELIF \arr{} eol BLOCK
+  \item AFTER_REQ_BLOCK \arr{} kw_else IS_REQ_ELIF
+
+  \item WHILE \arr{} kw_while \expr{} kw_do eol BLOCK
+
+  \item FOR \arr{} kw_for FOR_SET kw_do AFTER_DO
+  \item FOR_SET \arr{} eol indent id arrow \expr{} UN_TO eol GUARDS dedent
+  \item FOR_SET \arr{} id arrow \expr{} UN_TO ONELINE_GUARDS
+  \item UN_TO \arr{} id(\uv{until}) \expr{}
+  \item UN_TO \arr{} id(\uv{to}) \expr{} OPT_BY
+  \item OPT_BY \arr{} id(\uv{by}) \expr{}
+  \item OPT_BY \arr{} \eps
+  \item GUARDS \arr{} kw_if \expr{} eol GUARDS
+  \item GUARDS \arr{} \eps
+  \item ONELINE_GUARDS \arr{} kw_if \expr{} ONELINE_GUARDS
+  \item ONELINE_GUARDS \arr{} \eps
+  \item AFTER_DO \arr{} eol BLOCK
+  \item AFTER_DO \arr{} ECC
+
+  \item RETURN \arr{} kw_return OPT_ECC
+  \item OPT_ECC \arr{} ECC
+  \item OPT_ECC \arr{} END
+
+  \item BLOCK \arr{} indent IN_BLOCK dedent
+
+  \item IN_BLOCK \arr{} STATEMENT IN_BLOCK2
+  \item IN_BLOCK2 \arr{} STATEMENT IN_BLOCK2
+  \item IN_BLOCK2 \arr{} \eps
+
+  \item STATEMENT \arr{} VAR_DECL
+  \item STATEMENT \arr{} WHILE
+  \item STATEMENT \arr{} IF
+  \item STATEMENT \arr{} \expr{} END \note{lookahead: id nenásledováno =}
+  \item STATEMENT \arr{} FOR
+  \item STATEMENT \arr{} ASSIGN \note{lookahead: id následováno =}
+  \item STATEMENT \arr{} RETURN
+
+  \item INTERPOLATEDS \arr{} interp_begin INTERP_PARTS interp_end
+  \item INTERP_PARTS \arr{} INTERP_PART INTERP_PARTS
+  \item INTERP_PARTS \arr{} \eps
+  \item INTERP_PART \arr{} string
+  \item INTERP_PART \arr{} id
+  \item INTERP_PART \arr{} interp_expr_begin \expr{} interp_expr_end
+
+  \item EXTENSION \arr{} kw_extension ( id : TYPE ) eol indent EXT_DEF EXT_DEFS dedent
+  \item EXT_DEF \arr{} kw_def id PARAM_LIST TYPE_DECL = DEF_EX
+  \item EXT_DEFS \arr{} EXT_DEF EXT_DEFS
+  \item EXT_DEFS \arr{} \eps
+  \item DEFS \arr{} EXTENSION DEFS
+\end{enumerate}
+\end{multicols}
+}
     \end{homeworkSection}
     \begin{homeworkSection}{LL tabulka}
+    \input{ll_table}
     \end{homeworkSection}
     \begin{homeworkSection}{Precedenční tabulka}
         \input{prec_table}
@@ -236,7 +398,7 @@ Git repozitář: \texttt{https://github.com/nooneyy/ifj\_2026}
         Obsahuje popis rozhraní a implementaci struktury \texttt{DynStr} - textového řetězce s dynamickou velikostí. Využívá se v lexikální analýze pro všechny identifikátory a hodnoty literálů.
     \end{homeworkSection}
     \begin{homeworkSection}{parser.c/.h}
-        Obsahuje popis rozhraní a implementaci syntaktické analýzy - jsou zde obsaženy obě její částí: jak rekurzivní sestup (všechny funkce \texttt{parse\_*} kromě \texttt{parse\_expr}), tak precedenční analýza výrazů (funkce \texttt{parse\_expr} a precedenční tabulka \texttt{PREC\_TABLE}). Tyto funkce postupně plní abstraktní syntaktický strom.
+        Obsahuje popis rozhraní a implementaci syntaktické analýzy - jsou zde obsaženy obě její části: jak rekurzivní sestup (všechny funkce \texttt{parse\_*} kromě \texttt{parse\_expr}), tak precedenční analýza výrazů (funkce \texttt{parse\_expr} a precedenční tabulka \texttt{PREC\_TABLE}). Tyto funkce postupně plní abstraktní syntaktický strom.
     \end{homeworkSection}
     \begin{homeworkSection}{prec\_stack.c/.h}
         Obsahuje popis rozhraní a implementaci zásobníku položek precedenční analýzy - definici struktury zásobníku \texttt{PrecStack}, jeho položek \texttt{PrecItem}, terminálů ve výčtovém typu \texttt{PrecTerminal} a funkce pro práci se samotným zásobníkem - \texttt{prec\_stack\_push, prec\_stack\_top\_terminal} apod.
@@ -265,6 +427,25 @@ Git repozitář: \texttt{https://github.com/nooneyy/ifj\_2026}
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Využití AI]
+    V projektu jsme AI využívali zejména v následujících případech:
+
+    \begin{itemize}
+        \item Generace testů - většina testů v našem projektu byla vygenerována pomocí AI na základě specifikace a dále našich představ o tom, jak by se měl překladač chovat v situacích, které byly ve specifikaci nejasné (například které návratové kódy pro určitou situaci očekávat); všechny takto vygenerované testy jsou označené komentářem s promptem a využitým AI modelem,
+        \item Vysvětlování problematiky ze specifikace - i když jsme ji samozřejmě několikrát četli, AI v ní dokáže relevantní informaci najít a vysvětlit rychleji, než my sami,
+        \item Seznámení s novými commity či ``cizími'' částmi projektu - AI skvěle dokáže vysvětlit, co se v repozitáři odehrálo, když jsme zrovna neměli čas se do vývoje zapojit,
+        \item Hledání chyb v kódu - průběžně jsme se AI ptali, aby nám zkontrolovala commity, co jsme napsali a měli šanci opravit chyby, co bychom zachytili až později
+        \item Zapojení do návrhu architektury řešení - s AI jsme debatovali o tom, jak by mohly určité části našeho projektu vypadat, dále také obecné nasměrování, když jsme uvázli na nějaké problematice,
+        \item V ojedinělých případech i generování samotného kódu (\texttt{codegen.c:1050}).
+    \end{itemize}
+
+    Využívali jsme následující nástroje a AI modely:
+
+    \begin{itemize}
+        \item Tomáš Kolařík - Claude Code, Claude Opus 5.5 xhigh,
+        \item Adam Neugebauer - Claude Code, Claude Opus 5.5 xhigh,
+        \item Oldřich Vašíček - Claude Code, Claude Opus 5.5 xhigh,
+        \item Tadeáš Čupr - Antigravity, Gemini 4 Hydrogen high, Gemini 4 Orchestrator Neon xhigh.
+    \end{itemize}
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Literatura]
