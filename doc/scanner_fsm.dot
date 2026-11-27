@@ -1,0 +1,317 @@
+/**
+ * @file scanner_fsm.dot
+ * @brief Scanner's Finite State Machine in Graphviz dot
+ * @author Adam Neugebauer <xneugea00@stud.fit.vut.cz>
+ * @date 26.11.2026
+ */
+digraph scanner_fsm {
+    rankdir = LR;
+    nodesep = 0.06;
+    ranksep = 0.2;
+    // left to right direction
+    
+    node [shape = circle; fontname = "Helvetica-Bold"; fontsize = 14; width = 0.3; height = 0.3; margin = 0.02;];
+    edge [fontname = "Helvetica-Bold"; fontsize = 13; labeldistance = 2.2; labelangle = 25; labelfontname = "Helvetica-Bold"; labelfontsize = 13;];
+    
+    // START
+    start [shape = point;width = 0.08;];
+    start -> IDLE [style = bold;];
+    
+    // NOT STATES IN CODE
+    D [style = dashed;];
+    STR_END [style = dashed;];
+    STR_ML_END [style = dashed;];
+    ESC [style = dashed;];
+    COMM_BLOCK_SLASH [style = dashed;];
+    OPEN_PAR [style = dashed;];
+    CLOSE_PAR [style = dashed;];
+    SEMICOLON [style = dashed;];
+    COMMA [style = dashed;];
+    COLON [style = dashed;];
+    MUL [style = dashed;];
+    PLUS [style = dashed;];
+    MINUS [style = dashed;];
+    NOT_EQ [style = dashed;];
+    EQ [style = dashed;];
+    GRE_EQ [style = dashed;];
+    LOW_EQ [style = dashed;];
+    GENERATOR [style = dashed;];
+    AND_AND [style = dashed;];
+    OR_OR [style = dashed;];
+    EOF [style = dashed;];
+    AT_MAIN [style = dashed;];
+    DOLLAR [style = dashed;];
+    
+    
+    
+    // ENDING STATES
+    ID [shape = doublecircle;label = "ID\n/ ID, KW, BOOL";];
+    INT [shape = doublecircle;label = "INT\n/ INT";];
+    DBL [shape = doublecircle;label = "DBL\n/ DOUBLE";];
+    D [shape = doublecircle;label = "D\n/ DOUBLE";];
+    EXP [shape = doublecircle;label = "EXP\n/ DOUBLE";];
+    ZERO [shape = doublecircle;label = "ZERO\n/ INT";];
+    UND [shape = doublecircle;label = "UND\n/ UND";];
+    DOT_START [shape = doublecircle;label = "DOT_START\n/ DOT";];
+    QUOT_2 [shape = doublecircle;label = "QUOT_2\n/ STRING";];
+    STR_END [shape = doublecircle;label = "STR_END\n/ STRING";];
+    STR_ML_END [shape = doublecircle;label = "STR_ML_END\n/ STRING";];
+    SLASH [shape = doublecircle;label = "SLASH\n/ DIV";];
+    OPEN_PAR [shape = doublecircle;label = "OPEN_PAR\n/ OPEN_PAR";];
+    CLOSE_PAR [shape = doublecircle;label = "CLOSE_PAR\n/ CLOSE_PAR";];
+    SEMICOLON [shape = doublecircle;label = "SEMICOLON\n/ SEMICOLON";];
+    COMMA [shape = doublecircle;label = "COMMA\n/ COMMA";];
+    COLON [shape = doublecircle;label = "COLON\n/ COLON";];
+    MUL [shape = doublecircle;label = "MUL\n/ MUL";];
+    PLUS [shape = doublecircle;label = "PLUS\n/ PLUS";];
+    MINUS [shape = doublecircle;label = "MINUS\n/ MINUS";];
+    EXCL [shape = doublecircle;label = "EXCL\n/ EXCL_MARK";];
+    ASSIGN [shape = doublecircle;label = "ASSIGN\n/ ASSIGN";];
+    GRE [shape = doublecircle;label = "GRE\n/ GRE";];
+    LOW [shape = doublecircle;label = "LOW\n/ LOW";];
+    NOT_EQ [shape = doublecircle;label = "NOT_EQ\n/ NOT_EQ";];
+    EQ [shape = doublecircle;label = "EQ\n/ EQ";];
+    GRE_EQ [shape = doublecircle;label = "GRE_EQ\n/ GRE_EQ";];
+    LOW_EQ [shape = doublecircle;label = "LOW_EQ\n/ LOW_EQ";];
+    GENERATOR [shape = doublecircle;label = "GENERATOR\n/ GENERATOR";];
+    AND_AND [shape = doublecircle;label = "AND_AND\n/ AND";];
+    OR_OR [shape = doublecircle;label = "OR_OR\n/ OR";];
+    EOF [shape = doublecircle;label = "EOF\n/ EOF";];
+    AT_MAIN [shape = doublecircle;label = "AT_MAIN\n/ AT_MAIN";];
+    INTERP_2_QUOT [shape = doublecircle;label = "INTERP_2_QUOT\n/ INTERP_BEGIN,\nINTERP_END";];
+    
+    // WHITESPACE
+    IDLE -> IDLE [label = "space, tab";];
+    
+    // ID route
+    IDLE -> ID [label = "a-Z";];
+    IDLE -> UND [label = "_";];
+    ID -> ID [label = "a-Z, _, 0-9";];
+    UND -> ID [label = "a-Z, _, 0-9";];
+    
+    // INT route
+    IDLE -> INT [label = "1-9";];
+    IDLE -> ZERO [label = "0";];
+    INT -> INT [label = "0-9";];
+    INT -> INT_UND [label = "_";];
+    INT -> DOT [label = ".";];
+    INT -> E [label = "e, E";];
+    
+    ZERO -> ZERO_INT [label = "0-9";];
+    ZERO -> E [label = "e, E";];
+    ZERO -> DOT [label = ".";];
+    
+    ZERO_INT -> ZERO_INT [label = "0-9";];
+    ZERO_INT -> ZERO_INT_DOT [label = ".";];
+    ZERO_INT -> E [label = "e, E";];
+    ZERO_INT_DOT -> DBL [label = "0-9";];
+    
+    INT_UND -> INT [label = "0-9";];
+    INT_UND -> INT_UND [label = "_";];
+    
+    // DBL route
+    IDLE -> DOT_START [label = ".";];
+    DOT_START -> DBL [label = "0-9";];
+    DOT -> DBL [label = "0-9";];
+    DBL -> DBL [label = "0-9";];
+    DBL -> DBL_UND [label = "_";];
+    DBL -> E [label = "e, E";];
+    DBL -> D [label = "d, D";];
+    
+    DBL_UND -> DBL [label = "0-9";];
+    DBL_UND -> DBL_UND [label = "_";];
+    
+    // EXPONENT route
+    E -> EXP [label = "0-9";];
+    E -> E_SIGN [label = "+, -";];
+    
+    E_SIGN -> EXP [label = "0-9";];
+    
+    EXP -> EXP [label = "0-9";];
+    EXP -> EXP_UND [label = "_";];
+    EXP -> D [label = "d, D";];
+    
+    EXP_UND -> EXP [label = "0-9";];
+    EXP_UND -> EXP_UND [label = "_";];
+    
+    // STRING route
+    IDLE -> QUOT_1 [label = "\"";];
+    
+    QUOT_1 -> QUOT_2 [label = "\"";];
+    QUOT_1 -> STR [label = "Σ \\ {\", \\,\n\\n, EOF}";];
+    QUOT_1 -> ESC [label = "\\";];
+    QUOT_2 -> STR_ML [label = "\"";];
+    
+    STR -> STR [label = "Σ \\ {\", \\,\n\\n, EOF}";];
+    STR -> STR_END [label = "\"";];
+    STR -> ESC [label = "\\";];
+    
+    STR_ML -> STR_ML_1_Q [label = "\"";];
+    STR_ML -> STR_ML [label = "Σ \\ {EOF, \"}";];
+    STR_ML_1_Q -> STR_ML_2_Q [label = "\"";];
+    STR_ML_1_Q -> STR_ML [label = "Σ \\ {EOF, \"}";];
+    STR_ML_2_Q -> STR_ML [label = "Σ \\ {EOF, \"}";];
+    STR_ML_2_Q -> STR_ML_END [label = "\"";];
+    STR_ML_END -> STR_ML_END [label = "\"";];
+    
+    ESC -> STR [label = "\\, \",\nn, r, t";];
+    
+    // INDENTATION
+    IDLE -> LINE_START [label = "\\n [outside ()]\n/ EOL"; constraint = false;];
+    IDLE -> PAREN_NEWLINE [label = "\\n [inside ()]"; constraint = false;];
+    LINE_START -> IDLE [label = "Σ \\ {\\n, space, tab}\n/ INDENT, DEDENT";];
+    LINE_START -> LINE_START [label = "\\n, space,\ntab";];
+    PAREN_NEWLINE -> PAREN_NEWLINE [label = "\\n, space,\ntab";];
+    PAREN_NEWLINE -> IDLE [label = "Σ \\ {\\n,\nspace, tab}";];
+    
+    // COMMENTS + DIV
+    IDLE -> SLASH [headlabel = "'/'";];
+    SLASH -> COMM_LINE [label = "'/'";];
+    SLASH -> COMM_BLOCK [label = "* / depth++";];
+    
+    COMM_LINE -> IDLE [label = "\\n, EOF";];
+    COMM_LINE -> COMM_LINE [label = "Σ \\ {\\n,\nEOF}";];
+    
+    COMM_BLOCK -> COMM_BLOCK_STAR [label = "*";];
+    COMM_BLOCK -> COMM_BLOCK_SLASH [label = "'/'";];
+    COMM_BLOCK -> COMM_BLOCK [label = "Σ \\ {*,\n/, EOF}";];
+    COMM_BLOCK_STAR -> COMM_BLOCK_STAR [label = "*";];
+    COMM_BLOCK_STAR -> IDLE [label = "'/' [depth == 1]\n/ depth--";];
+    COMM_BLOCK_STAR -> COMM_BLOCK [label = "'/' [depth > 1]\n/ depth--";];
+    COMM_BLOCK_STAR -> COMM_BLOCK [label = "Σ \\ {*,\n/, EOF}";];
+    COMM_BLOCK_SLASH -> COMM_BLOCK [label = "* / depth++";];
+    COMM_BLOCK_SLASH -> COMM_BLOCK [label = "Σ \\ {*, EOF}";];
+    
+    // SINGLE CHARACTERS
+    IDLE -> OPEN_PAR [label = "( / par++";];
+    IDLE -> CLOSE_PAR [label = ") / par--"; minlen = 2;];
+    IDLE -> SEMICOLON [label = ";"; minlen = 3;];
+    IDLE -> COMMA [label = ","; minlen = 4;];
+    IDLE -> COLON [label = ":";];
+    IDLE -> MUL [label = "*"; minlen = 2;];
+    IDLE -> PLUS [label = "+"; minlen = 3;];
+    IDLE -> MINUS [label = "-"; minlen = 4;];
+    IDLE -> EOF [label = "EOF";];
+    
+    // OPERATORS
+    IDLE -> EXCL [headlabel = "!"; minlen = 2;];
+    IDLE -> ASSIGN [headlabel = "="; minlen = 3;];
+    IDLE -> GRE [headlabel = ">"; minlen = 4;];
+    IDLE -> LOW [headlabel = "<";];
+    IDLE -> AND [headlabel = "&"; minlen = 2;];
+    IDLE -> OR [headlabel = "|"; minlen = 3;];
+    
+    EXCL -> NOT_EQ [label = "=";];
+    ASSIGN -> EQ [label = "=";];
+    GRE -> GRE_EQ [label = "=";];
+    LOW -> LOW_EQ [label = "=";];
+    LOW -> GENERATOR [label = "-";];
+    AND -> AND_AND [label = "&";];
+    OR -> OR_OR [label = "|";];
+    
+    // MAIN
+    IDLE -> AT [headlabel = "@"; minlen = 4;];
+    AT -> AT_MAIN [label = "main";];
+    
+    // INTERPOLATED STRING
+    IDLE -> STR [label = "} [in ${...}, single-line]\n/ INTERP_EXPR_END";];
+    IDLE -> STR_ML [label = "} [in ${...}, multi-line]\n/ INTERP_EXPR_END";];
+    
+    ID -> INTERP_1_QUOT [label = "\" [ID == \"s\"]";];
+    INTERP_1_QUOT -> INTERP_2_QUOT [label = "\"";];
+    INTERP_1_QUOT -> STR [label = "Σ \\ {\"}\n/ INTERP_BEGIN";];
+    INTERP_2_QUOT -> STR_ML [label = "\"\n/ INTERP_BEGIN";];
+    
+    STR -> DOLLAR [label = "$ [interp]";];
+    DOLLAR -> STR [label = "$";];
+    DOLLAR -> IDLE [label = "{\n/ (STRING), INTERP_EXPR_BEGIN";];
+    DOLLAR -> IDLE [label = "a-Z, _\n/ (STRING)";];
+    
+    // LAYOUT ONLY: fold long chains into one column
+    subgraph {
+        rank = same;
+        E;
+        E_SIGN;
+        EXP;
+    }
+    subgraph {
+        rank = same;
+        EXP_UND;
+        D;
+    }
+    subgraph {
+        rank = same;
+        STR_ML_1_Q;
+        STR_ML_2_Q;
+        STR_ML_END;
+    }
+    
+    // DISCLAIMER: This part has been done by an AI agent Claude Opus 5.5 on xHigh effort
+    // This part's only purpose it to make the fsm more readable and without this part, it would be
+    // very difficult to print. Formatting is the only part of this file that AI took part in.
+    // Mutliple prompts have been used for this part to achieve the best possible readability.
+    // The main one:
+    // "Please make the dot file more readable by decreasing the inner margin of the circles.
+    // If dot leaves no other option, optimize each one individually for best results."
+    // LAYOUT ONLY: each circle just big enough for its text (sizes measured from the labels)
+    AND [fixedsize = true;width = 0.57;];
+    AND_AND [fixedsize = true;width = 1.17;];
+    ASSIGN [fixedsize = true;width = 1.09;];
+    AT [fixedsize = true;width = 0.48;];
+    AT_MAIN [fixedsize = true;width = 1.19;];
+    CLOSE_PAR [fixedsize = true;width = 1.49;];
+    COLON [fixedsize = true;width = 1.06;];
+    COMMA [fixedsize = true;width = 1.12;];
+    COMM_BLOCK [fixedsize = true;width = 1.50;];
+    COMM_BLOCK_SLASH [fixedsize = true;width = 2.23;];
+    COMM_BLOCK_STAR [fixedsize = true;width = 2.10;];
+    COMM_LINE [fixedsize = true;width = 1.25;];
+    D [fixedsize = true;width = 1.16;];
+    DBL [fixedsize = true;width = 1.16;];
+    DBL_UND [fixedsize = true;width = 1.00;];
+    DOLLAR [fixedsize = true;width = 0.91;];
+    DOT [fixedsize = true;width = 0.57;];
+    DOT_START [fixedsize = true;width = 1.37;];
+    E [fixedsize = true;width = 0.48;];
+    EOF [fixedsize = true;width = 0.81;];
+    EQ [fixedsize = true;width = 0.73;];
+    ESC [fixedsize = true;width = 0.55;];
+    EXCL [fixedsize = true;width = 1.51;];
+    EXP [fixedsize = true;width = 1.16;];
+    EXP_UND [fixedsize = true;width = 0.99;];
+    E_SIGN [fixedsize = true;width = 0.82;];
+    GENERATOR [fixedsize = true;width = 1.54;];
+    GRE [fixedsize = true;width = 0.83;];
+    GRE_EQ [fixedsize = true;width = 1.16;];
+    ID [fixedsize = true;width = 1.60;];
+    IDLE [fixedsize = true;width = 0.58;];
+    INT [fixedsize = true;width = 0.74;];
+    INTERP_1_QUOT [fixedsize = true;width = 1.65;];
+    INTERP_2_QUOT [fixedsize = true;width = 1.84;];
+    INT_UND [fixedsize = true;width = 0.93;];
+    LINE_START [fixedsize = true;width = 1.25;];
+    LOW [fixedsize = true;width = 0.86;];
+    LOW_EQ [fixedsize = true;width = 1.20;];
+    MINUS [fixedsize = true;width = 0.99;];
+    MUL [fixedsize = true;width = 0.83;];
+    NOT_EQ [fixedsize = true;width = 1.15;];
+    OPEN_PAR [fixedsize = true;width = 1.38;];
+    OR [fixedsize = true;width = 0.48;];
+    OR_OR [fixedsize = true;width = 0.96;];
+    PAREN_NEWLINE [fixedsize = true;width = 1.72;];
+    PLUS [fixedsize = true;width = 0.89;];
+    QUOT_1 [fixedsize = true;width = 0.89;];
+    QUOT_2 [fixedsize = true;width = 1.08;];
+    SEMICOLON [fixedsize = true;width = 1.50;];
+    SLASH [fixedsize = true;width = 0.92;];
+    STR [fixedsize = true;width = 0.54;];
+    STR_END [fixedsize = true;width = 1.13;];
+    STR_ML [fixedsize = true;width = 0.88;];
+    STR_ML_1_Q [fixedsize = true;width = 1.33;];
+    STR_ML_2_Q [fixedsize = true;width = 1.33;];
+    STR_ML_END [fixedsize = true;width = 1.49;];
+    UND [fixedsize = true;width = 0.82;];
+    ZERO [fixedsize = true;width = 0.84;];
+    ZERO_INT [fixedsize = true;width = 1.04;];
+    ZERO_INT_DOT [fixedsize = true;width = 1.54;];
+}

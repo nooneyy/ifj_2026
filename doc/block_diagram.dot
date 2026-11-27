@@ -1,0 +1,57 @@
+/**
+ * @file block_diagram.dot
+ * @brief The block diagram of the entire compiler
+ * @author Tomáš Kolařík <xkolart01@stud.fit.vut.cz>
+ * @date 26.11.2026
+ */
+digraph block_diagram {
+    compound = true;
+    nodesep = 0.6;
+    ranksep = 0.5;
+    fontname = "Helvetica";
+
+    node [shape=box, style=rounded, fontname="Helvetica", fontsize=10];
+    edge [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+    input  [label="IFJ26 kód\n(stdin)",      style=dashed, group=left, width=1.9];
+    output [label="IFJcode26 kód\n(stdout)", style=dashed, group=right, width=1.9];
+
+    scanner [label="lexikální analyzátor\n(scanner.c)", group=left];
+
+    subgraph parser {
+        label = "syntaktický analyzátor\n(parser.c)";
+        style = rounded;
+        fontsize = 11;
+
+        recursive  [label="rekurzivní sestup", group=left, width=2.6];
+        precedence [label="precedenční analýza výrazů", group=left, width=2.6];
+    }
+
+    program  [label="program\n(kořen AST)", style="rounded,dashed", group=right, width=2.2, height=1.1];
+    symtable [label="tabulka symbolů\n(symtable.c)", group=left];
+    semantic [label="sémantický analyzátor\n(semantic.c)", group=right];
+    codegen  [label="generátor kódu\n(codegen.c)", group=right];
+
+    input -> scanner;
+
+    scanner   -> recursive [label="(naplní token)\nOK/CHYBA", lhead=parser];
+    recursive -> scanner   [label="prázdný\ntoken", ltail=parser];
+
+    recursive  -> precedence [label="uzly AST"];
+    precedence -> recursive;
+
+    precedence -> program   [label="(naplní AST)\nOK/CHYBA", ltail=parser, weight=0];
+
+    program  -> semantic [style=invis];
+    program  -> semantic [label="uzly AST", constraint=false];
+    semantic -> program  [label="(plní\ndatové typy)", constraint=false];
+    symtable -> semantic [label="symboly", dir=both, weight=0];
+
+    semantic -> codegen [label="OK/CHYBA"];
+    // Crazy arrow lmao
+    program  -> codegen [weight=0, tailport=e, headport=e];
+    codegen  -> output;
+
+    { rank=same; symtable; semantic; }
+    precedence -> symtable [style=invis];
+}
